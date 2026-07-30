@@ -1,0 +1,315 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider      = "prisma-client-js"
+  output        = "../src/generated/prisma"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ══════════ USER & AUTH SYSTEM (PHASE 3) ══════════
+model User {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  passwordHash   String?
+  name           String?
+  username       String?   @unique
+  bio            String?   @db.Text
+  location       String?
+  avatar         String?
+  role           UserRole  @default(USER) // USER, BUSINESS, ADMIN
+  
+  // Verifications & Trust (German Compliance & Vinted Style)
+  isVerified     Boolean   @default(false)
+  phoneVerified  Boolean   @default(false)
+  idVerified     Boolean   @default(false)
+  dac7Reported   Boolean   @default(false) // EU Tax reporting flag
+  
+  // Eco Impact Statistics
+  ecoCO2Saved    Float     @default(0.0)
+  itemsRecycled  Int       @default(0)
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Relationships
+  products       Product[]
+  givenReviews   Review[]  @relation("Author")
+  receivedReviews Review[] @relation("Target")
+  offersMade     Offer[]   @relation("BuyerOffers")
+  offersReceived Offer[]   @relation("SellerOffers")
+  ordersAsBuyer  Order[]   @relation("BuyerOrders")
+  ordersAsSeller Order[]   @relation("SellerOrders")
+  sentMessages   Message[] @relation("Sender")
+  recvMessages   Message[] @relation("Receiver")
+  followers      Follow[]  @relation("Followed")
+  following      Follow[]  @relation("Follower")
+  favorites      Favorite[]
+  accounts       Account[] // Nextauth 
+  sessions       Session[] // Nextauth 
+  bundleDiscount BundleDiscount?
+}
+
+model BundleDiscount {
+  id           String  @id @default(cuid())
+  userId       String  @unique
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  isActive     Boolean @default(false)
+  twoItems     Int?    @default(5)  // percentage
+  threeItems   Int?    @default(10)
+  fiveItems    Int?    @default(15)
+}
+
+enum UserRole {
+  USER
+  BUSINESS
+  ADMIN
+}
+
+model Follow {
+  followerId   String
+  followedId   String
+  follower     User @relation("Follower", fields: [followerId], references: [id])
+  followed     User @relation("Followed", fields: [followedId], references: [id])
+  createdAt    DateTime @default(now())
+
+  @@id([followerId, followedId])
+}
+
+// ══════════ PRODUCT LISTING SYSTEM (PHASE 4) ══════════
+model Product {
+  id             String         @id @default(cuid())
+  title          String
+  description    String?        @db.Text
+  price          Float
+  originalPrice  Float?
+  size           String?
+  brand          String?
+  condition      ConditionType
+  status         ProductStatus  @default(ACTIVE)
+  shippingCost   Float          @default(0.0) // If seller sets fixed shipping
+  
+  // Metrics
+  views          Int            @default(0)
+  likes          Int            @default(0)
+  ecoCO2Saved    Float          @default(0.0) // Impact of this specific item
+
+  categoryId     String
+  category       Category       @relation(fields: [categoryId], references: [id])
+  sellerId       String
+  seller         User           @relation(fields: [sellerId], references: [id])
+  
+  images         ProductImage[]
+  offers         Offer[]
+  orders         Order[]
+  favorites      Favorite[]
+
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+}
+
+enum ConditionType {
+  NEW_WITH_TAGS
+  NEW_WITHOUT_TAGS
+  VERY_GOOD
+  GOOD
+  ACCEPTABLE
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  HIDDEN
+  RESERVED
+  SOLD
+}
+
+model ProductImage {
+  id         String   @id @default(cuid())
+  url        String
+  orderIndex Int
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id])
+  // Gemini multimodal embedding (gemini-embedding-2) for real visual similarity search.
+  // Populated best-effort at upload time; null until then or if generation fails.
+  embedding  Float[]  @default([])
+}
+
+model Category {
+  id       String     @id @default(cuid())
+  name     String     @unique
+  emoji    String?
+  color    String?
+  parentId String?
+  parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryHierarchy")
+  products Product[]
+}
+
+model Favorite {
+  userId    String
+  productId String
+  user      User    @relation(fields: [userId], references: [id])
+  product   Product @relation(fields: [productId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@id([userId, productId])
+}
+
+// ══════════ BARGAINING & OFFERS (PHASE 5) ══════════
+model Offer {
+  id           String      @id @default(cuid())
+  offeredPrice Float
+  status       OfferStatus @default(PENDING)
+  
+  productId    String
+  product      Product     @relation(fields: [productId], references: [id])
+  buyerId      String
+  buyer        User        @relation("BuyerOffers", fields: [buyerId], references: [id])
+  sellerId     String
+  seller       User        @relation("SellerOffers", fields: [sellerId], references: [id])
+  
+  messages     Message[]   // Links chat to this specific offer negotiation
+  orders       Order[]     // Resolves to an order if accepted
+
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+enum OfferStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  COUNTERED
+  EXPIRED
+}
+
+// ══════════ TRANSACTIONS & ESCROW (PHASE 5) ══════════
+model Order {
+  id               String      @id @default(cuid())
+  
+  productId        String
+  product          Product     @relation(fields: [productId], references: [id])
+  buyerId          String
+  buyer            User        @relation("BuyerOrders", fields: [buyerId], references: [id])
+  sellerId         String
+  seller           User        @relation("SellerOrders", fields: [sellerId], references: [id])
+  offerId          String?
+  offer            Offer?      @relation(fields: [offerId], references: [id])
+  
+  // Financials
+  itemPrice        Float
+  shippingFee      Float
+  protectionFee    Float       // Käuferschutz platform fee
+  totalAmount      Float
+  
+  // Logistics
+  status           OrderStatus @default(PENDING_PAYMENT)
+  paymentIntentId  String?     // Stripe payment ID
+  shippingLabelUrl String?
+  trackingCode     String?
+  shippingCarrier  String?     // DHL, Hermes, DPD
+  disputeReason    String?
+
+  review           Review?     // Feedback left post-delivery
+
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID             // Escrow holding funds
+  SHIPPED          // Tracking active
+  DELIVERED
+  COMPLETED        // Buyer confirmed, payout triggered
+  DISPUTED         // Käuferschutz requested
+  CANCELLED
+  REFUNDED
+}
+
+// ══════════ MESSAGING & CHAT (PHASE 6) ══════════
+model Message {
+  id          String      @id @default(cuid())
+  content     String      @db.Text
+  type        MessageType @default(TEXT) // e.g TEXT, OFFER_CREATED, SYSTEM_ALERT
+  isRead      Boolean     @default(false)
+  
+  senderId    String
+  sender      User        @relation("Sender", fields: [senderId], references: [id])
+  receiverId  String
+  receiver    User        @relation("Receiver", fields: [receiverId], references: [id])
+  offerId     String?
+  offer       Offer?      @relation(fields: [offerId], references: [id]) // Optional context
+
+  createdAt   DateTime    @default(now())
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  OFFER_ACTION
+  SYSTEM_INFO
+}
+
+// ══════════ RATINGS & REVIEWS (PHASE 3) ══════════
+model Review {
+  id           String   @id @default(cuid())
+  rating       Int      // 1 to 5
+  comment      String?  @db.Text
+  
+  orderId      String   @unique
+  order        Order    @relation(fields: [orderId], references: [id])
+  authorId     String
+  author       User     @relation("Author", fields: [authorId], references: [id])
+  targetUserId String
+  targetUser   User     @relation("Target", fields: [targetUserId], references: [id])
+
+  createdAt    DateTime @default(now())
+}
+
+// ══════════ NEXTAUTH SYSTEM MODELS ══════════
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?  @db.Text
+  access_token       String?  @db.Text
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?  @db.Text
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}

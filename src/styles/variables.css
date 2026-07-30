@@ -1,0 +1,145 @@
+/* ===== cssberlin.de Design Tokens ===== */
+
+:root {
+  /* ── Primary: Forest / Nature (Earth = Yeşil) ── */
+  --color-primary: #2D6A4F;
+  --color-primary-light: #40916C;
+  --color-primary-dark: #1B4332;
+  --color-primary-50: #D8F3DC;
+  --color-primary-100: #B7E4C7;
+  --color-primary-200: #95D5B2;
+
+  /* ── Mars Orange (Turuncu — 2.el almazsan Mars'laşırsın) ── */
+  --color-orange: #E8651A;
+  --color-orange-light: #F28A3D;
+  --color-orange-dark: #C04E0E;
+  --color-orange-50: #FFF3E8;
+  --color-orange-100: #FFE0C2;
+  --color-orange-200: #FFCA99;
+  --color-orange-glow: rgba(232, 101, 26, 0.35);
+
+  /* ── Brand Gradients (Mars → Earth) ── */
+  --gradient-mars-earth: linear-gradient(135deg, #E8651A 0%, #F28A3D 25%, #40916C 75%, #2D6A4F 100%);
+  --gradient-mars-earth-soft: linear-gradient(135deg, #FFF3E8 0%, #D8F3DC 100%);
+  --gradient-mars-earth-vivid: linear-gradient(135deg, #E8651A 0%, #2D6A4F 100%);
+  --gradient-mars-earth-horizontal: linear-gradient(90deg, #E8651A 0%, #F28A3D 30%, #40916C 70%, #2D6A4F 100%);
+  --gradient-hero-banner: linear-gradient(135deg, #E8651A 0%, #F28A3D 20%, #95D5B2 60%, #40916C 80%, #2D6A4F 100%);
+
+  /* ── Secondary: Earthy Warm ── */
+  --color-secondary: #D4A373;
+  --color-secondary-light: #E9C89B;
+  --color-secondary-dark: #B07D4F;
+
+  /* ── Accent: Sky Blue ── */
+  --color-accent: #4CC9F0;
+  --color-accent-light: #72EFDD;
+  --color-accent-dark: #3A86A0;
+
+  /* ── Neutrals ── */
+  --color-bg: #FAFDF7;
+  --color-bg-secondary: #F0F4EC;
+  --color-bg-card: #FFFFFF;
+  --color-text: #1A1A2E;
+  --color-text-secondary: #555B6E;
+  --color-text-muted: #89939E;
+  --color-border: #E0E5DD;
+  --color-border-hover: #C5CCC0;
+
+  /* ── Status ── */
+  --color-success: #38A169;
+  --color-warning: #E6A817;
+  --color-error: #E53E3E;
+  --color-info: #3182CE;
+
+  /* ── Dark Mode ── */
+  --color-dark-bg: #0D1117;
+  --color-dark-bg-secondary: #161B22;
+  --color-dark-bg-card: #1C2333;
+  --color-dark-text: #E6EDF3;
+  --color-dark-text-secondary: #8B949E;
+  --color-dark-border: #30363D;
+
+  /* ── Typography ── */
+  --font-sans: 'Inter', 'Outfit', system-ui, -apple-system, sans-serif;
+  --font-display: 'Outfit', 'Inter', system-ui, sans-serif;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
+  --text-5xl: 3rem;
+  --text-6xl: 3.75rem;
+
+  --font-light: 300;
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+
+  /* ── Spacing ── */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+
+  /* ── Border Radius ── */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  --radius-full: 9999px;
+
+  /* ── Shadows ── */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  --shadow-glass: 0 8px 32px rgba(45, 106, 79, 0.12);
+
+  /* ── Transitions ── */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-spring: 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ── Z-index ── */
+  --z-dropdown: 50;
+  --z-sticky: 100;
+  --z-fixed: 200;
+  --z-modal-backdrop: 300;
+  --z-modal: 400;
+  --z-toast: 500;
+}
+
+/* ── Dark Mode ── */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: var(--color-dark-bg);
+    --color-bg-secondary: var(--color-dark-bg-secondary);
+    --color-bg-card: var(--color-dark-bg-card);
+    --color-text: var(--color-dark-text);
+    --color-text-secondary: var(--color-dark-text-secondary);
+    --color-border: var(--color-dark-border);
+  }
+}
+
+[data-theme="dark"] {
+  --color-bg: var(--color-dark-bg);
+  --color-bg-secondary: var(--color-dark-bg-secondary);
+  --color-bg-card: var(--color-dark-bg-card);
+  --color-text: var(--color-dark-text);
+  --color-text-secondary: var(--color-dark-text-secondary);
+  --color-border: var(--color-dark-border);
+}

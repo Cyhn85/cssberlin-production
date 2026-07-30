@@ -1,36 +1,38 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# cssberlin.de
 
-## Getting Started
+Berlin-based second-hand marketplace with real offers, order status visibility and a launch target based on Hetzner + Cloudflare + Nginx + Docker Compose + Next.js standalone.
 
-First, run the development server:
+## Start here
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- `OPERATIONS_AND_HANDOFF.md`: single handoff source and latest verified operational status
+- `docs/REPO_CONTROL_CENTER.md`: where to find product logic, legal/business facts, rollout status and site trust rules
+- `docs/SITE_LOGIC_AND_TRUST.md`: critical user flows, negotiation logic and trust design
+- `docs/BUSINESS_PROFILE_PUBLIC.md`: public-safe business facts and where they appear on the site
+- `docs/PRODUCTION_ENV_MATRIX.md`: exact launch-ready `.env.production` fill order and provider/source mapping
+- `docs/PROVIDER_SETUP_STEPS.md`: click-by-click provider onboarding order for Stripe, UploadThing, Resend, and Pusher
+- `docs/LAUNCH_TODO.md`: done, remaining and launch-day checklist
+- `docs/private/BUSINESS_CONFIDENTIAL.md`: local-only tax/admin notes, intentionally gitignored
+- `docs/private/PROVIDER_CREDENTIAL_STATUS.md`: local-only provider readiness status
+- `docs/private/PROVIDER_COLLECTION_WORKSHEET.md`: local-only step-by-step provider collection sheet
+- `implementations.md`: historical implementation log
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Product snapshot
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- offers are first-class and support two-way negotiation
+- accepted offers flow into checkout with the negotiated price
+- inbox, notifications, purchases and sales show availability and order context
+- order lifecycle events now fan out to realtime updates, notifications and optional emails
+- public catalog APIs degrade safely during temporary database unavailability
+- AI is still in beta/helper mode and should not be presented as a fully autonomous commerce operator yet
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Deployment model
 
-## Learn More
+- Hetzner Ubuntu VPS
+- Cloudflare proxy with Full (strict)
+- Nginx reverse proxy with Cloudflare Origin CA
+- Docker Compose runtime
+- Next.js standalone build output
 
-To learn more about Next.js, take a look at the following resources:
+## Working rule
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+When updating business/legal/contact data, change `src/config/business-profile.ts` first and then update the linked docs if policy or tax treatment changes. Never place a German `Steuernummer` on public pages.
