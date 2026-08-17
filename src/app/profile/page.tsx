@@ -155,8 +155,8 @@ export default function ProfilePage() {
                   <div className="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
                     {stat.icon}
                   </div>
-                  <div className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>{stat.value}</div>
-                  <div className="text-[10px] uppercase tracking-wider text-gray-400">{stat.label}</div>
+                  <div className="mb-1 text-2xl font-bold" style={{ color: 'var(--color-text)' }}>{stat.value}</div>
+                  <div className="text-xs uppercase tracking-wider text-gray-400">{stat.label}</div>
                 </div>
               ))}
             </div>

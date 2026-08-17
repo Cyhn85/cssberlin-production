@@ -20,6 +20,23 @@ services:
       timeout: 5s
       retries: 5
 
+  db-setup:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: ops
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-cssberlin}:${POSTGRES_PASSWORD}@postgres:5432/cssberlin?schema=public
+      DIRECT_URL: postgresql://${POSTGRES_USER:-cssberlin}:${POSTGRES_PASSWORD}@postgres:5432/cssberlin?schema=public
+      NODE_ENV: production
+      RUN_DB_SEED: ${RUN_DB_SEED:-0}
+    command:
+      - /bin/sh
+      - /app/ops/run-db-setup.sh
+
   app:
     build:
       context: .
@@ -52,8 +69,13 @@ services:
       GOOGLE_GENERATIVE_AI_API_KEY: ${GOOGLE_GENERATIVE_AI_API_KEY:-}
       SENTRY_DSN: ${SENTRY_DSN:-}
       NODE_ENV: production
+      # TATANGA -> cssberlin real product import bridge (POST /api/products/import)
+      TATANGA_IMPORT_API_KEY: ${TATANGA_IMPORT_API_KEY:?Set TATANGA_IMPORT_API_KEY in .env}
+      LOCAL_UPLOAD_DIR: /app/uploads
     ports:
       - "127.0.0.1:3000:3000"
+    volumes:
+      - ./uploads:/app/uploads
 
   nginx:
     image: nginx:alpine

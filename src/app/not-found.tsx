@@ -44,7 +44,7 @@ export default function NotFound() {
             className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-white transition-transform hover:scale-[1.02] btn-mars-earth"
           >
             <Search size={18} />
-            Katalog durchsuchen
+            <span>Katalog durchsuchen</span>
           </Link>
           <Link
             href="/"

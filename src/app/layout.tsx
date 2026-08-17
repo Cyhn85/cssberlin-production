@@ -1,11 +1,14 @@
 import type { Metadata } from 'next';
-import Header from '@/components/layout/Header';
-import Footer from '@/components/layout/Footer';
+import ConditionalChrome from '@/components/layout/ConditionalChrome';
 import AuthProvider from '@/components/providers/AuthProvider';
 import CookieBanner from '@/components/ui/CookieBanner';
 import AiAssistant from '@/components/ai/AiAssistant';
 import ScrollToTop from '@/components/ui/ScrollToTop';
 import './globals.css';
+import { Geist } from "next/font/google";
+import { cn } from "@/lib/utils";
+
+const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 export const metadata: Metadata = {
   title: {
@@ -60,12 +63,34 @@ export const viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="de" suppressHydrationWarning>
+    <html lang="de" suppressHydrationWarning className={cn("font-sans", geist.variable)}>
       <body className="antialiased" style={{ fontFamily: 'var(--font-sans)' }}>
+        {/* Site-geneli yapisal veri: OnlineStore + arama aksiyonu (sitelinks searchbox) */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'OnlineStore',
+              name: 'cssberlin.de',
+              url: 'https://cssberlin.de',
+              logo: 'https://cssberlin.de/icon-512.png',
+              description:
+                'Nachhaltiger Second-Hand Marktplatz in Berlin. Gebraucht kaufen und verkaufen, CO2 sparen, mit Kaeuferschutz.',
+              areaServed: { '@type': 'Country', name: 'Deutschland' },
+              potentialAction: {
+                '@type': 'SearchAction',
+                target: {
+                  '@type': 'EntryPoint',
+                  urlTemplate: 'https://cssberlin.de/catalog?search={search_term_string}',
+                },
+                'query-input': 'required name=search_term_string',
+              },
+            }),
+          }}
+        />
         <AuthProvider>
-          <Header />
-          <main style={{ paddingTop: '7.5rem', minHeight: '100vh' }}>{children}</main>
-          <Footer />
+          <ConditionalChrome>{children}</ConditionalChrome>
           <CookieBanner />
           <AiAssistant />
           <ScrollToTop />

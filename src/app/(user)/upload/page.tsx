@@ -7,6 +7,7 @@ import { UploadCloud, X, Info, Leaf, CheckCircle2, Sparkles, Loader2 } from 'luc
 import { useUploadThing } from '@/lib/uploadthing';
 import { labelToCondition } from '@/lib/utils/condition-map';
 import type { Category } from '@/types/api';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const CONDITIONS = [
   'Neu mit Etikett', 'Neu', 'Sehr gut', 'Gut', 'Akzeptabel'
@@ -16,6 +17,9 @@ const SIZES = [
   'XS', 'S', 'M', 'L', 'XL', 'XXL', 'Einheitsgröße',
   '36', '37', '38', '39', '40', '41', '42', '43', '44'
 ];
+
+// 1 Titelbild + zwei Reihen à 4 Vorschaubilder = kein leerer Platz im Galerie-Block.
+const MAX_PHOTOS = 9;
 
 export default function ProductUploadPage() {
   const router = useRouter();
@@ -58,7 +62,7 @@ export default function ProductUploadPage() {
   const { startUpload, isUploading } = useUploadThing('productImage', {
     onClientUploadComplete: (res) => {
       const newUrls = res.map(file => file.url);
-      setImages(prev => [...prev, ...newUrls].slice(0, 12));
+      setImages(prev => [...prev, ...newUrls].slice(0, MAX_PHOTOS));
     },
     onUploadError: (err) => {
       setError(`Fehler beim Hochladen: ${err.message}`);
@@ -66,13 +70,13 @@ export default function ProductUploadPage() {
   });
 
   const handleImageUpload = () => {
-    if (images.length >= 12) return;
+    if (images.length >= MAX_PHOTOS) return;
     fileInputRef.current?.click();
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.length) return;
-    const files = Array.from(e.target.files).slice(0, 12 - images.length);
+    const files = Array.from(e.target.files).slice(0, MAX_PHOTOS - images.length);
     startUpload(files);
     e.target.value = ''; // Reset so same file can be selected again
   };
@@ -263,7 +267,7 @@ export default function ProductUploadPage() {
                 className="px-6 py-3 rounded-xl font-bold text-white btn-mars-earth"
                 style={{ background: 'var(--color-orange)' }}
               >
-                Weiteren Artikel hochladen
+                <span>Weiteren Artikel hochladen</span>
               </button>
             </div>
           </div>
@@ -289,7 +293,7 @@ export default function ProductUploadPage() {
             <div className="p-6 md:p-8 rounded-3xl" style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold" style={{ color: 'var(--color-text)' }}>Fotos hinzufügen</h2>
-                <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{images.length} / 12 Fotos</span>
+                <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{images.length} / {MAX_PHOTOS} Fotos</span>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
@@ -307,7 +311,7 @@ export default function ProductUploadPage() {
                   </div>
                 ))}
 
-                {images.length < 12 && (
+                {images.length < MAX_PHOTOS && (
                   <button
                     type="button"
                     onClick={handleImageUpload}
@@ -330,8 +334,8 @@ export default function ProductUploadPage() {
               <div className="mt-4 p-3 rounded-lg flex gap-3 bg-orange-50/50 border border-orange-100">
                 <Info size={16} className="text-orange-500 shrink-0 mt-0.5" />
                 <p className="text-xs text-orange-800">
-                  <span className="font-bold block mb-1">KI-Hintergrundentfernung in Kürze!</span>
-                  Künftig werden Hintergründe automatisch freigestellt, um deine Artikel noch professioneller wirken zu lassen.
+                  <span className="font-bold block mb-1">Tipp: 360°-Ansicht</span>
+                  Lade mindestens 6 Fotos hoch – aufgenommen von vorne, hinten, oben, unten sowie von links und rechts – und dein Artikel kann in einer 360°-Rundumansicht dargestellt werden.
                 </p>
               </div>
             </div>
@@ -504,12 +508,11 @@ export default function ProductUploadPage() {
               </div>
 
               <div className="p-4 rounded-xl border bg-gray-50/50 flex items-start gap-3" style={{ borderColor: 'var(--color-border)' }}>
-                <input
-                  type="checkbox"
+                <Checkbox
                   id="negotiable"
                   className="mt-1"
                   checked={formData.allowOffers}
-                  onChange={e => setFormData({ ...formData, allowOffers: e.target.checked })}
+                  onCheckedChange={(checked) => setFormData({ ...formData, allowOffers: checked === true })}
                 />
                 <label htmlFor="negotiable" className="text-sm">
                   <span className="font-bold block text-[var(--color-text)] mb-0.5">Preisvorschläge erlauben</span>
@@ -535,9 +538,9 @@ export default function ProductUploadPage() {
                 disabled={loading || isUploading || images.length === 0}
               >
                 {loading ? (
-                  <><Loader2 size={18} className="animate-spin" /> Wird veröffentlicht...</>
+                  <><Loader2 size={18} className="animate-spin" /> <span>Wird veröffentlicht...</span></>
                 ) : (
-                  'Veröffentlichen'
+                  <span>Veröffentlichen</span>
                 )}
               </button>
             </div>

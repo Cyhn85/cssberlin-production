@@ -7,6 +7,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { ChevronDown, Loader2, Search, SlidersHorizontal, X } from 'lucide-react';
 import ProductCard from '@/components/product/ProductCard';
 import { labelToCondition } from '@/lib/utils/condition-map';
+import { useProgressiveLoad } from '@/lib/hooks/useProgressiveLoad';
+import { Checkbox } from '@/components/ui/checkbox';
 
 type ProductItem = {
   id: string;
@@ -164,6 +166,8 @@ function CatalogContent() {
       setLoadingMore(false);
     }
   };
+
+  const { sentinelRef, showManualButton } = useProgressiveLoad({ hasMore, loading: loadingMore, onLoadMore: loadMore });
 
   const clearAllFilters = () => {
     setQuery('');
@@ -341,18 +345,20 @@ function CatalogContent() {
                     : 'Versuche andere Begriffe oder entferne ein paar Filter.'}
                 </p>
                 <button onClick={clearAllFilters} className="rounded-full px-6 py-2 font-bold text-white btn-mars-earth" style={{ background: 'var(--color-orange)' }}>
-                  {catalogDegraded ? 'Erneut versuchen' : 'Filter zuruecksetzen'}
+                  <span>{catalogDegraded ? 'Erneut versuchen' : 'Filter zuruecksetzen'}</span>
                 </button>
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4">
+                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
                   {products.map((product) => (
                     <ProductCard key={product.id} product={product} showSeller />
                   ))}
                 </div>
 
-                {hasMore ? (
+                {hasMore ? <div ref={sentinelRef} aria-hidden className="h-1" /> : null}
+
+                {showManualButton ? (
                   <div className="mt-8 text-center">
                     <button
                       onClick={loadMore}
@@ -360,8 +366,12 @@ function CatalogContent() {
                       className="rounded-full px-6 py-3 font-bold text-white btn-mars-earth"
                       style={{ background: 'var(--color-orange)' }}
                     >
-                      {loadingMore ? 'Mehr wird geladen...' : 'Mehr laden'}
+                      <span>{loadingMore ? 'Mehr wird geladen...' : 'Weitere Artikel laden'}</span>
                     </button>
+                  </div>
+                ) : hasMore && loadingMore ? (
+                  <div className="mt-8 text-center">
+                    <Loader2 size={22} className="mx-auto animate-spin" style={{ color: 'var(--color-primary)' }} />
                   </div>
                 ) : null}
               </>
@@ -417,7 +427,7 @@ function CatalogContent() {
                   className="w-full rounded-xl py-4 font-bold text-white btn-mars-earth"
                   style={{ background: 'var(--color-orange)' }}
                 >
-                  Ergebnisse anzeigen
+                  <span>Ergebnisse anzeigen</span>
                 </button>
               </div>
             </motion.div>
@@ -469,7 +479,7 @@ function FilterSection({
   return (
     <div>
       <h3 className="mb-3 text-sm font-bold" style={{ color: 'var(--color-text)' }}>{title}</h3>
-      <div className={isGrid ? 'grid grid-cols-3 gap-2' : 'space-y-2.5'}>
+      <div className={isGrid ? 'grid grid-cols-3 gap-2' : 'max-h-64 space-y-2.5 overflow-y-auto pr-1'}>
         {items.map((entry) => {
           const isActive = active === entry;
           if (isGrid) {
@@ -491,16 +501,7 @@ function FilterSection({
 
           return (
             <label key={entry} className="group flex cursor-pointer items-center gap-3">
-              <input type="checkbox" className="hidden" checked={isActive} onChange={() => onSelect(entry)} />
-              <div
-                className="flex h-5 w-5 items-center justify-center rounded-md transition-colors"
-                style={{
-                  background: isActive ? 'var(--color-primary)' : 'transparent',
-                  border: `2px solid ${isActive ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                }}
-              >
-                {isActive ? <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="h-2 w-2 rounded-[2px] bg-white" /> : null}
-              </div>
+              <Checkbox checked={isActive} onCheckedChange={() => onSelect(entry)} />
               <span className="text-sm font-medium transition-colors group-hover:text-[var(--color-primary)]" style={{ color: isActive ? 'var(--color-text)' : 'var(--color-text-secondary)' }}>
                 {entry}
               </span>

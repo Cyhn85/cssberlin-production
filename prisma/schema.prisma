@@ -18,56 +18,70 @@ datasource db {
 
 // ══════════ USER & AUTH SYSTEM (PHASE 3) ══════════
 model User {
-  id             String    @id @default(cuid())
-  email          String    @unique
-  passwordHash   String?
-  name           String?
-  username       String?   @unique
-  bio            String?   @db.Text
-  location       String?
-  avatar         String?
-  role           UserRole  @default(USER) // USER, BUSINESS, ADMIN
-  
-  // Verifications & Trust (German Compliance & Vinted Style)
-  isVerified     Boolean   @default(false)
-  phoneVerified  Boolean   @default(false)
-  idVerified     Boolean   @default(false)
-  dac7Reported   Boolean   @default(false) // EU Tax reporting flag
-  
-  // Eco Impact Statistics
-  ecoCO2Saved    Float     @default(0.0)
-  itemsRecycled  Int       @default(0)
+  passwordResetTokens PasswordResetToken[]
+  id                  String               @id @default(cuid())
+  email               String               @unique
+  passwordHash        String?
+  name                String?
+  username            String?              @unique
+  bio                 String?              @db.Text
+  location            String?
+  avatar              String?
+  role                UserRole             @default(USER) // USER, BUSINESS, ADMIN
 
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  // Verifications & Trust (German Compliance & Vinted Style)
+  isVerified    Boolean @default(false)
+  phoneVerified Boolean @default(false)
+  idVerified    Boolean @default(false)
+  dac7Reported  Boolean @default(false) // EU Tax reporting flag
+
+  // Moderation (Admin panel)
+  isSuspended     Boolean   @default(false)
+  suspendedReason String?   @db.Text
+  suspendedAt     DateTime?
+
+  // Eco Impact Statistics
+  ecoCO2Saved   Float @default(0.0)
+  itemsRecycled Int   @default(0)
+
+  // Persona (pool) seller accounts: real accounts created and owned by an
+  // operator, never independently logged into. Every reply sent "as" a
+  // persona is authored/approved by managedBy — see src/lib/persona-auth.ts.
+  isPersonaAccount Boolean @default(false)
+  managedByUserId  String?
+  managedBy        User?   @relation("PersonaManager", fields: [managedByUserId], references: [id])
+  managedPersonas  User[]  @relation("PersonaManager")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relationships
-  products       Product[]
-  givenReviews   Review[]  @relation("Author")
-  receivedReviews Review[] @relation("Target")
-  offersMade     Offer[]   @relation("BuyerOffers")
-  offersReceived Offer[]   @relation("SellerOffers")
-  ordersAsBuyer  Order[]   @relation("BuyerOrders")
-  ordersAsSeller Order[]   @relation("SellerOrders")
-  sentMessages   Message[] @relation("Sender")
-  recvMessages   Message[] @relation("Receiver")
-  followers      Follow[]  @relation("Followed")
-  following      Follow[]  @relation("Follower")
-  favorites      Favorite[]
-  accounts       Account[] // Nextauth 
-  sessions       Session[] // Nextauth 
-  bundleDiscount BundleDiscount?
+  products        Product[]
+  givenReviews    Review[]        @relation("Author")
+  receivedReviews Review[]        @relation("Target")
+  offersMade      Offer[]         @relation("BuyerOffers")
+  offersReceived  Offer[]         @relation("SellerOffers")
+  ordersAsBuyer   Order[]         @relation("BuyerOrders")
+  ordersAsSeller  Order[]         @relation("SellerOrders")
+  sentMessages    Message[]       @relation("Sender")
+  recvMessages    Message[]       @relation("Receiver")
+  followers       Follow[]        @relation("Followed")
+  following       Follow[]        @relation("Follower")
+  favorites       Favorite[]
+  accounts        Account[] // Nextauth
+  sessions        Session[] // Nextauth
+  bundleDiscount  BundleDiscount?
 }
 
 model BundleDiscount {
-  id           String  @id @default(cuid())
-  userId       String  @unique
-  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  isActive     Boolean @default(false)
-  twoItems     Int?    @default(5)  // percentage
-  threeItems   Int?    @default(10)
-  fiveItems    Int?    @default(15)
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  isActive   Boolean @default(false)
+  twoItems   Int?    @default(5) // percentage
+  threeItems Int?    @default(10)
+  fiveItems  Int?    @default(15)
 }
 
 enum UserRole {
@@ -77,45 +91,55 @@ enum UserRole {
 }
 
 model Follow {
-  followerId   String
-  followedId   String
-  follower     User @relation("Follower", fields: [followerId], references: [id])
-  followed     User @relation("Followed", fields: [followedId], references: [id])
-  createdAt    DateTime @default(now())
+  followerId String
+  followedId String
+  follower   User     @relation("Follower", fields: [followerId], references: [id])
+  followed   User     @relation("Followed", fields: [followedId], references: [id])
+  createdAt  DateTime @default(now())
 
   @@id([followerId, followedId])
 }
 
 // ══════════ PRODUCT LISTING SYSTEM (PHASE 4) ══════════
 model Product {
-  id             String         @id @default(cuid())
-  title          String
-  description    String?        @db.Text
-  price          Float
-  originalPrice  Float?
-  size           String?
-  brand          String?
-  condition      ConditionType
-  status         ProductStatus  @default(ACTIVE)
-  shippingCost   Float          @default(0.0) // If seller sets fixed shipping
-  
+  id            String        @id @default(cuid())
+  title         String
+  description   String?       @db.Text
+  price         Float
+  originalPrice Float?
+  size          String?
+  brand         String?
+  condition     ConditionType
+  status        ProductStatus @default(ACTIVE)
+  shippingCost  Float         @default(0.0) // If seller sets fixed shipping
+
+  // Moderation (Admin panel)
+  moderationReason String?   @db.Text
+  moderatedAt      DateTime?
+
   // Metrics
-  views          Int            @default(0)
-  likes          Int            @default(0)
-  ecoCO2Saved    Float          @default(0.0) // Impact of this specific item
+  views       Int   @default(0)
+  likes       Int   @default(0)
+  ecoCO2Saved Float @default(0.0) // Impact of this specific item
 
-  categoryId     String
-  category       Category       @relation(fields: [categoryId], references: [id])
-  sellerId       String
-  seller         User           @relation(fields: [sellerId], references: [id])
-  
-  images         ProductImage[]
-  offers         Offer[]
-  orders         Order[]
-  favorites      Favorite[]
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+  sellerId   String
+  seller     User     @relation(fields: [sellerId], references: [id])
 
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  // Provenance for items imported via the TATANGA bridge (POST /api/products/import).
+  // Null for normal user-created listings.
+  sourcePlatform String?
+  sourceUrl      String? @db.Text
+  sourceHubId    String? @unique
+
+  images    ProductImage[]
+  offers    Offer[]
+  orders    Order[]
+  favorites Favorite[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum ConditionType {
@@ -135,14 +159,17 @@ enum ProductStatus {
 }
 
 model ProductImage {
-  id         String   @id @default(cuid())
+  id         String  @id @default(cuid())
   url        String
   orderIndex Int
   productId  String
-  product    Product  @relation(fields: [productId], references: [id])
+  product    Product @relation(fields: [productId], references: [id])
   // Gemini multimodal embedding (gemini-embedding-2) for real visual similarity search.
   // Populated best-effort at upload time; null until then or if generation fails.
-  embedding  Float[]  @default([])
+  embedding  Float[] @default([])
+  // One of FRONT/BACK/TOP/BOTTOM/LEFT/RIGHT (src/lib/product-angles.ts) if this
+  // photo is part of a deliberate 6-angle set; null for regular gallery photos.
+  angle      String?
 }
 
 model Category {
@@ -159,8 +186,8 @@ model Category {
 model Favorite {
   userId    String
   productId String
-  user      User    @relation(fields: [userId], references: [id])
-  product   Product @relation(fields: [productId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+  product   Product  @relation(fields: [productId], references: [id])
   createdAt DateTime @default(now())
 
   @@id([userId, productId])
@@ -171,19 +198,19 @@ model Offer {
   id           String      @id @default(cuid())
   offeredPrice Float
   status       OfferStatus @default(PENDING)
-  
-  productId    String
-  product      Product     @relation(fields: [productId], references: [id])
-  buyerId      String
-  buyer        User        @relation("BuyerOffers", fields: [buyerId], references: [id])
-  sellerId     String
-  seller       User        @relation("SellerOffers", fields: [sellerId], references: [id])
-  
-  messages     Message[]   // Links chat to this specific offer negotiation
-  orders       Order[]     // Resolves to an order if accepted
 
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  buyerId   String
+  buyer     User    @relation("BuyerOffers", fields: [buyerId], references: [id])
+  sellerId  String
+  seller    User    @relation("SellerOffers", fields: [sellerId], references: [id])
+
+  messages Message[] // Links chat to this specific offer negotiation
+  orders   Order[] // Resolves to an order if accepted
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum OfferStatus {
@@ -196,63 +223,68 @@ enum OfferStatus {
 
 // ══════════ TRANSACTIONS & ESCROW (PHASE 5) ══════════
 model Order {
-  id               String      @id @default(cuid())
-  
-  productId        String
-  product          Product     @relation(fields: [productId], references: [id])
-  buyerId          String
-  buyer            User        @relation("BuyerOrders", fields: [buyerId], references: [id])
-  sellerId         String
-  seller           User        @relation("SellerOrders", fields: [sellerId], references: [id])
-  offerId          String?
-  offer            Offer?      @relation(fields: [offerId], references: [id])
-  
+  id String @id @default(cuid())
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  buyerId   String
+  buyer     User    @relation("BuyerOrders", fields: [buyerId], references: [id])
+  sellerId  String
+  seller    User    @relation("SellerOrders", fields: [sellerId], references: [id])
+  offerId   String?
+  offer     Offer?  @relation(fields: [offerId], references: [id])
+
   // Financials
-  itemPrice        Float
-  shippingFee      Float
-  protectionFee    Float       // Käuferschutz platform fee
-  totalAmount      Float
-  
+  itemPrice     Float
+  shippingFee   Float
+  protectionFee Float // Käuferschutz platform fee
+  totalAmount   Float
+
   // Logistics
   status           OrderStatus @default(PENDING_PAYMENT)
-  paymentIntentId  String?     // Stripe payment ID
+  paymentIntentId  String? // Stripe payment ID
   shippingLabelUrl String?
   trackingCode     String?
-  shippingCarrier  String?     // DHL, Hermes, DPD
+  shippingCarrier  String? // DHL, Hermes, DPD
   disputeReason    String?
 
-  review           Review?     // Feedback left post-delivery
+  // Dispute resolution (Admin panel)
+  disputeResolution     String? // "REFUNDED" | "COMPLETED" - the outcome an admin chose
+  disputeResolutionNote String?   @db.Text
+  disputeResolvedAt     DateTime?
 
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
+  review Review? // Feedback left post-delivery
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum OrderStatus {
   PENDING_PAYMENT
-  PAID             // Escrow holding funds
-  SHIPPED          // Tracking active
+  PAID // Escrow holding funds
+  SHIPPED // Tracking active
   DELIVERED
-  COMPLETED        // Buyer confirmed, payout triggered
-  DISPUTED         // Käuferschutz requested
+  COMPLETED // Buyer confirmed, payout triggered
+  DISPUTED // Käuferschutz requested
   CANCELLED
   REFUNDED
 }
 
 // ══════════ MESSAGING & CHAT (PHASE 6) ══════════
 model Message {
-  id          String      @id @default(cuid())
-  content     String      @db.Text
-  type        MessageType @default(TEXT) // e.g TEXT, OFFER_CREATED, SYSTEM_ALERT
-  isRead      Boolean     @default(false)
-  
-  senderId    String
-  sender      User        @relation("Sender", fields: [senderId], references: [id])
-  receiverId  String
-  receiver    User        @relation("Receiver", fields: [receiverId], references: [id])
-  offerId     String?
-  offer       Offer?      @relation(fields: [offerId], references: [id]) // Optional context
+  id      String      @id @default(cuid())
+  content String      @db.Text
+  type    MessageType @default(TEXT) // e.g TEXT, OFFER_CREATED, SYSTEM_ALERT
+  isRead  Boolean     @default(false)
 
-  createdAt   DateTime    @default(now())
+  senderId   String
+  sender     User    @relation("Sender", fields: [senderId], references: [id])
+  receiverId String
+  receiver   User    @relation("Receiver", fields: [receiverId], references: [id])
+  offerId    String?
+  offer      Offer?  @relation(fields: [offerId], references: [id]) // Optional context
+
+  createdAt DateTime @default(now())
 }
 
 enum MessageType {
@@ -264,34 +296,34 @@ enum MessageType {
 
 // ══════════ RATINGS & REVIEWS (PHASE 3) ══════════
 model Review {
-  id           String   @id @default(cuid())
-  rating       Int      // 1 to 5
-  comment      String?  @db.Text
-  
-  orderId      String   @unique
-  order        Order    @relation(fields: [orderId], references: [id])
-  authorId     String
-  author       User     @relation("Author", fields: [authorId], references: [id])
-  targetUserId String
-  targetUser   User     @relation("Target", fields: [targetUserId], references: [id])
+  id      String  @id @default(cuid())
+  rating  Int // 1 to 5
+  comment String? @db.Text
 
-  createdAt    DateTime @default(now())
+  orderId      String @unique
+  order        Order  @relation(fields: [orderId], references: [id])
+  authorId     String
+  author       User   @relation("Author", fields: [authorId], references: [id])
+  targetUserId String
+  targetUser   User   @relation("Target", fields: [targetUserId], references: [id])
+
+  createdAt DateTime @default(now())
 }
 
 // ══════════ NEXTAUTH SYSTEM MODELS ══════════
 model Account {
-  id                 String  @id @default(cuid())
-  userId             String
-  type               String
-  provider           String
-  providerAccountId  String
-  refresh_token      String?  @db.Text
-  access_token       String?  @db.Text
-  expires_at         Int?
-  token_type         String?
-  scope              String?
-  id_token           String?  @db.Text
-  session_state      String?
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -312,4 +344,40 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+// TATANGA'nin urettigi ve INSAN TARAFINDAN ONAYLANMIS kampanya metinleri.
+// Ticker/kampanya vitrini buradan beslenir; sitede metin sabitlenmez.
+// Her kayit `evidence` tasir: iddianin NEDEN dogru oldugu denetlenebilir kalir.
+model Campaign {
+  id        String    @id @default(cuid())
+  sourceId  String    @unique // TATANGA campaign_drafts.id
+  kind      String // sale | new_arrival | category_spotlight | eco
+  lang      String // de | en | tr
+  headline  String
+  body      String
+  cta       String
+  href      String    @default("/catalog")
+  evidence  String // bu iddia neden dogru (denetim izi)
+  active    Boolean   @default(true)
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([lang, active])
+}
+
+// Passwort-Zuruecksetzung. Gespeichert wird nur der Hash des Tokens - wer die
+// Datenbank liest, kann damit kein Konto uebernehmen.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

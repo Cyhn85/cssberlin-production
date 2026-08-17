@@ -25,7 +25,26 @@ const messageOfferSelect = {
     orderBy: { createdAt: 'desc' },
     take: 1,
   },
+  messages: {
+    select: { senderId: true },
+    orderBy: { createdAt: 'asc' as const },
+    take: 1,
+  },
 } as const;
+
+/**
+ * Who can act next on this offer: the first offer-linked message tells us
+ * whether the seller countered (buyer's turn) or the buyer proposed (seller's
+ * turn). Mirrors the same rule /api/offers uses for its own list view.
+ */
+function withPendingOn<T extends { status: string; sellerId: string; messages: Array<{ senderId: string }> }>(
+  offer: T
+) {
+  const originRole = offer.messages[0]?.senderId === offer.sellerId ? 'SELLER_COUNTER' : 'BUYER_OFFER';
+  const pendingOn = offer.status !== 'PENDING' ? null : originRole === 'SELLER_COUNTER' ? 'BUYER' : 'SELLER';
+  const { messages: _messages, ...rest } = offer;
+  return { ...rest, pendingOn };
+}
 
 /**
  * GET /api/messages/[conversationId] - Get messages in a conversation
@@ -70,6 +89,11 @@ export async function GET(request: NextRequest, { params }: Params) {
     const items = hasMore ? messages.slice(0, limit) : messages;
     const nextCursor = hasMore ? items[items.length - 1].id : null;
 
+    const itemsWithOfferContext = items.map((message) => ({
+      ...message,
+      offer: message.offer ? withPendingOn(message.offer) : null,
+    }));
+
     await prisma.message.updateMany({
       where: {
         senderId: partnerId,
@@ -81,7 +105,7 @@ export async function GET(request: NextRequest, { params }: Params) {
 
     return ApiResponse.success({
       partner,
-      messages: items.reverse(),
+      messages: itemsWithOfferContext.reverse(),
       nextCursor,
     });
   } catch (error: any) {

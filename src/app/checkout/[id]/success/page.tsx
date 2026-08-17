@@ -67,7 +67,7 @@ export default async function CheckoutSuccessPage({ params, searchParams }: Page
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Link href="/purchases" className="btn-mars-earth flex-1 rounded-2xl px-6 py-4 text-center font-bold text-white" style={{ background: 'var(--color-orange)' }}>
-              Zu meinen Einkaeufen
+              <span>Zu meinen Einkaeufen</span>
             </Link>
             <Link href={`/product/${id}`} className="flex-1 rounded-2xl border px-6 py-4 text-center font-bold" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}>
               Zur Produktseite

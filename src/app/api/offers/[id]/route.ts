@@ -4,6 +4,7 @@ import { requireAuth } from '@/lib/auth';
 import { ApiResponse } from '@/lib/api-response';
 import { respondOfferSchema } from '@/lib/validations';
 import { createSystemNotification } from '@/lib/notifications';
+import { resolveActingIdentity } from '@/lib/persona-auth';
 
 const FINALIZED_ORDER_STATUSES = ['PAID', 'SHIPPED', 'DELIVERED', 'COMPLETED'] as const;
 
@@ -41,8 +42,8 @@ export async function GET(request: NextRequest, { params }: Params) {
             images: { take: 1, orderBy: { orderIndex: 'asc' } },
           },
         },
-        buyer: { select: { id: true, name: true, avatar: true } },
-        seller: { select: { id: true, name: true, avatar: true } },
+        buyer: { select: { id: true, name: true, avatar: true, isPersonaAccount: true, managedByUserId: true } },
+        seller: { select: { id: true, name: true, avatar: true, isPersonaAccount: true, managedByUserId: true } },
         messages: { orderBy: { createdAt: 'asc' } },
         orders: {
           select: { id: true, status: true, createdAt: true },
@@ -53,7 +54,10 @@ export async function GET(request: NextRequest, { params }: Params) {
     });
 
     if (!offer) return ApiResponse.notFound('Angebot nicht gefunden.');
-    if (offer.buyerId !== session.user.id && offer.sellerId !== session.user.id) {
+    const isDirectParty = offer.buyerId === session.user.id || offer.sellerId === session.user.id;
+    const managesBuyerPersona = offer.buyer.isPersonaAccount && offer.buyer.managedByUserId === session.user.id;
+    const managesSellerPersona = offer.seller.isPersonaAccount && offer.seller.managedByUserId === session.user.id;
+    if (!isDirectParty && !managesBuyerPersona && !managesSellerPersona) {
       return ApiResponse.forbidden();
     }
 
@@ -104,11 +108,16 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
     const originRole = getOfferOriginRole(offer);
     const expectedActorId = originRole === 'SELLER_COUNTER' ? offer.buyerId : offer.sellerId;
-    const actorRole = session.user.id === offer.buyerId ? 'BUYER' : 'SELLER';
+    const actorRole = expectedActorId === offer.buyerId ? 'BUYER' : 'SELLER';
 
-    if (expectedActorId !== session.user.id) {
+    // Allows the real, authenticated manager of a persona seller/buyer account
+    // to act "as" that persona — see src/lib/persona-auth.ts. Never automated:
+    // this still requires a genuine, currently-authenticated human session.
+    const acting = await resolveActingIdentity(session.user.id, expectedActorId);
+    if (!acting.allowed) {
       return ApiResponse.forbidden('Dieses Angebot wartet aktuell auf die andere Seite.');
     }
+    const actingId = acting.actingId;
 
     const { action, counterPrice } = parsed.data;
     const requiresAvailableProduct = action !== 'reject';
@@ -143,14 +152,14 @@ export async function PUT(request: NextRequest, { params }: Params) {
             data: {
               content: `Angebot von ${offer.offeredPrice.toFixed(2)} EUR wurde angenommen!`,
               type: 'OFFER_ACTION',
-              senderId: session.user.id,
+              senderId: actingId,
               receiverId: offer.buyerId,
               offerId: id,
             },
           });
 
           await createSystemNotification({
-            senderId: session.user.id,
+            senderId: actingId,
             receiverId: offer.buyerId,
             offerId: id,
             content: `Dein Angebot fuer ${offer.product.title} wurde angenommen. Du kannst jetzt den Checkout starten.`,
@@ -160,14 +169,14 @@ export async function PUT(request: NextRequest, { params }: Params) {
             data: {
               content: `Gegenangebot von ${offer.offeredPrice.toFixed(2)} EUR wurde angenommen.`,
               type: 'OFFER_ACTION',
-              senderId: session.user.id,
+              senderId: actingId,
               receiverId: offer.sellerId,
               offerId: id,
             },
           });
 
           await createSystemNotification({
-            senderId: session.user.id,
+            senderId: actingId,
             receiverId: offer.sellerId,
             offerId: id,
             content: `${offer.buyer.name || 'Ein Mitglied'} hat dein Gegenangebot fuer ${offer.product.title} angenommen.`,
@@ -188,14 +197,14 @@ export async function PUT(request: NextRequest, { params }: Params) {
             data: {
               content: `Angebot von ${offer.offeredPrice.toFixed(2)} EUR wurde abgelehnt.`,
               type: 'OFFER_ACTION',
-              senderId: session.user.id,
+              senderId: actingId,
               receiverId: offer.buyerId,
               offerId: id,
             },
           });
 
           await createSystemNotification({
-            senderId: session.user.id,
+            senderId: actingId,
             receiverId: offer.buyerId,
             offerId: id,
             content: `Dein Angebot fuer ${offer.product.title} wurde abgelehnt. Du kannst ein neues Angebot senden, solange der Artikel aktiv ist.`,
@@ -205,14 +214,14 @@ export async function PUT(request: NextRequest, { params }: Params) {
             data: {
               content: `Gegenangebot von ${offer.offeredPrice.toFixed(2)} EUR wurde abgelehnt.`,
               type: 'OFFER_ACTION',
-              senderId: session.user.id,
+              senderId: actingId,
               receiverId: offer.sellerId,
               offerId: id,
             },
           });
 
           await createSystemNotification({
-            senderId: session.user.id,
+            senderId: actingId,
             receiverId: offer.sellerId,
             offerId: id,
             content: `${offer.buyer.name || 'Ein Mitglied'} hat dein Gegenangebot fuer ${offer.product.title} abgelehnt.`,
@@ -257,14 +266,14 @@ export async function PUT(request: NextRequest, { params }: Params) {
             data: {
               content: `Gegenangebot: ${counterPrice.toFixed(2)} EUR`,
               type: 'OFFER_ACTION',
-              senderId: session.user.id,
+              senderId: actingId,
               receiverId: offer.buyerId,
               offerId: counter.id,
             },
           });
 
           await createSystemNotification({
-            senderId: session.user.id,
+            senderId: actingId,
             receiverId: offer.buyerId,
             offerId: counter.id,
             content: `Du hast ein Gegenangebot ueber ${counterPrice.toFixed(2)} EUR fuer ${offer.product.title} erhalten.`,
@@ -274,14 +283,14 @@ export async function PUT(request: NextRequest, { params }: Params) {
             data: {
               content: `Neues Angebot nach Gegenangebot: ${counterPrice.toFixed(2)} EUR`,
               type: 'OFFER_ACTION',
-              senderId: session.user.id,
+              senderId: actingId,
               receiverId: offer.sellerId,
               offerId: counter.id,
             },
           });
 
           await createSystemNotification({
-            senderId: session.user.id,
+            senderId: actingId,
             receiverId: offer.sellerId,
             offerId: counter.id,
             content: `${offer.buyer.name || 'Ein Mitglied'} hat ein neues Angebot ueber ${counterPrice.toFixed(2)} EUR fuer ${offer.product.title} geschickt.`,

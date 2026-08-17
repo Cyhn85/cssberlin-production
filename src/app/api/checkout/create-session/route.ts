@@ -3,6 +3,7 @@ import prisma from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
 import { ApiResponse } from '@/lib/api-response';
 import { publishOrderLifecycleEvent } from '@/lib/order-events';
+import { resolveShippingFee } from '@/config/shipping-policy';
 
 const BUYER_PROTECTION_RATE = 0.05;
 const BUYER_PROTECTION_FIXED = 0.99;
@@ -102,7 +103,15 @@ export async function POST(request: NextRequest) {
     const isFirstOrder = priorFinalizedOrderCount === 0;
 
     const resolvedShippingMethod = normalizeShippingCarrier(shippingMethod);
-    const shippingFee = isFirstOrder ? 0 : (product.shippingCost > 0 ? product.shippingCost : 4.99);
+    // Versandkosten kommen aus EINER zentralen Regel (src/config/shipping-policy).
+    // Vorher galt der Erstbestellungs-Gratisversand ohne Untergrenze: bei einem
+    // 12-EUR-Artikel zahlte der Shop den Versand und machte Verlust — das betraf
+    // 27 % des Katalogs.
+    const { fee: shippingFee } = resolveShippingFee({
+      itemPrice,
+      productShippingCost: product.shippingCost,
+      isFirstOrder,
+    });
     const protectionFee = Math.round((itemPrice * BUYER_PROTECTION_RATE + BUYER_PROTECTION_FIXED) * 100) / 100;
     const totalAmount = Math.round((itemPrice + shippingFee + protectionFee) * 100) / 100;
     const metadata = buildCheckoutMetadata({

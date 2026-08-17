@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Sparkles,
@@ -10,7 +11,8 @@ import {
     Bot,
     ArrowRight,
     ShieldCheck,
-    MessageCircle
+    MessageCircle,
+    MapPin,
 } from 'lucide-react';
 
 interface Message {
@@ -18,12 +20,34 @@ interface Message {
     content: string;
 }
 
+const PAGE_CONTEXT_LABELS: Array<{ test: (path: string) => boolean; label: string }> = [
+    { test: (p) => p === '/', label: 'Startseite' },
+    { test: (p) => p.startsWith('/catalog'), label: 'Katalog / Produktsuche' },
+    { test: (p) => p.startsWith('/product/'), label: 'Produktdetailseite' },
+    { test: (p) => p.startsWith('/checkout'), label: 'Checkout / Kaufabschluss' },
+    { test: (p) => p.startsWith('/inbox'), label: 'Nachrichten / Pazarlık-Chat' },
+    { test: (p) => p.startsWith('/offers'), label: 'Pazarlıklarım (Angebote)' },
+    { test: (p) => p.startsWith('/upload'), label: 'Artikel verkaufen (Upload)' },
+    { test: (p) => p.startsWith('/settings'), label: 'Einstellungen' },
+    { test: (p) => p.startsWith('/purchases'), label: 'Meine Einkaeufe' },
+    { test: (p) => p.startsWith('/sales'), label: 'Meine Verkaeufe' },
+    { test: (p) => p.startsWith('/favorites'), label: 'Favoriten' },
+    { test: (p) => p.startsWith('/profile'), label: 'Profilseite' },
+];
+
+function resolvePageContextLabel(pathname: string): string {
+    return PAGE_CONTEXT_LABELS.find((entry) => entry.test(pathname))?.label || 'cssberlin.de';
+}
+
 export default function AiAssistant() {
+    const pathname = usePathname() || '/';
+    const pageContextLabel = resolvePageContextLabel(pathname);
+    const [useThisPageContext, setUseThisPageContext] = useState(true);
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState<Message[]>([
         {
             role: 'assistant',
-            content: 'Hallo! Ich bin der cssberlin KI-Assistent. Frag mich zu Versand, Kaeuferschutz, Verkaufen oder allem rund um nachhaltige Second-Hand-Mode.',
+            content: 'Hallo! Ich bin CSS Assist. Frag mich zu Versand, Kaeuferschutz, Verkaufen oder allem rund um nachhaltige Second-Hand-Mode.',
         },
     ]);
     const [input, setInput] = useState('');
@@ -46,10 +70,16 @@ export default function AiAssistant() {
         setIsTyping(true);
 
         try {
+            const category = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('category') : null;
+            const contextDetail = category ? `${pageContextLabel} (Kategorie: ${category})` : pageContextLabel;
+
             const response = await fetch('/api/ai/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ messages: nextMessages }),
+                body: JSON.stringify({
+                    messages: nextMessages,
+                    pageContext: useThisPageContext ? contextDetail : undefined,
+                }),
             });
 
             if (response.status === 401) {
@@ -127,7 +157,7 @@ export default function AiAssistant() {
                         initial={{ opacity: 0, scale: 0.8, y: 20, transformOrigin: 'bottom right' }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.8, y: 20 }}
-                        className="mb-4 w-[calc(100vw-32px)] sm:w-96 glass-card overflow-hidden shadow-2xl border-primary/20 flex flex-col h-[500px]"
+                        className="mb-4 w-[calc(100vw-32px)] sm:w-96 glass-card overflow-hidden shadow-2xl border-primary/20 flex flex-col h-[min(500px,calc(100vh-8rem))]"
                     >
                         <div className="p-4 bg-primary text-white flex items-center justify-between">
                             <div className="flex items-center gap-3">
@@ -135,10 +165,10 @@ export default function AiAssistant() {
                                     <Sparkles size={20} className="text-white" />
                                 </div>
                                 <div>
-                                    <h3 className="font-bold text-sm tracking-tight">KI-Assistent</h3>
+                                    <h3 className="font-bold text-sm tracking-tight">CSS Assist</h3>
                                     <div className="flex items-center gap-1.5">
                                         <span className="w-2 h-2 rounded-full bg-emerald-300" />
-                                        <span className="text-[10px] text-white/80 font-medium uppercase tracking-widest">Live</span>
+                                        <span className="text-xs text-white/80 font-medium uppercase tracking-widest">Live</span>
                                     </div>
                                 </div>
                             </div>
@@ -155,8 +185,17 @@ export default function AiAssistant() {
                             className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50 dark:bg-slate-900/50"
                         >
                             <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground">
-                                KI-gestuetzter Assistent. Er ersetzt keine verbindliche Produkt-, Checkout- oder Rechtshinweis-Seite.
+                                CSS Assist ersetzt keine verbindliche Produkt-, Checkout- oder Rechtshinweis-Seite.
                             </div>
+
+                            <button
+                                onClick={() => setUseThisPageContext((current) => !current)}
+                                className={`flex w-full items-center gap-2 rounded-xl border px-3 py-2 text-left text-xs font-semibold transition-colors ${useThisPageContext ? 'border-primary/40 bg-primary/10 text-primary' : 'border-transparent bg-slate-100 text-slate-400 dark:bg-slate-800'}`}
+                            >
+                                <MapPin size={13} className="shrink-0" />
+                                <span className="flex-1">Kontext: {pageContextLabel}</span>
+                                <span className="shrink-0 text-xs">{useThisPageContext ? 'aktiv' : 'aus'}</span>
+                            </button>
 
                             {messages.map((msg, idx) => (
                                 <motion.div
@@ -196,7 +235,7 @@ export default function AiAssistant() {
                                     <button
                                         key={link}
                                         onClick={() => { setInput(link); }}
-                                        className="text-[11px] font-semibold px-3 py-1.5 rounded-full bg-white dark:bg-slate-800 border border-primary/20 text-primary hover:bg-primary hover:text-white transition-all cursor-pointer"
+                                        className="text-xs font-semibold px-3 py-1.5 rounded-full bg-white dark:bg-slate-800 border border-primary/20 text-primary hover:bg-primary hover:text-white transition-all cursor-pointer"
                                     >
                                         {link}
                                     </button>
@@ -222,7 +261,7 @@ export default function AiAssistant() {
                                     <Send size={16} />
                                 </button>
                             </div>
-                            <p className="text-[10px] text-center mt-2 text-muted-foreground">
+                            <p className="text-xs text-center mt-2 text-muted-foreground">
                                 KI-gestuetzt &ndash; bei wichtigen Fragen bitte Checkout- und Rechtsseiten pruefen
                             </p>
                         </div>
@@ -244,7 +283,7 @@ export default function AiAssistant() {
 
                 {!isOpen && (
                     <div className="absolute right-full mr-4 px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                        KI-Assistent
+                        CSS Assist
                     </div>
                 )}
             </motion.button>

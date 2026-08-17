@@ -4,6 +4,7 @@ import { requireAuth } from '@/lib/auth';
 import { ApiResponse } from '@/lib/api-response';
 import { createMessageSchema } from '@/lib/validations';
 import { CHANNELS, EVENTS, triggerEvent } from '@/lib/pusher';
+import { relayToPersonaManagerIfNeeded } from '@/lib/notifications';
 
 const messageOfferSelect = {
   id: true,
@@ -153,6 +154,15 @@ export async function POST(request: NextRequest) {
         message,
       }),
     ]);
+
+    // If this chat message went to a persona (pool) seller/buyer account,
+    // mirror it to the real human who manages that persona in real time.
+    await relayToPersonaManagerIfNeeded({
+      senderId: session.user.id,
+      receiverId,
+      content: message.content,
+      offerId: offerId || null,
+    });
 
     return ApiResponse.created(message);
   } catch (error: any) {

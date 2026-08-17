@@ -53,7 +53,10 @@ function renderEmailLayout(options: {
   return `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 640px; margin: 0 auto; padding: 24px; color: #1f2937;">
       <div style="margin-bottom: 24px;">
-        <p style="margin: 0 0 8px; font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: #9ca3af;">cssberlin.de</p>
+        <p style="margin: 0 0 2px;">
+          <span style="font-size: 20px; font-weight: 800; color: ${accent};">css</span><span style="font-size: 16px; font-weight: 700; color: #2D6A4F;">berlin</span>
+        </p>
+        <p style="margin: 0 0 12px; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: #9ca3af;">Climate Smart Solutions</p>
         <h1 style="margin: 0; font-size: 28px; line-height: 1.2; color: #111827;">${options.title}</h1>
       </div>
       <p style="margin: 0 0 18px; font-size: 16px; line-height: 1.7; color: #4b5563;">${options.intro}</p>
@@ -107,6 +110,24 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
     console.error('Email send failed:', error);
     return false;
   }
+}
+
+export function magicLinkEmail(url: string): EmailOptions {
+  return {
+    to: '',
+    subject: 'Dein Login-Link fuer cssberlin.de',
+    html: renderEmailLayout({
+      title: 'Dein Login-Link',
+      intro: 'Klicke auf den Button, um dich ohne Passwort bei cssberlin.de einzuloggen. Der Link ist 24 Stunden gueltig und funktioniert nur einmal.',
+      body: `
+        <p style="margin: 0;">Wenn du diese E-Mail nicht angefordert hast, kannst du sie einfach ignorieren - es wurde nichts an deinem Konto veraendert.</p>
+      `,
+      ctaLabel: 'Jetzt einloggen',
+      ctaUrl: url,
+      accent: '#E8651A',
+      footer: 'Du erhaeltst diese E-Mail, weil ein Login-Link fuer dein cssberlin.de-Konto angefordert wurde.',
+    }),
+  };
 }
 
 export function welcomeEmail(name: string): EmailOptions {

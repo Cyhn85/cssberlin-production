@@ -14,6 +14,12 @@ import {
   Truck,
 } from 'lucide-react';
 import { formatPrice, getConditionLabel } from '@/lib/utils/condition-map';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import {
+  resolveShippingFee,
+  amountToFreeShipping,
+  FREE_SHIPPING_THRESHOLD_EUR,
+} from '@/config/shipping-policy';
 
 const BUYER_PROTECTION_RATE = 0.05;
 const BUYER_PROTECTION_FIXED = 0.99;
@@ -143,12 +149,23 @@ export default function CheckoutPage() {
     return product?.price || 0;
   }, [offer, product]);
 
-  const standardShippingFee = useMemo(() => {
-    if (!product) return 0;
-    return product.shippingCost > 0 ? product.shippingCost : 4.99;
-  }, [product]);
-
-  const shippingFee = isFirstOrder ? 0 : standardShippingFee;
+  // Dieselbe Regel wie in der Checkout-API (src/config/shipping-policy),
+  // damit angezeigter Preis und Rechnung nicht auseinanderlaufen können.
+  const shipping = useMemo(
+    () => resolveShippingFee({
+      itemPrice,
+      productShippingCost: product?.shippingCost,
+      isFirstOrder,
+    }),
+    [itemPrice, product, isFirstOrder],
+  );
+  const shippingFee = shipping.fee;
+  const missingForFreeShipping = amountToFreeShipping(itemPrice);
+  // Durchgestrichener Preis: was der Versand ohne Aktion kosten würde.
+  const standardShippingFee = useMemo(
+    () => (product?.shippingCost && product.shippingCost > 0 ? product.shippingCost : 4.99),
+    [product],
+  );
 
   const protectionFee = useMemo(() => {
     if (!product) return 0;
@@ -235,7 +252,7 @@ export default function CheckoutPage() {
             {error || 'Dieser Artikel kann gerade nicht gekauft werden.'}
           </p>
           <Link href="/catalog" className="rounded-full px-6 py-3 font-bold text-white btn-mars-earth" style={{ background: 'var(--color-orange)' }}>
-            Zurueck zum Katalog
+            <span>Zurueck zum Katalog</span>
           </Link>
         </div>
       </div>
@@ -320,31 +337,25 @@ export default function CheckoutPage() {
                 <Truck size={20} />
                 <h2 className="text-lg font-bold">Versandart</h2>
               </div>
-              {isFirstOrder ? (
+              {shipping.free ? (
                 <div className="mb-4 flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold text-emerald-800" style={{ background: 'rgba(16, 185, 129, 0.10)' }}>
                   <Leaf size={16} /> Deine erste Bestellung ist versandkostenfrei.
                 </div>
               ) : null}
-              <div className="space-y-3">
+              <RadioGroup value={selectedShipping} onValueChange={setSelectedShipping} className="space-y-3">
                 {shippingMethods.map((method) => (
                   <label
                     key={method.id}
                     className={`flex cursor-pointer items-center justify-between rounded-2xl border p-4 transition-colors ${selectedShipping === method.id ? 'border-[var(--color-primary)] bg-[var(--color-primary-50)]' : 'border-gray-200 hover:bg-gray-50'}`}
                   >
                     <div className="flex items-center gap-3">
-                      <input
-                        type="radio"
-                        name="shipping"
-                        checked={selectedShipping === method.id}
-                        onChange={() => setSelectedShipping(method.id)}
-                        className="h-4 w-4"
-                      />
+                      <RadioGroupItem value={method.id} />
                       <div>
                         <p className="font-bold text-sm">{method.name}</p>
                         <p className="text-xs text-gray-500">{method.eta}</p>
                       </div>
                     </div>
-                    {isFirstOrder ? (
+                    {shipping.free ? (
                       <span className="flex items-center gap-2 text-sm font-bold">
                         <span className="text-xs font-normal line-through text-gray-400">{formatPrice(standardShippingFee)}</span>
                         <span className="text-emerald-700">Kostenlos</span>
@@ -354,7 +365,7 @@ export default function CheckoutPage() {
                     )}
                   </label>
                 ))}
-              </div>
+              </RadioGroup>
             </div>
 
             <div className="rounded-3xl border bg-white p-6 shadow-sm" style={{ borderColor: 'var(--color-border)' }}>
@@ -420,14 +431,25 @@ export default function CheckoutPage() {
                   </div>
                 </div>
                 <div className="flex justify-between">
-                  <span>Versand{isFirstOrder ? ' (1. Bestellung)' : ''}</span>
-                  {isFirstOrder ? (
+                  <span>
+                    Versand
+                    {shipping.reason === 'first_order' ? ' (1. Bestellung)' : ''}
+                    {shipping.reason === 'threshold' ? ` (ab ${FREE_SHIPPING_THRESHOLD_EUR} EUR)` : ''}
+                  </span>
+                  {shipping.free ? (
                     <div className="text-right">
                       <span className="font-semibold text-emerald-700">Kostenlos</span>
                       <p className="text-xs line-through" style={{ color: 'var(--color-text-muted)' }}>{formatPrice(standardShippingFee)}</p>
                     </div>
                   ) : (
-                    <span className="font-semibold" style={{ color: 'var(--color-text)' }}>{formatPrice(shippingFee)}</span>
+                    <div className="text-right">
+                      <span className="font-semibold" style={{ color: 'var(--color-text)' }}>{formatPrice(shippingFee)}</span>
+                      {missingForFreeShipping > 0 ? (
+                        <p className="text-xs text-emerald-700">
+                          Noch {formatPrice(missingForFreeShipping)} bis zum Gratisversand
+                        </p>
+                      ) : null}
+                    </div>
                   )}
                 </div>
                 <div className="flex justify-between">
@@ -454,9 +476,9 @@ export default function CheckoutPage() {
                     <Loader2 size={18} className="animate-spin" /> Checkout startet...
                   </span>
                 ) : offer ? (
-                  'Mit Angebot sicher bezahlen'
+                  <span>Mit Angebot sicher bezahlen</span>
                 ) : (
-                  'Sicher bezahlen'
+                  <span>Sicher bezahlen</span>
                 )}
               </button>
 

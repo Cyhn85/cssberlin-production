@@ -66,8 +66,13 @@ services:
       SENTRY_DSN: ${SENTRY_DSN:-}
       NODE_ENV: production
       PORT: 3000
+      # TATANGA -> cssberlin real product import bridge (POST /api/products/import)
+      TATANGA_IMPORT_API_KEY: ${TATANGA_IMPORT_API_KEY:?Set TATANGA_IMPORT_API_KEY in .env.production}
+      LOCAL_UPLOAD_DIR: /app/uploads
     ports:
       - "127.0.0.1:3000:3000"
+    volumes:
+      - ./uploads:/app/uploads
     healthcheck:
       test:
         - CMD

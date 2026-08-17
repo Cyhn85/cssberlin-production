@@ -91,7 +91,7 @@ export default function ImageSearchPage() {
             className="btn-mars-earth flex items-center gap-2 rounded-full px-6 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? <Loader2 size={16} className="animate-spin" /> : <UploadCloud size={16} />}
-            {loading ? 'Suche laeuft...' : previewUrl ? 'Anderes Foto waehlen' : 'Foto hochladen'}
+            <span>{loading ? 'Suche laeuft...' : previewUrl ? 'Anderes Foto waehlen' : 'Foto hochladen'}</span>
           </button>
         </div>
 

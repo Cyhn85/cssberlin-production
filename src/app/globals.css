@@ -1,6 +1,10 @@
 @import "tailwindcss";
 @import "../styles/variables.css";
 @import "../styles/animations.css";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 @theme inline {
   --color-background: var(--color-bg);
@@ -10,6 +14,46 @@
   --color-accent: var(--color-accent);
   --font-sans: var(--font-sans);
   --font-display: var(--font-display);
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  /* NOT var(--border) here on purpose: variables.css already defines a
+     global --color-border (#E0E5DD, used by hundreds of existing inline
+     styles for cards/dividers). Aliasing it to itself keeps every existing
+     usage unchanged. Form-control borders (checkbox/input/radio) instead
+     use --color-input above, which IS raised to --color-border-hover -- a
+     scoped, deliberate contrast fix instead of a silent global one. */
+  --color-border: var(--color-border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-destructive-foreground: var(--destructive-foreground);
+  /* Deliberately NOT redefining --radius-sm/md/lg/xl/2xl here: this app's
+     hundreds of existing rounded-* usages already rely on Tailwind's own
+     built-in radius scale (no @theme override existed before shadcn init).
+     Adding calc()-derived values here would silently change every one of
+     them. shadcn's copied components (rounded-md/rounded-lg classes) fall
+     back to that same built-in scale, so nothing visually drifts. */
 }
 
 /* ── Base Reset ── */
@@ -177,6 +221,14 @@ img {
   z-index: 1;
 }
 
+/* Mars → Earth: shared gradient text (logo, headings that want the same brand story) */
+.text-gradient-mars-earth {
+  background: linear-gradient(90deg, var(--color-orange) 0%, var(--color-primary-light) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
 /* Outline variant */
 .btn-mars-earth-outline {
   display: inline-flex;
@@ -212,6 +264,44 @@ img {
 
 .nav-mars-earth:hover {
   color: var(--color-primary);
+}
+
+/* ── Vinted-style category nav link with underline hover ── */
+.cat-nav-link {
+  position: relative;
+  color: var(--color-text-secondary);
+  transition: color 0.25s ease;
+}
+
+.cat-nav-link::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -2px;
+  height: 2px;
+  background: var(--color-primary);
+  border-radius: 1px;
+  transform: scaleX(0);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.cat-nav-link:hover {
+  color: var(--color-primary);
+}
+
+.cat-nav-link:hover::after {
+  transform: scaleX(1);
+}
+
+/* ── Product card enhanced hover shadow ── */
+.product-card-hover {
+  transition: transform 0.2s ease, box-shadow 0.25s ease;
+}
+
+.product-card-hover:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1), 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 /* ── Mars → Earth: icon-button variant (circular hit areas, e.g. header icons) ── */
@@ -301,4 +391,59 @@ img {
 
 .carousel-slide-exit {
   animation: slideOut 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Reconciled with the app's own brand tokens (src/styles/variables.css)
+   instead of shadcn's default oklch grayscale palette, so every shadcn
+   component renders in the real orange->green identity. These reference
+   --color-* custom properties directly, so dark mode (variables.css's
+   [data-theme="dark"] block, which already redefines --color-bg-card,
+   --color-text, --color-text-secondary, --color-border) cascades through
+   automatically -- no separate .dark override block needed. */
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: var(--color-bg-card);
+  --card-foreground: var(--color-text);
+  --popover: var(--color-bg-card);
+  --popover-foreground: var(--color-text);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: #ffffff;
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: var(--color-text);
+  --muted: var(--color-bg-secondary);
+  --muted-foreground: var(--color-text-muted);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: #ffffff;
+  --destructive: var(--color-error);
+  --destructive-foreground: #ffffff;
+  --border: var(--color-border-hover);
+  --input: var(--color-border-hover);
+  --ring: var(--color-primary);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: var(--radius-lg);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
 }

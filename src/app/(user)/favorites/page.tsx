@@ -97,7 +97,7 @@ export default function FavoritesPage() {
                     href="/offers"
                     className="btn-mars-earth absolute right-2 top-2 z-10 flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold text-white"
                   >
-                    <Tag size={12} /> Pazarlık sürüyor
+                    <Tag size={12} /> <span>Pazarlık sürüyor</span>
                   </Link>
                 ) : null}
                 <ProductCard product={product} />

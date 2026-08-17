@@ -56,6 +56,11 @@ function isProtectedRoute(pathname: string): boolean {
 }
 
 function isProtectedApiRoute(pathname: string, method: string): boolean {
+  // Server-to-server TATANGA bridge: authenticates its own callers via
+  // x-api-key inside the route handler, not a browser session/cookie.
+  if (pathname === '/api/products/import') {
+    return false;
+  }
   if (pathname.startsWith('/api/products') && method === 'GET') {
     return false;
   }
@@ -117,6 +122,22 @@ export async function proxy(request: NextRequest) {
   const token = needsAuthCheck ? await getTokenIfConfigured(request) : null;
   const isAuthenticated = !!token;
   const isAdmin = token?.role === 'ADMIN';
+  const isSuspended = !!token?.isSuspended;
+
+  if (isAuthenticated && isSuspended && (isProtectedRoute(pathname) || isAdminRoute(pathname))) {
+    const suspendedUrl = new URL('/login', request.url);
+    suspendedUrl.searchParams.set('suspended', '1');
+    return addSecurityHeaders(NextResponse.redirect(suspendedUrl));
+  }
+
+  if (isAuthenticated && isSuspended && isProtectedApiRoute(pathname, method)) {
+    return addSecurityHeaders(
+      NextResponse.json(
+        { error: 'Dieses Konto wurde gesperrt.' },
+        { status: 403 }
+      )
+    );
+  }
 
   if (isAdminRoute(pathname)) {
     if (!isAuthenticated) {

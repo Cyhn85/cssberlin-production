@@ -164,16 +164,16 @@ export default function PublicProfilePage() {
 
             <div className="flex-1">
               <div className="mb-3 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <h1 className="flex items-center gap-2 text-3xl font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text)' }}>
+                <div className="min-w-0">
+                  <h1 className="flex items-center gap-2 truncate text-3xl font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text)' }}>
                     {profile.name || 'Ohne Namen'}
                   </h1>
-                  <p className="mb-1 font-medium" style={{ color: 'var(--color-text-secondary)' }}>
+                  <p className="mb-1 truncate font-medium" style={{ color: 'var(--color-text-secondary)' }}>
                     @{profile.username || profile.id.slice(0, 8)}
                   </p>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <button className="flex h-10 w-10 items-center justify-center rounded-full" style={{ border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
                     <Share2 size={18} />
                   </button>

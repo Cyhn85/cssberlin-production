@@ -259,7 +259,7 @@ export default function PurchaseDetailPage() {
             {error || 'Diese Bestellung konnte nicht geladen werden.'}
           </p>
           <Link href="/purchases" className="rounded-full px-6 py-3 font-bold text-white btn-mars-earth" style={{ background: 'var(--color-orange)' }}>
-            Zurueck zu meinen Kaeufen
+            <span>Zurueck zu meinen Kaeufen</span>
           </Link>
         </div>
       </div>
@@ -487,7 +487,7 @@ export default function PurchaseDetailPage() {
                       disabled={reviewSubmitting || reviewComment.trim().length < 3}
                       className="btn-mars-earth mt-4 rounded-full px-5 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      {reviewSubmitting ? 'Wird gesendet...' : 'Bewertung abschicken'}
+                      <span>{reviewSubmitting ? 'Wird gesendet...' : 'Bewertung abschicken'}</span>
                     </button>
                   </form>
                 )}

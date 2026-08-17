@@ -199,9 +199,11 @@ export default function OfferModal({
               style={{ background: isSubmitDisabled ? '#9ca3af' : 'var(--color-orange)' }}
             >
               {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : null}
-              {parsedPrice > 0 && !Number.isNaN(parsedPrice)
-                ? `${parsedPrice.toFixed(2).replace('.', ',')} EUR bieten`
-                : 'Bitte Preis eingeben'}
+              <span>
+                {parsedPrice > 0 && !Number.isNaN(parsedPrice)
+                  ? `${parsedPrice.toFixed(2).replace('.', ',')} EUR bieten`
+                  : 'Bitte Preis eingeben'}
+              </span>
             </button>
           </div>
         </motion.div>

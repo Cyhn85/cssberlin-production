@@ -4,7 +4,9 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import Link from 'next/link';
-import { Leaf, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import AuthBrandHeader from '@/components/auth/AuthBrandHeader';
+import { Checkbox } from '@/components/ui/checkbox';
 
 export default function RegisterPage() {
     const router = useRouter();
@@ -57,12 +59,10 @@ export default function RegisterPage() {
 
     return (
         <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8" style={{ background: 'var(--gradient-hero-banner)' }}>
-            <div className="max-w-md w-full p-8 rounded-3xl shadow-xl bg-white/90 backdrop-blur" style={{ border: '1px solid var(--color-border)' }}>
-                <div className="text-center mb-8">
-                    <Link href="/" className="inline-flex items-center gap-2 mb-4">
-                        <Leaf size={32} style={{ color: 'var(--color-primary)' }} />
-                    </Link>
-                    <h2 className="text-3xl font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text)' }}>Konto erstellen</h2>
+            <div className="max-w-sm w-full p-6 rounded-3xl shadow-xl bg-white/95 backdrop-blur" style={{ border: '1px solid var(--color-border)' }}>
+                <div className="text-center mb-6">
+                    <AuthBrandHeader />
+                    <h2 className="text-2xl font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text)' }}>Konto erstellen</h2>
                     <p className="mt-2 text-sm" style={{ color: 'var(--color-text-secondary)' }}>Werde Teil der nachhaltigen Mode-Community Berlins.</p>
                 </div>
 
@@ -75,8 +75,8 @@ export default function RegisterPage() {
                 <button
                     type="button"
                     onClick={() => signIn('google', { callbackUrl: '/' })}
-                    className="w-full h-12 rounded-xl border font-semibold flex items-center justify-center gap-2 transition-colors hover:bg-black/5"
-                    style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+                    className="w-full h-11 rounded-xl border-[1.5px] font-semibold flex items-center justify-center gap-2 transition-colors hover:bg-black/5"
+                    style={{ borderColor: 'var(--color-text-muted)', color: 'var(--color-text)' }}
                 >
                     <svg width="18" height="18" viewBox="0 0 24 24">
                         <path fill="#4285F4" d="M23.52 12.27c0-.85-.08-1.67-.22-2.45H12v4.64h6.47c-.28 1.5-1.13 2.77-2.4 3.62v3h3.88c2.27-2.09 3.57-5.17 3.57-8.81z" />
@@ -87,13 +87,13 @@ export default function RegisterPage() {
                     Mit Google registrieren
                 </button>
 
-                <div className="my-5 flex items-center gap-3">
+                <div className="my-4 flex items-center gap-3">
                     <div className="h-px flex-1" style={{ background: 'var(--color-border)' }} />
                     <span className="text-xs font-semibold" style={{ color: 'var(--color-text-muted)' }}>ODER</span>
                     <div className="h-px flex-1" style={{ background: 'var(--color-border)' }} />
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-5">
+                <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text)' }}>Vor- und Nachname</label>
                         <input
@@ -101,8 +101,8 @@ export default function RegisterPage() {
                             required
                             value={formData.name}
                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                            className="w-full h-12 px-4 rounded-xl border outline-none focus:ring-2"
-                            style={{ background: 'var(--color-bg)', borderColor: 'var(--color-border)' }}
+                            className="w-full h-11 px-4 rounded-xl border-[1.5px] outline-none focus:ring-2"
+                            style={{ background: 'var(--color-bg)', borderColor: 'var(--color-text-muted)' }}
                             placeholder="z.B. Anna Müller"
                         />
                     </div>
@@ -114,8 +114,8 @@ export default function RegisterPage() {
                             required
                             value={formData.email}
                             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                            className="w-full h-12 px-4 rounded-xl border outline-none focus:ring-2"
-                            style={{ background: 'var(--color-bg)', borderColor: 'var(--color-border)' }}
+                            className="w-full h-11 px-4 rounded-xl border-[1.5px] outline-none focus:ring-2"
+                            style={{ background: 'var(--color-bg)', borderColor: 'var(--color-text-muted)' }}
                             placeholder="anna@beispiel.de"
                         />
                     </div>
@@ -129,8 +129,8 @@ export default function RegisterPage() {
                                 minLength={8}
                                 value={formData.password}
                                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                className="w-full h-12 pl-4 pr-12 rounded-xl border outline-none focus:ring-2"
-                                style={{ background: 'var(--color-bg)', borderColor: 'var(--color-border)' }}
+                                className="w-full h-11 pl-4 pr-12 rounded-xl border-[1.5px] outline-none focus:ring-2"
+                                style={{ background: 'var(--color-bg)', borderColor: 'var(--color-text-muted)' }}
                                 placeholder="Mind. 8 Zeichen"
                             />
                             <button
@@ -145,21 +145,21 @@ export default function RegisterPage() {
                     </div>
 
                     <div className="text-xs mt-3 flex items-start gap-2" style={{ color: 'var(--color-text-muted)' }}>
-                        <input type="checkbox" required className="mt-0.5 rounded border-gray-300 text-[var(--color-primary)] focus:ring-[var(--color-primary)]" />
+                        <Checkbox required className="mt-0.5" />
                         <span>Ich stimme den <Link href="/agb" className="underline hover:text-[var(--color-primary)]">AGB</Link> und der <Link href="/datenschutz" className="underline hover:text-[var(--color-primary)]">Datenschutzerklärung</Link> zu.</span>
                     </div>
 
                     <button
                         type="submit"
                         disabled={loading}
-                        className="w-full h-12 mt-6 rounded-xl font-bold text-white flex items-center justify-center gap-2 transition-transform hover:scale-[1.02] disabled:opacity-70 disabled:hover:scale-100 btn-mars-earth"
+                        className="w-full h-11 mt-6 rounded-xl font-bold text-white flex items-center justify-center gap-2 transition-transform hover:scale-[1.02] disabled:opacity-70 disabled:hover:scale-100 btn-mars-earth"
                         style={{ background: 'var(--color-orange)' }}
                     >
-                        {loading ? <Loader2 size={20} className="animate-spin" /> : 'Kostenlos registrieren'}
+                        {loading ? <Loader2 size={20} className="animate-spin" /> : <span>Kostenlos registrieren</span>}
                     </button>
                 </form>
 
-                <p className="mt-8 text-center text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                <p className="mt-6 text-center text-sm" style={{ color: 'var(--color-text-secondary)' }}>
                     Du hast schon ein Konto?{' '}
                     <Link href="/login" className="font-bold underline" style={{ color: 'var(--color-primary)' }}>Hier einloggen</Link>
                 </p>

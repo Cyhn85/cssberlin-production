@@ -207,7 +207,7 @@ export default function SettingsPage() {
                   </Field>
 
                   <button type="submit" disabled={savingProfile} className="ml-auto flex h-12 items-center gap-2 rounded-xl px-8 font-bold text-white btn-mars-earth" style={{ background: 'var(--color-orange)' }}>
-                    {savingProfile ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />} Speichern
+                    {savingProfile ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />} <span>Speichern</span>
                   </button>
                 </form>
               </div>
@@ -283,7 +283,7 @@ export default function SettingsPage() {
                 ))}
 
                 <button onClick={handleBundleSave} disabled={savingBundle} className="mt-6 h-12 w-full rounded-xl font-bold text-white btn-mars-earth" style={{ background: 'var(--color-orange)' }}>
-                  {savingBundle ? 'Speichert...' : 'Rabatte speichern'}
+                  <span>{savingBundle ? 'Speichert...' : 'Rabatte speichern'}</span>
                 </button>
               </div>
             ) : null}

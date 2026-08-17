@@ -8,7 +8,7 @@ const CSP = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://js.stripe.com",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://utfs.io https://*.uploadthing.com https://lh3.googleusercontent.com",
+  "img-src 'self' data: blob: https://utfs.io https://*.uploadthing.com https://lh3.googleusercontent.com https://picsum.photos https://fastly.picsum.photos https://i.pravatar.cc",
   "font-src 'self' data:",
   "connect-src 'self' https://utfs.io https://*.uploadthing.com https://api.stripe.com",
   "frame-src 'self' https://accounts.google.com https://js.stripe.com https://hooks.stripe.com",

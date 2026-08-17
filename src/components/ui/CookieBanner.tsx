@@ -71,49 +71,82 @@ export default function CookieBanner() {
         <AnimatePresence>
             {isVisible && (
                 <motion.div
-                    initial={{ y: 100, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    exit={{ y: 100, opacity: 0 }}
-                    className="fixed bottom-4 left-4 right-4 md:left-8 md:right-auto md:max-w-md z-[100]"
+                    initial={{ x: 380, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    exit={{ x: 380, opacity: 0 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 32 }}
+                    className="fixed bottom-4 right-4 z-[100] w-[92vw] max-w-[340px]"
                 >
-                    <div className="glass-card p-6 md:p-8 relative overflow-hidden group">
-                        <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary/10 rounded-full blur-3xl group-hover:bg-primary/20 transition-all duration-700" />
-
-                        <div className="flex items-start gap-5">
-                            <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
-                                <ShieldCheck size={28} className="text-primary" />
+                    {/*
+                      Solid, fully opaque card (not the translucent .glass-card used
+                      elsewhere) - this floats over photos/dark hero sections where
+                      variable backdrops made text contrast unreliable. Orange/green
+                      brand accents hold contrast against both light and dark themes,
+                      unlike the previously-used bg-muted/text-muted-foreground classes,
+                      which had no matching --muted CSS variable anywhere and rendered
+                      unstyled.
+                    */}
+                    <div
+                        className="relative overflow-hidden rounded-2xl p-4 shadow-xl"
+                        style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}
+                    >
+                        <div className="flex items-start gap-3">
+                            <div
+                                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+                                style={{ background: 'rgba(45,106,79,0.12)' }}
+                            >
+                                <ShieldCheck size={18} style={{ color: 'var(--color-primary)' }} />
                             </div>
 
-                            <div className="flex-1 space-y-3">
-                                <h3 className="text-lg font-bold tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>
+                            <div className="min-w-0 flex-1 space-y-2.5">
+                                <h3
+                                    className="text-sm font-bold tracking-tight"
+                                    style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text)' }}
+                                >
                                     Deine Privatsphaere zaehlt
                                 </h3>
-                                <p className="text-sm leading-relaxed text-muted-foreground">
-                                    Wir nutzen Cookies, um cssberlin.de fuer dich zu betreiben und zu verbessern. Du entscheidest, welche Kategorien du zulaesst. Details findest du in unserer{' '}
-                                    <Link href="/datenschutz" className="text-primary hover:underline font-semibold">Datenschutzerklaerung</Link>.
+                                <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+                                    Wir nutzen Cookies fuer Login, Warenkorb und optional fuer Statistik/Werbung. Du entscheidest, welche Kategorien du zulaesst.{' '}
+                                    <Link href="/datenschutz" className="font-semibold underline" style={{ color: 'var(--color-orange)' }}>
+                                        Details
+                                    </Link>
+                                    .
                                 </p>
 
                                 {showDetails ? (
-                                    <div className="space-y-3 pt-1">
-                                        <div className="flex items-start justify-between gap-3 rounded-xl bg-muted/60 p-3 opacity-70">
+                                    <div className="max-h-[calc(100vh-8rem)] space-y-2 overflow-y-auto pt-1">
+                                        <div
+                                            className="flex items-start justify-between gap-3 rounded-xl p-3"
+                                            style={{ background: 'var(--color-bg-secondary)' }}
+                                        >
                                             <div>
-                                                <p className="text-sm font-semibold">Notwendig</p>
-                                                <p className="text-xs text-muted-foreground">Immer aktiv &ndash; erforderlich fuer Login, Warenkorb und Sicherheit.</p>
+                                                <p className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>Notwendig</p>
+                                                <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                                                    Immer aktiv &ndash; erforderlich fuer Login, Warenkorb und Sicherheit.
+                                                </p>
                                             </div>
-                                            <span className="text-xs font-bold text-primary">An</span>
+                                            <span className="text-xs font-bold" style={{ color: 'var(--color-primary)' }}>An</span>
                                         </div>
 
                                         {(Object.keys(CATEGORY_LABELS) as Array<Exclude<ConsentCategory, 'necessary'>>).map((category) => (
-                                            <label key={category} className="flex items-start justify-between gap-3 rounded-xl bg-muted/60 p-3 cursor-pointer">
+                                            <label
+                                                key={category}
+                                                className="flex items-start justify-between gap-3 rounded-xl p-3 cursor-pointer"
+                                                style={{ background: 'var(--color-bg-secondary)' }}
+                                            >
                                                 <div>
-                                                    <p className="text-sm font-semibold">{CATEGORY_LABELS[category].title}</p>
-                                                    <p className="text-xs text-muted-foreground">{CATEGORY_LABELS[category].description}</p>
+                                                    <p className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
+                                                        {CATEGORY_LABELS[category].title}
+                                                    </p>
+                                                    <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                                                        {CATEGORY_LABELS[category].description}
+                                                    </p>
                                                 </div>
                                                 <input
                                                     type="checkbox"
                                                     checked={draft[category]}
                                                     onChange={() => toggleCategory(category)}
-                                                    className="mt-1 h-4 w-4 shrink-0 accent-[var(--color-primary)]"
+                                                    className="mt-1 h-4 w-4 shrink-0 accent-[var(--color-orange)]"
                                                 />
                                             </label>
                                         ))}
@@ -123,17 +156,19 @@ export default function CookieBanner() {
                                             whileTap={{ scale: 0.98 }}
                                             onClick={saveSelection}
                                             className="btn-mars-earth w-full py-2.5 text-sm font-bold text-white"
+                                            style={{ background: 'var(--color-orange)' }}
                                         >
-                                            Auswahl speichern
+                                            <span>Auswahl speichern</span>
                                         </motion.button>
                                     </div>
                                 ) : (
-                                    <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                                    <div className="flex flex-col gap-2 pt-1">
                                         <motion.button
                                             whileHover={{ scale: 1.02 }}
                                             whileTap={{ scale: 0.98 }}
                                             onClick={acceptAll}
-                                            className="flex-1 bg-primary text-white py-2.5 rounded-full text-sm font-bold shadow-lg shadow-primary/20 cursor-pointer"
+                                            className="w-full cursor-pointer rounded-full py-2 text-xs font-bold text-white shadow-lg"
+                                            style={{ background: 'var(--color-orange)', boxShadow: '0 8px 20px rgba(232,101,26,0.3)' }}
                                         >
                                             Alle akzeptieren
                                         </motion.button>
@@ -141,7 +176,8 @@ export default function CookieBanner() {
                                             whileHover={{ scale: 1.02 }}
                                             whileTap={{ scale: 0.98 }}
                                             onClick={acceptEssentialOnly}
-                                            className="flex-1 bg-muted hover:bg-muted/80 py-2.5 rounded-full text-sm font-semibold transition-colors cursor-pointer"
+                                            className="w-full cursor-pointer rounded-full py-2 text-xs font-semibold transition-colors"
+                                            style={{ background: 'transparent', border: '1.5px solid var(--color-primary)', color: 'var(--color-primary)' }}
                                         >
                                             Nur essenziell
                                         </motion.button>
@@ -151,23 +187,28 @@ export default function CookieBanner() {
                                 {!showDetails ? (
                                     <button
                                         onClick={() => setShowDetails(true)}
-                                        className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-primary"
+                                        className="flex items-center gap-1.5 text-[11px] font-semibold hover:underline"
+                                        style={{ color: 'var(--color-text-secondary)' }}
                                     >
-                                        <Settings2 size={14} /> Einstellungen anpassen
+                                        <Settings2 size={12} /> Einstellungen anpassen
                                     </button>
                                 ) : null}
                             </div>
 
                             <button
                                 onClick={() => setIsVisible(false)}
-                                className="absolute top-4 right-4 p-2 rounded-full hover:bg-muted transition-colors cursor-pointer"
+                                className="absolute top-2.5 right-2.5 rounded-full p-1.5 transition-colors"
+                                style={{ color: 'var(--color-text-secondary)' }}
                                 aria-label="Schliessen"
                             >
-                                <X size={16} className="text-muted-foreground" />
+                                <X size={14} />
                             </button>
                         </div>
 
-                        <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-400 to-primary opacity-30" />
+                        <div
+                            className="absolute bottom-0 left-0 right-0 h-1"
+                            style={{ background: 'linear-gradient(90deg, var(--color-orange) 0%, var(--color-primary-light) 100%)' }}
+                        />
                     </div>
                 </motion.div>
             )}

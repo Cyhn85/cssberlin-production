@@ -43,7 +43,7 @@ export default function ProductCard({
   return (
     <Link href={href ?? `/product/${product.id}`}>
       <article
-        className="group h-full overflow-hidden rounded-2xl border transition-transform duration-200 hover:-translate-y-1"
+        className="group product-card-hover h-full overflow-hidden rounded-2xl border"
         style={{
           background: 'var(--color-bg-card)',
           borderColor: 'var(--color-border)',
@@ -73,22 +73,22 @@ export default function ProductCard({
           </div>
         </div>
 
-        <div className="flex h-[150px] flex-col p-3">
+        <div className="flex h-[122px] flex-col p-2.5">
           <p className="line-clamp-1 text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
             {product.title}
           </p>
 
           {subtitle ? (
-            <p className="mt-1 line-clamp-1 text-xs" style={{ color: 'var(--color-text-muted)' }}>
+            <p className="mt-0.5 line-clamp-1 text-xs" style={{ color: 'var(--color-text-muted)' }}>
               {subtitle}
             </p>
           ) : (
-            <p className="mt-1 line-clamp-1 text-xs" style={{ color: 'var(--color-text-muted)' }}>
+            <p className="mt-0.5 line-clamp-1 text-xs" style={{ color: 'var(--color-text-muted)' }}>
               {[product.brand, product.size].filter(Boolean).join(' · ') || 'Second-hand Fund'}
             </p>
           )}
 
-          <div className="mt-3 flex items-center gap-2">
+          <div className="mt-2 flex items-center gap-2">
             <span
               className="text-lg font-bold"
               style={{ color: 'var(--color-primary)', fontFamily: 'var(--font-display)' }}
@@ -110,7 +110,7 @@ export default function ProductCard({
             ) : null}
           </div>
 
-          <div className="mt-auto flex items-center justify-between pt-3 text-xs" style={{ color: 'var(--color-text-muted)' }}>
+          <div className="mt-auto flex items-center justify-between pt-2 text-xs" style={{ color: 'var(--color-text-muted)' }}>
             <span className="line-clamp-1">
               {showSeller ? product.seller?.name || 'cssberlin seller' : product.brand || 'cssberlin'}
             </span>

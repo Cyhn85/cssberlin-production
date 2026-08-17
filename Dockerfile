@@ -45,6 +45,17 @@ COPY --from=builder /app/ops ./ops
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/package-lock.json ./package-lock.json
 
+# node:20-alpine ships OpenSSL 3.x, but the schema-engine binary that ships
+# in @prisma/engines for this version is built against OpenSSL 1.1 (which
+# Alpine no longer packages at all). Replace it with the official
+# openssl-3.0.x build from Prisma's own CDN, pinned to this exact engines
+# hash (matches `prisma -v` -> "Default Engines Hash").
+RUN wget -qO /app/schema-engine.gz \
+      https://binaries.prisma.sh/all_commits/605197351a3c8bdd595af2d2a9bc3025bca48ea2/linux-musl-openssl-3.0.x/schema-engine.gz \
+    && gunzip /app/schema-engine.gz \
+    && chmod +x /app/schema-engine
+ENV PRISMA_SCHEMA_ENGINE_BINARY=/app/schema-engine
+
 FROM node:20-alpine AS runner
 WORKDIR /app
 

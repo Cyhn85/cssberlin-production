@@ -1,9 +1,11 @@
 import NextAuth, { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import GoogleProvider from 'next-auth/providers/google';
+import EmailProvider from 'next-auth/providers/email';
 import { PrismaAdapter } from '@auth/prisma-adapter';
 import prisma from '@/lib/db';
 import bcrypt from 'bcryptjs';
+import { sendEmail, magicLinkEmail } from '@/lib/email';
 
 const googleEnabled = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
 
@@ -14,6 +16,7 @@ export const authOptions: NextAuthOptions = {
     },
     pages: {
         signIn: '/login',
+        verifyRequest: '/verify-request',
     },
     providers: [
         ...(googleEnabled
@@ -24,6 +27,19 @@ export const authOptions: NextAuthOptions = {
                   }),
               ]
             : []),
+        EmailProvider({
+            from: process.env.EMAIL_FROM || 'cssberlin.de <noreply@cssberlin.de>',
+            maxAge: 24 * 60 * 60,
+            // Bypasses nodemailer entirely - reuses the same Resend-backed
+            // sendEmail() and branded template every other transactional
+            // email on the site already goes through.
+            async sendVerificationRequest({ identifier: email, url }) {
+                await sendEmail({
+                    ...magicLinkEmail(url),
+                    to: email,
+                });
+            },
+        }),
         CredentialsProvider({
             name: 'Credentials',
             credentials: {
@@ -52,6 +68,10 @@ export const authOptions: NextAuthOptions = {
                     throw new Error('E-Mail oder Passwort ist falsch.');
                 }
 
+                if (user.isSuspended) {
+                    throw new Error('Dieses Konto wurde gesperrt. Kontaktiere den Support, falls du Fragen hast.');
+                }
+
                 return {
                     id: user.id,
                     name: user.name,
@@ -60,17 +80,28 @@ export const authOptions: NextAuthOptions = {
                     role: user.role,
                     username: user.username,
                     isVerified: user.isVerified,
+                    isSuspended: user.isSuspended,
                 };
             },
         }),
     ],
     callbacks: {
+        async signIn({ user }) {
+            if (!user?.email) return true;
+            const existing = await prisma.user.findUnique({
+                where: { email: user.email },
+                select: { isSuspended: true },
+            });
+            if (existing?.isSuspended) return false;
+            return true;
+        },
         async session({ token, session }) {
             if (token && session.user) {
                 session.user.id = token.id as string;
                 session.user.role = token.role as string;
                 session.user.username = token.username as string | null;
                 session.user.isVerified = token.isVerified as boolean;
+                session.user.isSuspended = token.isSuspended as boolean;
             }
             return session;
         },
@@ -80,6 +111,7 @@ export const authOptions: NextAuthOptions = {
                 token.role = (user as any).role || 'USER';
                 token.username = (user as any).username || null;
                 token.isVerified = (user as any).isVerified || false;
+                token.isSuspended = (user as any).isSuspended || false;
             }
             return token;
         },

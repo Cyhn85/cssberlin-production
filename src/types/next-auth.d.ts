@@ -12,6 +12,7 @@ declare module 'next-auth' {
       role: string;
       username?: string | null;
       isVerified?: boolean;
+      isSuspended?: boolean;
     } & DefaultSession['user'];
   }
 
@@ -19,6 +20,7 @@ declare module 'next-auth' {
     role: string;
     username?: string | null;
     isVerified?: boolean;
+    isSuspended?: boolean;
   }
 }
 
@@ -28,5 +30,6 @@ declare module 'next-auth/jwt' {
     role: string;
     username?: string | null;
     isVerified?: boolean;
+    isSuspended?: boolean;
   }
 }

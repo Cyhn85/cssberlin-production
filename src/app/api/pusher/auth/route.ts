@@ -26,6 +26,23 @@ async function canAccessOrderChannel(channelName: string, userId: string) {
   return !!order;
 }
 
+// Lets a persona's real manager subscribe to that persona's own private
+// channel, so relayed messages/offers reach /admin/personas/[id]/inbox live.
+async function canAccessPersonaChannel(channelName: string, userId: string) {
+  const prefix = 'private-user-';
+  if (!channelName.startsWith(prefix)) return false;
+
+  const targetId = channelName.slice(prefix.length);
+  if (targetId === userId) return false; // already covered by isAuthorizedUserChannel
+
+  const persona = await prisma.user.findUnique({
+    where: { id: targetId },
+    select: { isPersonaAccount: true, managedByUserId: true },
+  });
+
+  return !!persona?.isPersonaAccount && persona.managedByUserId === userId;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await requireAuth();
@@ -41,7 +58,8 @@ export async function POST(request: NextRequest) {
     const isAuthorized =
       isAuthorizedUserChannel(channelName, session.user.id) ||
       isAuthorizedConversationChannel(channelName, session.user.id) ||
-      (await canAccessOrderChannel(channelName, session.user.id));
+      (await canAccessOrderChannel(channelName, session.user.id)) ||
+      (await canAccessPersonaChannel(channelName, session.user.id));
 
     if (!isAuthorized) {
       return ApiResponse.forbidden('Dieser Realtime-Kanal ist nicht fuer dich freigegeben.');

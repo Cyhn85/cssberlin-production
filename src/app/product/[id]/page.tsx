@@ -20,6 +20,7 @@ import {
 import OfferModal from '@/components/product/OfferModal';
 import ProductCard from '@/components/product/ProductCard';
 import { formatPrice, formatRelativeTime, getConditionLabel } from '@/lib/utils/condition-map';
+import { PRODUCT_ANGLES, PRODUCT_ANGLE_LABELS, hasFullAngleSet, type ProductAngle } from '@/lib/product-angles';
 
 type ProductDetail = {
   id: string;
@@ -35,7 +36,7 @@ type ProductDetail = {
   likes: number;
   ecoCO2Saved: number;
   createdAt: string;
-  images: Array<{ id: string; url: string; orderIndex: number }>;
+  images: Array<{ id: string; url: string; orderIndex: number; angle?: string | null }>;
   category: {
     id: string;
     name: string;
@@ -188,7 +189,7 @@ export default function ProductDetailPage() {
             {error || 'Dieser Artikel konnte nicht gefunden werden.'}
           </p>
           <Link href="/catalog" className="rounded-full px-6 py-3 font-bold text-white btn-mars-earth" style={{ background: 'var(--color-orange)' }}>
-            Zurueck zum Katalog
+            <span>Zurueck zum Katalog</span>
           </Link>
         </div>
       </div>
@@ -254,8 +255,33 @@ export default function ProductDetailPage() {
               ) : null}
             </div>
 
+            {hasFullAngleSet(product.images) ? (
+              <div className="flex flex-wrap gap-2">
+                {PRODUCT_ANGLES.map((angle) => {
+                  const index = product.images.findIndex((img) => img.angle === angle);
+                  const isActive = index === activeImage;
+                  return (
+                    <button
+                      key={angle}
+                      onClick={() => setActiveImage(index)}
+                      className="rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors"
+                      style={{
+                        borderColor: isActive ? 'var(--color-orange)' : 'var(--color-border)',
+                        background: isActive ? 'var(--color-orange)' : 'transparent',
+                        color: isActive ? '#fff' : 'var(--color-text-secondary)',
+                      }}
+                    >
+                      {PRODUCT_ANGLE_LABELS[angle as ProductAngle]}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+
             {product.images.length > 1 ? (
-              <div className="grid grid-cols-4 gap-3 md:grid-cols-5">
+              // Fester 4er-Raster: bei max. 9 Fotos (1 Hauptbild + 8 Vorschaubilder)
+              // ergibt das genau zwei volle Reihen ohne Lücke im Block.
+              <div className="grid grid-cols-4 gap-3">
                 {product.images.map((image, index) => (
                   <button
                     key={image.id}
@@ -382,7 +408,7 @@ export default function ProductDetailPage() {
                 <>
                   <Link href={`/checkout/${product.id}`}>
                     <button className="btn-mars-earth w-full rounded-2xl py-4 text-lg font-bold text-white" style={{ background: 'var(--color-orange)' }}>
-                      Kaufen
+                      <span>Kaufen</span>
                     </button>
                   </Link>
 

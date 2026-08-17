@@ -1,18 +1,49 @@
 'use client';
 
-import { useState } from 'react';
-import { signIn } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { signIn, useSession } from 'next-auth/react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Leaf, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Mail } from 'lucide-react';
+import AuthBrandHeader from '@/components/auth/AuthBrandHeader';
 
 export default function LoginPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const { status } = useSession();
+    const isSuspendedRedirect = searchParams.get('suspended') === '1';
+
+    // Giris YAPMIS kullanici bu sayfada tutulmaz.
+    // Eskiden yonlendirme yoktu: Google ile giris yapip geri donen ya da
+    // tarayici gerisi ile /login'e ugrayan kullanici tekrar giris formunu
+    // goruyordu ve "giris yapamiyorum" hissine kapiliyordu. Oturum varsa
+    // hedefe (callbackUrl veya ana sayfa) gonderilir.
+    useEffect(() => {
+        if (status !== 'authenticated') return;
+        const hedef = searchParams.get('callbackUrl') || '/';
+        // Acik yonlendirme aciklarini onlemek icin yalnizca site-ici yollar
+        // kabul edilir; "//" ile baslayan protokol-bagimsiz URL'ler reddedilir.
+        const guvenli = hedef.startsWith('/') && !hedef.startsWith('//') ? hedef : '/';
+        router.replace(guvenli);
+    }, [status, router, searchParams]);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [mode, setMode] = useState<'password' | 'magic'>('password');
+    const [magicLinkSending, setMagicLinkSending] = useState(false);
+
+    const handleMagicLink = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setMagicLinkSending(true);
+        setError('');
+        try {
+            await signIn('email', { email, callbackUrl: '/' });
+        } finally {
+            setMagicLinkSending(false);
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -41,14 +72,18 @@ export default function LoginPage() {
 
     return (
         <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8" style={{ background: 'var(--gradient-hero-banner)' }}>
-            <div className="max-w-md w-full p-8 rounded-3xl shadow-xl bg-white/90 backdrop-blur" style={{ border: '1px solid var(--color-border)' }}>
-                <div className="text-center mb-8">
-                    <Link href="/" className="inline-flex items-center gap-2 mb-4">
-                        <Leaf size={32} style={{ color: 'var(--color-primary)' }} />
-                    </Link>
-                    <h2 className="text-3xl font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text)' }}>Willkommen zurück</h2>
+            <div className="max-w-sm w-full p-6 rounded-3xl shadow-xl bg-white/95 backdrop-blur" style={{ border: '1px solid var(--color-border)' }}>
+                <div className="text-center mb-6">
+                    <AuthBrandHeader />
+                    <h2 className="text-2xl font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text)' }}>Willkommen zurück</h2>
                     <p className="mt-2 text-sm" style={{ color: 'var(--color-text-secondary)' }}>Logge dich ein, um nachhaltig zu shoppen.</p>
                 </div>
+
+                {isSuspendedRedirect && (
+                    <div className="mb-4 p-3 rounded-lg text-sm bg-red-50 text-red-600 border border-red-200">
+                        Dieses Konto wurde gesperrt. Kontaktiere den Support, falls du Fragen hast.
+                    </div>
+                )}
 
                 {error && (
                     <div className="mb-4 p-3 rounded-lg text-sm bg-red-50 text-red-600 border border-red-200">
@@ -59,8 +94,8 @@ export default function LoginPage() {
                 <button
                     type="button"
                     onClick={() => signIn('google', { callbackUrl: '/' })}
-                    className="w-full h-12 rounded-xl border font-semibold flex items-center justify-center gap-2 transition-colors hover:bg-black/5"
-                    style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+                    className="w-full h-11 rounded-xl border-[1.5px] font-semibold flex items-center justify-center gap-2 transition-colors hover:bg-black/5"
+                    style={{ borderColor: 'var(--color-text-muted)', color: 'var(--color-text)' }}
                 >
                     <svg width="18" height="18" viewBox="0 0 24 24">
                         <path fill="#4285F4" d="M23.52 12.27c0-.85-.08-1.67-.22-2.45H12v4.64h6.47c-.28 1.5-1.13 2.77-2.4 3.62v3h3.88c2.27-2.09 3.57-5.17 3.57-8.81z" />
@@ -71,63 +106,110 @@ export default function LoginPage() {
                     Mit Google fortfahren
                 </button>
 
-                <div className="my-5 flex items-center gap-3">
+                <div className="my-4 flex items-center gap-3">
                     <div className="h-px flex-1" style={{ background: 'var(--color-border)' }} />
                     <span className="text-xs font-semibold" style={{ color: 'var(--color-text-muted)' }}>ODER</span>
                     <div className="h-px flex-1" style={{ background: 'var(--color-border)' }} />
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-5">
-                    <div>
-                        <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text)' }}>E-Mail Adresse</label>
-                        <input
-                            type="email"
-                            required
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            className="w-full h-12 px-4 rounded-xl border outline-none focus:ring-2"
-                            style={{ background: 'var(--color-bg)', borderColor: 'var(--color-border)' }}
-                            placeholder="z.B. anna@beispiel.de"
-                        />
-                    </div>
-
-                    <div>
-                        <div className="flex items-center justify-between mb-1">
-                            <label className="block text-sm font-medium" style={{ color: 'var(--color-text)' }}>Passwort</label>
-                            <Link href="/forgot-password" className="text-xs font-semibold" style={{ color: 'var(--color-primary)' }}>Passwort vergessen?</Link>
-                        </div>
-                        <div className="relative">
+                {mode === 'password' ? (
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text)' }}>E-Mail Adresse</label>
                             <input
-                                type={showPassword ? 'text' : 'password'}
+                                type="email"
                                 required
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className="w-full h-12 pl-4 pr-12 rounded-xl border outline-none focus:ring-2"
-                                style={{ background: 'var(--color-bg)', borderColor: 'var(--color-border)' }}
-                                placeholder="••••••••"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                className="w-full h-11 px-4 rounded-xl border-[1.5px] outline-none focus:ring-2"
+                                style={{ background: 'var(--color-bg)', borderColor: 'var(--color-text-muted)' }}
+                                placeholder="z.B. anna@beispiel.de"
                             />
-                            <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-4 top-1/2 -translate-y-1/2"
-                                style={{ color: 'var(--color-text-muted)' }}
-                            >
-                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                            </button>
                         </div>
-                    </div>
 
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full h-12 mt-6 rounded-xl font-bold text-white flex items-center justify-center gap-2 transition-transform hover:scale-[1.02] disabled:opacity-70 disabled:hover:scale-100"
-                        style={{ background: 'var(--color-orange)' }}
-                    >
-                        {loading ? <Loader2 size={20} className="animate-spin" /> : 'Einloggen'}
-                    </button>
-                </form>
+                        <div>
+                            <div className="flex items-center justify-between mb-1">
+                                <label className="block text-sm font-medium" style={{ color: 'var(--color-text)' }}>Passwort</label>
+                                <Link href="/passwort-vergessen" className="text-xs font-semibold" style={{ color: 'var(--color-primary)' }}>Passwort vergessen?</Link>
+                            </div>
+                            <div className="relative">
+                                <input
+                                    type={showPassword ? 'text' : 'password'}
+                                    required
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className="w-full h-11 pl-4 pr-12 rounded-xl border-[1.5px] outline-none focus:ring-2"
+                                    style={{ background: 'var(--color-bg)', borderColor: 'var(--color-text-muted)' }}
+                                    placeholder="••••••••"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-4 top-1/2 -translate-y-1/2"
+                                    style={{ color: 'var(--color-text-muted)' }}
+                                >
+                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                </button>
+                            </div>
+                        </div>
 
-                <p className="mt-8 text-center text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="w-full h-11 mt-6 rounded-xl font-bold text-white flex items-center justify-center gap-2 transition-transform hover:scale-[1.02] disabled:opacity-70 disabled:hover:scale-100"
+                            style={{ background: 'var(--color-orange)' }}
+                        >
+                            {loading ? <Loader2 size={20} className="animate-spin" /> : 'Einloggen'}
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => { setMode('magic'); setError(''); }}
+                            className="flex w-full items-center justify-center gap-2 text-sm font-semibold hover:underline"
+                            style={{ color: 'var(--color-primary)' }}
+                        >
+                            <Mail size={15} /> Stattdessen per Magic Link einloggen
+                        </button>
+                    </form>
+                ) : (
+                    <form onSubmit={handleMagicLink} className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text)' }}>E-Mail Adresse</label>
+                            <input
+                                type="email"
+                                required
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                className="w-full h-11 px-4 rounded-xl border-[1.5px] outline-none focus:ring-2"
+                                style={{ background: 'var(--color-bg)', borderColor: 'var(--color-text-muted)' }}
+                                placeholder="z.B. anna@beispiel.de"
+                            />
+                            <p className="mt-2 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                                Wir schicken dir einen Login-Link &ndash; kein Passwort noetig.
+                            </p>
+                        </div>
+
+                        <button
+                            type="submit"
+                            disabled={magicLinkSending}
+                            className="w-full h-11 rounded-xl font-bold text-white flex items-center justify-center gap-2 transition-transform hover:scale-[1.02] disabled:opacity-70 disabled:hover:scale-100"
+                            style={{ background: 'var(--color-orange)' }}
+                        >
+                            {magicLinkSending ? <Loader2 size={20} className="animate-spin" /> : 'Login-Link senden'}
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => { setMode('password'); setError(''); }}
+                            className="flex w-full items-center justify-center text-sm font-semibold hover:underline"
+                            style={{ color: 'var(--color-primary)' }}
+                        >
+                            Zurueck zum Passwort-Login
+                        </button>
+                    </form>
+                )}
+
+                <p className="mt-6 text-center text-sm" style={{ color: 'var(--color-text-secondary)' }}>
                     Noch kein Konto?{' '}
                     <Link href="/register" className="font-bold underline" style={{ color: 'var(--color-primary)' }}>Jetzt registrieren</Link>
                 </p>
