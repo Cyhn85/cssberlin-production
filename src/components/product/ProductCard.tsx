@@ -1,4 +1,4 @@
-﻿import Link from 'next/link';
+import Link from 'next/link';
 import { Heart, Leaf } from 'lucide-react';
 import { formatPrice, getConditionLabel } from '@/lib/utils/condition-map';
 
@@ -43,14 +43,14 @@ export default function ProductCard({
   return (
     <Link href={href ?? `/product/${product.id}`}>
       <article
-        className="group product-card-hover h-full overflow-hidden rounded-2xl border"
+        className="group product-card-hover h-full overflow-hidden rounded-lg border"
         style={{
           background: 'var(--color-bg-card)',
           borderColor: 'var(--color-border)',
           boxShadow: 'var(--shadow-sm)',
         }}
       >
-        <div className="relative aspect-[3/4] overflow-hidden" style={{ background: 'var(--color-bg-secondary)' }}>
+        <div className="relative aspect-[4/5] overflow-hidden" style={{ background: 'var(--color-bg-secondary)' }}>
           {imageUrl ? (
             <img
               src={imageUrl}
@@ -73,7 +73,7 @@ export default function ProductCard({
           </div>
         </div>
 
-        <div className="flex h-[122px] flex-col p-2.5">
+        <div className="flex flex-col p-2.5">
           <p className="line-clamp-1 text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
             {product.title}
           </p>

@@ -35,7 +35,7 @@ export default function CatalogLoading() {
         {Array.from({ length: 12 }).map((_, i) => (
           <div
             key={i}
-            className="rounded-2xl overflow-hidden animate-pulse"
+            className="rounded-lg overflow-hidden animate-pulse"
             style={{
               background: 'var(--color-bg-secondary)',
               border: '1px solid var(--color-border)',
@@ -43,7 +43,7 @@ export default function CatalogLoading() {
             }}
           >
             {/* Image Skeleton */}
-            <div className="aspect-[3/4]" style={{ background: 'var(--color-bg-tertiary, #e5e7eb)' }} />
+            <div className="aspect-[4/5]" style={{ background: 'var(--color-bg-tertiary, #e5e7eb)' }} />
 
             {/* Content Skeleton */}
             <div className="p-3 space-y-2">

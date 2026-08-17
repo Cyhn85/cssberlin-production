@@ -47,12 +47,30 @@ gelirini otomatikleştirip sürdürülebilir bir gelir hattı (Berlin'de ev hede
 - Talep deposu: 3454 gözlem indeksli, ilk çapraz sorgular alındı (henüz karar için erken,
   deep-liveness haftalar gerektirir).
 
+## İŞ MODELİ KARARLARI (2026-08-18)
+- **Otomatik toplu yayın YOK.** Ürünler TATANGA'da kategori-bazlı filtrelenerek incelenir,
+  favori listesine alınanlar üzerinde yoğunlaşılır. Kalitesiz/sorunlu ürün siteye GİRMEZ.
+- **Kargo modeli**: Berlin-içi elden teslim öncelikli. Kullanıcı checkout'ta kargo seçer:
+  - Elden teslim (bedava, CSS Berlin kargo — sipariş gününden 1 gün sonra gösterilir,
+    erken teslimat + geri dönüşlerde kargo puanı hedefi)
+  - Standart kargo (ücretli)
+  Ürünler satın alındığında kendimize çekilir, elden teslim edilir.
+- **Pahalı ürünler daha hızlı satılıyor** — kâr hesabında HIGH_PRICE_REVIEW_EUR=150 eşiği
+  var ama satış verisi bunu destekliyor; yüksek fiyatlı ürünlere öncelik verilecek.
+- **Satılmış ürünler istatistikte kalır** (sell-through oranı, fiyat analizi).
+- **Mobil uygulama** (gelecek): cssberlin.de → native Android/iOS. Google AI Studio'daki
+  Android Studio Gemini eklentisi buna hazırlık. PWA zaten var, native ayrı karar.
+- **Google AI talep zenginleştirmesi**: Deep Research (nitel trend) + AI Studio anahtarıyla
+  Gemini Search grounding (programatik). Sert sayı hâlâ kendi sell-through verimiz.
+
 ## HEDEFLER (sıra)
-1. **Kategori doldurma** (ŞİMDİ): kâr filtresini geçen ürünleri kategori kategori yayınla.
-   Boş katalog = organik müşteri kaçar. Site dolunca profesyonel görünür.
+1. **Kategori-bazlı kazıma** (ŞİMDİ): çalışan 9 platformda kategori × cinsiyet taraması,
+   kaliteli ürünler favori → inceleme → yayın. eBay soğumada, zorlanmayacak.
 2. Ölü kazıyıcıları (Depop/Sellpy/Percentil) endpoint bulup onar.
 3. Talep zekâsını otomatik tura sok (Hetzner cron, keşif/sömürü).
-4. Kalan cila: ProductCard/Header sabit-yükseklik temizliği, Stripe (en son).
+4. Checkout'a kargo seçenekleri (elden teslim / standart) ekle.
+5. Kalan cila: ProductCard/Header sabit-yükseklik temizliği, Stripe (en son).
+6. Mobil uygulama (native Android — gelecek faz).
 
 ## RİSKLER / SINIRLAR
 - Gmail app-password ve OAuth secret bu projede ifşa oldu → kullanıcı ROTATE etmeli.
