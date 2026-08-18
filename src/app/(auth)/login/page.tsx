@@ -70,13 +70,26 @@ export default function LoginPage() {
         }
     };
 
+    // Show a loading screen while session is being determined or after authentication 
+    // before the redirect happens. This prevents the "empty login popup" flash.
+    if (status === 'loading' || status === 'authenticated') {
+        return (
+            <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--gradient-hero-banner)' }}>
+                <div className="text-center bg-white/95 p-8 rounded-3xl shadow-xl flex flex-col items-center">
+                    <Loader2 size={32} className="animate-spin mb-4" style={{ color: 'var(--color-primary)' }} />
+                    <p className="font-bold text-sm" style={{ color: 'var(--color-text)' }}>Bitte warten...</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8" style={{ background: 'var(--gradient-hero-banner)' }}>
-            <div className="max-w-sm w-full p-6 rounded-3xl shadow-xl bg-white/95 backdrop-blur" style={{ border: '1px solid var(--color-border)' }}>
-                <div className="text-center mb-6">
+            <div className="max-w-sm w-full p-8 rounded-3xl shadow-xl bg-white/95 backdrop-blur-md" style={{ border: '1px solid var(--color-border)' }}>
+                <div className="text-center mb-8">
                     <AuthBrandHeader />
-                    <h2 className="text-2xl font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text)' }}>Willkommen zurück</h2>
-                    <p className="mt-2 text-sm" style={{ color: 'var(--color-text-secondary)' }}>Logge dich ein, um nachhaltig zu shoppen.</p>
+                    <h2 className="text-2xl font-bold mt-2" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text)' }}>Willkommen zurück</h2>
+                    <p className="mt-2 text-sm" style={{ color: 'var(--color-text-secondary)' }}>Logge dich ein, um nachhaltig zu stöbern.</p>
                 </div>
 
                 {isSuspendedRedirect && (
@@ -185,7 +198,7 @@ export default function LoginPage() {
                                 placeholder="z.B. anna@beispiel.de"
                             />
                             <p className="mt-2 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                                Wir schicken dir einen Login-Link &ndash; kein Passwort noetig.
+                                Wir schicken dir einen Login-Link &ndash; kein Passwort nötig.
                             </p>
                         </div>
 
@@ -204,7 +217,7 @@ export default function LoginPage() {
                             className="flex w-full items-center justify-center text-sm font-semibold hover:underline"
                             style={{ color: 'var(--color-primary)' }}
                         >
-                            Zurueck zum Passwort-Login
+                            Zurück zum Passwort-Login
                         </button>
                     </form>
                 )}

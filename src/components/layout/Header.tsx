@@ -18,6 +18,7 @@ import {
   Settings,
   ShieldCheck,
   ShoppingBag,
+  ShoppingCart,
   Sparkles,
   Sun,
   Tag,
@@ -30,6 +31,8 @@ import { getPusherClient } from '@/lib/pusher-client';
 import { CHANNELS, EVENTS } from '@/lib/realtime';
 import { sortCategoriesByPriority } from '@/lib/category-priority';
 import { shortLabel } from '@/config/launch-scope';
+import { useFavorites } from '@/store/useFavorites';
+import { useCart } from '@/store/useCart';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -96,6 +99,8 @@ export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const { count: favoriteCount, isLoaded: favoritesLoaded } = useFavorites();
+  const { count: cartCount, isLoaded: cartLoaded } = useCart();
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [suggestions, setSuggestions] = useState<{ products: AutocompleteProduct[]; categories: AutocompleteCategory[] }>({ products: [], categories: [] });
   const [activityCounts, setActivityCounts] = useState<ActivityCounts>({ unreadMessages: 0, unreadNotifications: 0 });
@@ -461,6 +466,23 @@ export default function Header() {
               </motion.button>
             </Link>
 
+            <div className="hidden items-center gap-1 sm:flex md:gap-1.5">
+              <Link href="/favorites" className="icon-mars-earth relative p-2.5" aria-label="Favoriten">
+                <Heart size={20} />
+              </Link>
+              <Link href="/offers" className="icon-mars-earth p-2.5" aria-label="Angebote">
+                <Tag size={20} />
+              </Link>
+              <Link href="/cart" className="icon-mars-earth relative p-2.5" aria-label="Warenkorb">
+                <ShoppingCart size={20} />
+                {cartLoaded && cartCount > 0 ? (
+                  <span className="absolute -right-0.5 -top-0.5 min-w-5 rounded-full bg-[var(--color-primary)] px-1.5 text-center text-[10px] font-bold leading-5 text-white">
+                    {cartCount > 99 ? '99+' : cartCount}
+                  </span>
+                ) : null}
+              </Link>
+            </div>
+
             {session ? (
               <DropdownMenu
                 open={isNotificationsOpen}
@@ -560,11 +582,6 @@ export default function Header() {
                     <DropdownMenuItem render={<Link href="/settings" />} className="gap-3 px-2.5 py-2">
                       <Settings size={16} /> Einstellungen
                     </DropdownMenuItem>
-                    {session.user?.role === 'ADMIN' ? (
-                      <DropdownMenuItem render={<Link href="/admin" />} className="gap-3 px-2.5 py-2">
-                        <ShieldCheck size={16} /> Admin Control Center
-                      </DropdownMenuItem>
-                    ) : null}
                   </DropdownMenuGroup>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
@@ -629,43 +646,66 @@ export default function Header() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 px-4 pb-4">
-                  {quickLinks.map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className="flex flex-col items-center gap-2 rounded-2xl border px-3 py-3 text-xs font-semibold"
-                      style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      {item.icon}
-                      {item.label}
-                    </Link>
-                  ))}
-                </div>
+                {session ? (
+                  <div className="grid grid-cols-3 gap-2 px-4 pb-4">
+                    {quickLinks.map((item) => (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className="flex flex-col items-center gap-2 rounded-2xl border px-3 py-3 text-xs font-semibold transition-colors hover:bg-[var(--color-orange)] hover:text-[#1A4D2E]"
+                        style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        {item.icon}
+                        {item.label}
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="px-4 pb-4">
+                    <div className="flex flex-col gap-2 rounded-2xl border p-4" style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg-secondary)' }}>
+                      <p className="text-sm font-bold text-center" style={{ color: 'var(--color-text)' }}>Willkommen bei cssberlin</p>
+                      <Link href="/register" onClick={() => setIsMobileMenuOpen(false)} className="w-full">
+                        <button className="w-full rounded-xl py-2.5 text-sm font-bold transition-colors" style={{ background: 'var(--color-orange)', color: '#1A4D2E' }}>
+                          Registrieren
+                        </button>
+                      </Link>
+                      <Link href="/login" onClick={() => setIsMobileMenuOpen(false)} className="w-full">
+                        <button className="w-full rounded-xl border py-2.5 text-sm font-bold transition-colors" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}>
+                          Anmelden
+                        </button>
+                      </Link>
+                    </div>
+                  </div>
+                )}
 
                 <ul className="space-y-1 overflow-y-auto px-4 pb-4">
                   {navCategories.map((category) => (
                     <li key={category.id}>
-                      <Link href={`/catalog?category=${encodeURIComponent(category.name)}`} className="flex items-center gap-3 rounded-xl p-3 text-sm font-medium" style={{ color: 'var(--color-text)' }} onClick={() => setIsMobileMenuOpen(false)}>
+                      <Link href={`/catalog?category=${encodeURIComponent(category.name)}`} className="flex items-center gap-3 rounded-xl p-3 text-sm font-medium transition-colors hover:bg-[var(--color-orange)] hover:text-[#1A4D2E]" style={{ color: 'var(--color-text)' }} onClick={() => setIsMobileMenuOpen(false)}>
                         {category.emoji ? <span aria-hidden>{category.emoji}</span> : <ShoppingBag size={16} style={{ color: 'var(--color-primary)' }} />}
                         {category.name}
                       </Link>
                     </li>
                   ))}
                   <li>
-                    <Link href="/ueber-uns" className="flex items-center gap-3 rounded-xl p-3 text-sm font-medium" style={{ color: 'var(--color-text)' }} onClick={() => setIsMobileMenuOpen(false)}>
+                    <Link href="/ueber-uns" className="flex items-center gap-3 rounded-xl p-3 text-sm font-medium transition-colors hover:bg-[var(--color-orange)] hover:text-[#1A4D2E]" style={{ color: 'var(--color-text)' }} onClick={() => setIsMobileMenuOpen(false)}>
                       <span aria-hidden>✨</span> Warum wir?
                     </Link>
                   </li>
+                  {session?.user?.role === 'ADMIN' ? (
+                    <li>
+                      <Link href="/admin" className="flex items-center gap-3 rounded-xl p-3 text-sm font-medium transition-colors hover:bg-[var(--color-orange)] hover:text-[#1A4D2E]" style={{ color: 'var(--color-text)' }} onClick={() => setIsMobileMenuOpen(false)}>
+                        <ShieldCheck size={16} style={{ color: 'var(--color-orange)' }} /> Admin Control Center
+                      </Link>
+                    </li>
+                  ) : null}
                 </ul>
 
-                {/* Dark-mode anahtari mobilde: header'daki toggle `hidden sm:flex`
-                    oldugu icin 640px altinda kayboluyordu — tek erisim noktasi bu. */}
                 <div className="border-t px-4 py-3" style={{ borderColor: 'var(--color-border)' }}>
                   <button
                     onClick={() => setIsDarkMode(!isDarkMode)}
-                    className="flex w-full items-center justify-between rounded-xl p-3 text-sm font-medium"
+                    className="flex w-full items-center justify-between rounded-xl p-3 text-sm font-medium transition-colors hover:bg-[var(--color-orange)] hover:text-[#1A4D2E]"
                     style={{ color: 'var(--color-text)' }}
                     aria-label="Dark Mode umschalten"
                   >
@@ -678,7 +718,7 @@ export default function Header() {
 
                 <div className="mt-auto px-4 pb-4">
                   <Link href="/upload" onClick={() => setIsMobileMenuOpen(false)}>
-                    <button className="btn-mars-earth w-full py-3 text-sm font-semibold text-white">
+                    <button className="w-full rounded-2xl py-3.5 text-sm font-bold transition-colors" style={{ background: 'var(--color-orange)', color: '#1A4D2E' }}>
                       <span className="inline-flex items-center gap-2"><Plus size={16} /> Jetzt verkaufen</span>
                     </button>
                   </Link>

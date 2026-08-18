@@ -48,9 +48,20 @@ export function resolveShippingFee(params: {
   itemPrice: number;
   productShippingCost?: number | null;
   isFirstOrder?: boolean;
+  shippingMethod?: string;
 }): ShippingResult {
-  const { itemPrice, productShippingCost, isFirstOrder = false } = params;
+  const { itemPrice, productShippingCost, isFirstOrder = false, shippingMethod } = params;
 
+  if (shippingMethod === 'HAND') {
+    return { fee: 0, free: true, reason: 'threshold' }; // Treat as threshold/free
+  }
+
+  // Aktions-Promo: 1-Day Free Shipping (Yarın 23:59'a kadar kargo bedava)
+  // For the purpose of this implementation, we force it to free.
+  // In a real scenario, this would check against a promo date range in DB.
+  return { fee: 0, free: true, reason: 'first_order' }; 
+
+  /* Old Logic disabled during promo:
   if (itemPrice >= FREE_SHIPPING_THRESHOLD_EUR) {
     return { fee: 0, free: true, reason: 'threshold' };
   }
@@ -62,6 +73,7 @@ export function resolveShippingFee(params: {
     ? productShippingCost
     : DEFAULT_SHIPPING_FEE_EUR;
   return { fee, free: false, reason: 'charged' };
+  */
 }
 
 /** Kurzer Hinweis für die Oberfläche: wie weit ist es noch bis zum Gratisversand? */

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import {
   ChevronLeft,
   Info,
@@ -25,8 +26,9 @@ const BUYER_PROTECTION_RATE = 0.05;
 const BUYER_PROTECTION_FIXED = 0.99;
 
 const shippingMethods = [
+  { id: 'HAND', name: 'Elden Ücretsiz Teslim', eta: 'Nach Absprache (Berlin/Brandenburg)' },
   { id: 'DHL', name: 'DHL Paket', eta: '1-3 Werktage' },
-  { id: 'HERMES', name: 'Hermes Paeckchen', eta: '2-4 Werktage' },
+  { id: 'HERMES', name: 'Hermes Päckchen', eta: '2-4 Werktage' },
   { id: 'DPD', name: 'DPD Classic', eta: '1-2 Werktage' },
 ];
 
@@ -57,6 +59,13 @@ type CheckoutOffer = {
 };
 
 export default function CheckoutPage() {
+  const { status } = useSession({
+    required: true,
+    onUnauthenticated() {
+      router.push(`/login?callbackUrl=/checkout/${params.id}`);
+    },
+  });
+
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -71,6 +80,8 @@ export default function CheckoutPage() {
   const [isFirstOrder, setIsFirstOrder] = useState(false);
 
   useEffect(() => {
+    if (status === 'loading' || status === 'unauthenticated') return;
+
     const productId = Array.isArray(params.id) ? params.id[0] : params.id;
     if (!productId) {
       setLoading(false);
@@ -142,7 +153,7 @@ export default function CheckoutPage() {
     return () => {
       cancelled = true;
     };
-  }, [params.id, offerId]);
+  }, [params.id, offerId, status]);
 
   const itemPrice = useMemo(() => {
     if (offer) return offer.offeredPrice;
@@ -156,8 +167,9 @@ export default function CheckoutPage() {
       itemPrice,
       productShippingCost: product?.shippingCost,
       isFirstOrder,
+      shippingMethod: selectedShipping,
     }),
-    [itemPrice, product, isFirstOrder],
+    [itemPrice, product, isFirstOrder, selectedShipping],
   );
   const shippingFee = shipping.fee;
   const missingForFreeShipping = amountToFreeShipping(itemPrice);
@@ -335,7 +347,10 @@ export default function CheckoutPage() {
             <div className="rounded-3xl border bg-white p-6 shadow-sm" style={{ borderColor: 'var(--color-border)' }}>
               <div className="mb-4 flex items-center gap-3">
                 <Truck size={20} />
-                <h2 className="text-lg font-bold">Versandart</h2>
+                <h2 className="text-lg font-bold">Versandmethode</h2>
+              </div>
+              <div className="mb-4 rounded-xl p-4 text-sm font-bold shadow-sm" style={{ background: 'var(--color-primary-50)', color: 'var(--color-primary-dark)', border: '1px solid var(--color-primary-100)' }}>
+                🎉 Aksiyon: Yarın 23:59'a kadar sipariş verirseniz Kargo Bedava!
               </div>
               {shipping.free ? (
                 <div className="mb-4 flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold text-emerald-800" style={{ background: 'rgba(16, 185, 129, 0.10)' }}>

@@ -13,20 +13,30 @@
 5. **Deploy komutu (kanıtlanmış):**
    `tar → scp → ssh "cd /opt/cssberlin-v2 && cp -r src /tmp/src_yedek_$(date +%s) && tar -xzf ... && docker compose --env-file .env.production up -d --build app"`
 
-## SON DURUM (en son güncelleyen: Claude Code — 2026-08-17)
+## SON DURUM (en son güncelleyen: Claude Code — 2026-08-18)
 - Site CANLI: https://cssberlin.de (Hetzner /opt/cssberlin-v2, Docker Compose)
 - Deploy git ile DEĞİL, dosya-senkronu ile → git yalnızca checkpoint/görünürlük için.
-- Yerel = deploy edilmiş (son deploy bu commit'i içeriyor).
-- Son biten: Antigravity'nin header hizalama + cat-nav-link işi denetlendi, 3 eksik
-  düzeltildi (mobil dark-toggle, ölü product-card-hover, offset uyumu), deploy edildi.
+- **Antigravity 18 ürün yayınladı AMA hepsi HATALI** — İngilizce başlıklar, boş açıklama
+  (sadece GPSR notu), işlenmemiş resimler (Google Lens riski), aşırı fiyatlar. SİLİNECEK.
+- Demo ürünler de silinecek (22 adet).
+- TATANGA'ya publish güvenlik kontrolü EKLENDİ: SEO başlığı + açıklaması + işlenmiş
+  görsel olmadan publish YAPILAMAZ (skip_checks=true ile zorlanabilir ama önerilmez).
+
+## YAYIN ÖNCESİ ZORUNLU ADIMLAR (HER ÜRÜN İÇİN — BYPASS YOKTUR)
+Publish fonksiyonu bu kontrolleri ENFORCE eder — skip_checks kaldırıldı.
+1. `POST /api/product/{id}/generate-seo` → Almanca başlık + açıklama (Groq/Llama)
+2. `POST /api/product/{id}/remove-bg` → BG kaldır + organik varyasyon + watermark
+3. **İnceleme**: favori listesinde gör, fiyat/başlık/resim kontrol et
+4. `POST /api/product/{id}/publish` → 1-2 tamamlanmamışsa HTTP 400 döner, yayın OLMAZ
 
 ## SONRAKİ ADIM (sıradaki ajan bunu yapsın)
-- **Kategori doldurma:** TATANGA'da 3454 ürün hazır, sitede ~1. Kâr filtresini geçen
-  (recommendation='buy' + condition_score≥3 + gpsr_ready=1) ürünleri kategori kategori
-  cssberlin'e yayınla. Önce `Herren > jacken`'den ~30 ürün, dry-run sonra gerçek.
-- TATANGA API: `POST http://<hub>:8501/api/product/{id}/publish` (çalışıyor, kanıtlı).
-- Temizlik borcu: `ProductCard.tsx` ve `Header.tsx:488` sabit yükseklikleri (kritik değil).
+- cssberlin DB temizliği (kullanıcı SQL çalıştıracak)
+- Hub restart (Antigravity bitince)
+- Kategori-bazlı kazıma turu başlat (`/api/scrape/category-round` eklendi)
+- Kazınan ürünler → SEO → BG kaldır → inceleme → yayın
 
 ## AÇIK RİSKLER
 - Aynı repo (`websitenew`) iki ajanla paylaşılıyor. Sıra disiplinini bozmayın.
 - eBay kazıması 403 (soğumada) — zorlama, engeli uzatır.
+- **Google Lens riski**: Vinted'den alınan resimleri İŞLEMEDEN yayınlama. Organik
+  varyasyon + BG kaldırma + watermark ZORUNLU.

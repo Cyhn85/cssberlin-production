@@ -1,6 +1,8 @@
 import Link from 'next/link';
-import { Heart, Leaf } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Heart, Leaf, ShoppingCart } from 'lucide-react';
 import { formatPrice, getConditionLabel } from '@/lib/utils/condition-map';
+import { useCart } from '@/store/useCart';
 
 type CardImage = {
   url: string;
@@ -35,15 +37,27 @@ export default function ProductCard({
   showSeller = false,
   href,
 }: ProductCardProps) {
+  const router = useRouter();
   const imageUrl = product.images?.[0]?.url;
   const discount = product.originalPrice
     ? Math.round((1 - product.price / product.originalPrice) * 100)
     : null;
+    
+  const { toggleCart, isInCart } = useCart();
+  const productHref = href ?? `/product/${product.id}`;
+
+  const handleCardClick = (e: React.MouseEvent) => {
+    // If user clicked a button or link inside, don't trigger the card click
+    if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('a')) {
+      return;
+    }
+    router.push(productHref);
+  };
 
   return (
-    <Link href={href ?? `/product/${product.id}`}>
       <article
-        className="group product-card-hover h-full overflow-hidden rounded-lg border"
+        onClick={handleCardClick}
+        className="group product-card-hover h-full overflow-hidden rounded-lg border flex flex-col cursor-pointer"
         style={{
           background: 'var(--color-bg-card)',
           borderColor: 'var(--color-border)',
@@ -118,8 +132,27 @@ export default function ProductCard({
               <Heart size={12} /> {product.likes ?? 0}
             </span>
           </div>
+
+          {/* Action Buttons */}
+          <div className="mt-3 grid grid-cols-2 gap-2 border-t pt-3" style={{ borderColor: 'var(--color-border)' }}>
+            <button
+              onClick={() => toggleCart(product.id)}
+              className={`flex items-center justify-center gap-1 rounded-lg py-2 text-[10px] font-bold transition-all ${isInCart(product.id) ? 'opacity-80' : ''}`}
+              style={{ background: 'var(--color-orange)', color: '#1A4D2E' }}
+            >
+              <ShoppingCart size={12} />
+              {isInCart(product.id) ? 'Im Warenkorb' : 'In den Warenkorb'}
+            </button>
+            <Link href={`/checkout/${product.id}`} className="w-full">
+              <button
+                className="flex w-full items-center justify-center gap-1 rounded-lg py-2 text-[10px] font-bold transition-all"
+                style={{ background: 'var(--color-primary-50)', color: 'var(--color-primary-dark)' }}
+              >
+                Direkt kaufen
+              </button>
+            </Link>
+          </div>
         </div>
       </article>
-    </Link>
   );
 }

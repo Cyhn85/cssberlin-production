@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import {
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronRight as ChevronRightIcon,
@@ -21,6 +22,9 @@ import OfferModal from '@/components/product/OfferModal';
 import ProductCard from '@/components/product/ProductCard';
 import { formatPrice, formatRelativeTime, getConditionLabel } from '@/lib/utils/condition-map';
 import { PRODUCT_ANGLES, PRODUCT_ANGLE_LABELS, hasFullAngleSet, type ProductAngle } from '@/lib/product-angles';
+import { useFavorites } from '@/store/useFavorites';
+import { useCart } from '@/store/useCart';
+import { Copy, Mail, Share, ShoppingCart } from 'lucide-react';
 
 type ProductDetail = {
   id: string;
@@ -85,6 +89,10 @@ export default function ProductDetailPage() {
   const [isLiked, setIsLiked] = useState(false);
   const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
   const [favoriteBusy, setFavoriteBusy] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
+  const [isShippingOpen, setIsShippingOpen] = useState(false);
+  const { isFavorited: isLocalFavorited, toggleFavorite } = useFavorites();
+  const { isInCart, toggleCart } = useCart();
 
   useEffect(() => {
     const productId = Array.isArray(params.id) ? params.id[0] : params.id;
@@ -135,6 +143,12 @@ export default function ProductDetailPage() {
   const handleFavoriteToggle = async () => {
     if (!product || favoriteBusy) return;
 
+    if (!session) {
+      // Unauthenticated users fallback to local storage
+      toggleFavorite(product.id);
+      return;
+    }
+
     setFavoriteBusy(true);
     try {
       const response = await fetch('/api/favorites', {
@@ -163,6 +177,17 @@ export default function ProductDetailPage() {
       setError(toggleError.message || 'Favorit konnte nicht aktualisiert werden.');
     } finally {
       setFavoriteBusy(false);
+    }
+  };
+
+  const activeLikedState = session ? isLiked : (product ? isLocalFavorited(product.id) : false);
+
+  const handleShareCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      alert('Link in Zwischenablage kopiert!');
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -319,22 +344,38 @@ export default function ProductDetailPage() {
                 </h1>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 relative">
                 <button
                   onClick={handleFavoriteToggle}
                   disabled={favoriteBusy}
-                  className="flex h-10 w-10 items-center justify-center rounded-full transition-colors"
-                  style={{ background: 'var(--color-bg-secondary)', color: isLiked ? 'var(--color-error)' : 'var(--color-text-secondary)' }}
+                  className="flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:scale-105"
+                  style={{ background: 'var(--color-bg-secondary)', color: activeLikedState ? 'var(--color-error)' : 'var(--color-text-secondary)' }}
                 >
-                  {favoriteBusy ? <Loader2 size={18} className="animate-spin" /> : <Heart size={20} fill={isLiked ? 'currentColor' : 'none'} />}
+                  {favoriteBusy ? <Loader2 size={18} className="animate-spin" /> : <Heart size={20} fill={activeLikedState ? 'currentColor' : 'none'} />}
                 </button>
-                <button
-                  onClick={() => navigator?.share?.({ title: product.title, url: window.location.href }).catch(() => {})}
-                  className="flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-[var(--color-bg-secondary)]"
-                  style={{ color: 'var(--color-text-secondary)' }}
-                >
-                  <Share2 size={20} />
-                </button>
+                <div className="relative">
+                  <button
+                    onClick={() => setIsShareOpen(!isShareOpen)}
+                    className="flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-[var(--color-bg-secondary)]"
+                    style={{ color: 'var(--color-text-secondary)' }}
+                  >
+                    <Share2 size={20} />
+                  </button>
+                  
+                  {isShareOpen && (
+                    <div className="absolute right-0 top-12 z-50 flex w-48 flex-col rounded-xl border bg-white p-2 shadow-lg dark:bg-[#161b22]" style={{ borderColor: 'var(--color-border)' }}>
+                      <button onClick={handleShareCopy} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-black/5 dark:hover:bg-white/5" style={{ color: 'var(--color-text)' }}>
+                        <Copy size={16} /> Link kopieren
+                      </button>
+                      <a href={`https://api.whatsapp.com/send?text=${encodeURIComponent(product.title + ' ' + window.location.href)}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-black/5 dark:hover:bg-white/5" style={{ color: 'var(--color-text)' }}>
+                        <MessageCircle size={16} /> WhatsApp
+                      </a>
+                      <a href={`mailto:?subject=${encodeURIComponent(product.title)}&body=${encodeURIComponent(window.location.href)}`} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-black/5 dark:hover:bg-white/5" style={{ color: 'var(--color-text)' }}>
+                        <Mail size={16} /> E-Mail
+                      </a>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -362,7 +403,7 @@ export default function ProductDetailPage() {
 
             <div className="grid grid-cols-2 gap-x-8 gap-y-4 border-b pb-6 text-sm" style={{ borderColor: 'var(--color-border)' }}>
               <div>
-                <span className="mb-1 block font-medium" style={{ color: 'var(--color-text-muted)' }}>Groesse</span>
+                <span className="mb-1 block font-medium" style={{ color: 'var(--color-text-muted)' }}>Größe</span>
                 <span className="font-semibold" style={{ color: 'var(--color-text)' }}>{product.size || 'Nicht angegeben'}</span>
               </div>
               <div>
@@ -383,52 +424,97 @@ export default function ProductDetailPage() {
               <ShieldCheck size={28} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
               <div>
                 <h4 className="mb-1 text-sm font-bold" style={{ color: 'var(--color-primary-dark)' }}>
-                  cssberlin Kaeuferschutz
+                  cssberlin Käuferschutz
                 </h4>
                 <p className="text-xs leading-relaxed" style={{ color: 'var(--color-primary)' }}>
-                  Zahlung bleibt geschuetzt, bis die Ware sicher angekommen ist. Bei Problemen greift unser Streitfall-Prozess.
+                  Zahlung bleibt geschützt, bis die Ware sicher angekommen ist. Bei Problemen greift unser Streitfall-Prozess.
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3 rounded-2xl p-4" style={{ background: 'var(--color-bg-secondary)' }}>
-              <Truck size={24} style={{ color: 'var(--color-text-secondary)', flexShrink: 0 }} />
-              <div className="flex-1">
-                <h4 className="text-sm font-bold" style={{ color: 'var(--color-text)' }}>
-                  Versand ab {formatPrice(product.shippingCost)}
-                </h4>
-                <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                  DHL, Hermes oder DPD zur Auswahl
-                </p>
-              </div>
+            <div className="flex flex-col rounded-2xl border transition-all" style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg-secondary)' }}>
+              <button 
+                onClick={() => setIsShippingOpen(!isShippingOpen)}
+                className="flex items-center justify-between p-4"
+              >
+                <div className="flex items-center gap-3">
+                  <Truck size={24} style={{ color: 'var(--color-text-secondary)', flexShrink: 0 }} />
+                  <div className="text-left">
+                    <h4 className="text-sm font-bold" style={{ color: 'var(--color-text)' }}>
+                      Versand ab {formatPrice(product.shippingCost)}
+                    </h4>
+                    <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                      Verschiedene Lieferdienste verfügbar
+                    </p>
+                  </div>
+                </div>
+                <ChevronDown size={18} className={`transition-transform ${isShippingOpen ? 'rotate-180' : ''}`} style={{ color: 'var(--color-text-muted)' }} />
+              </button>
+              
+              {isShippingOpen && (
+                <div className="border-t p-4 pt-3 text-sm" style={{ borderColor: 'var(--color-border)' }}>
+                  <div className="mb-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold" style={{ color: 'var(--color-text)' }}>DHL</span> Paket
+                    </div>
+                    <span>{formatPrice(product.shippingCost)}</span>
+                  </div>
+                  <div className="mb-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold" style={{ color: 'var(--color-text)' }}>Hermes</span> Päckchen
+                    </div>
+                    <span>{formatPrice(product.shippingCost * 0.9)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold" style={{ color: 'var(--color-text)' }}>DPD</span> Classic
+                    </div>
+                    <span>{formatPrice(product.shippingCost * 1.1)}</span>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col gap-3 py-2">
               {!isOwner ? (
                 <>
-                  <Link href={`/checkout/${product.id}`}>
-                    <button className="btn-mars-earth w-full rounded-2xl py-4 text-lg font-bold text-white" style={{ background: 'var(--color-orange)' }}>
-                      <span>Kaufen</span>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button 
+                      onClick={() => toggleCart(product.id)}
+                      className={`btn-mars-earth w-full rounded-2xl py-3.5 text-base font-bold transition-all ${isInCart(product.id) ? 'opacity-80' : ''}`} 
+                      style={{ background: 'var(--color-orange)', color: '#1A4D2E' }}
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        <ShoppingCart size={18} /> {isInCart(product.id) ? 'Im Warenkorb' : 'In den Warenkorb'}
+                      </span>
                     </button>
-                  </Link>
 
-                  <button
-                    onClick={() => setIsOfferModalOpen(true)}
-                    className="btn-mars-earth-outline w-full rounded-2xl py-4 text-lg font-bold"
-                    style={{ border: '2px solid var(--color-orange)', color: 'var(--color-orange)' }}
-                  >
-                    Preis vorschlagen
-                  </button>
+                    <Link href={`/checkout/${product.id}`}>
+                      <button className="btn-mars-earth w-full h-full rounded-2xl py-3.5 text-base font-bold transition-all" style={{ background: 'var(--color-orange)', color: '#1A4D2E' }}>
+                        <span>Direkt kaufen</span>
+                      </button>
+                    </Link>
+                  </div>
 
-                  <button
-                    onClick={() => router.push(`/inbox?with=${product.seller.id}`)}
-                    className="w-full rounded-2xl border py-4 text-base font-bold"
-                    style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      <MessageCircle size={18} /> Verkaeufer kontaktieren
-                    </span>
-                  </button>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => setIsOfferModalOpen(true)}
+                      className="btn-mars-earth-outline w-full rounded-2xl py-3.5 text-base font-bold transition-all"
+                      style={{ border: '2px solid var(--color-orange)', color: '#1A4D2E' }}
+                    >
+                      Preis vorschlagen
+                    </button>
+
+                    <button
+                      onClick={() => router.push(`/inbox?with=${product.seller.id}`)}
+                      className="w-full rounded-2xl border py-3.5 text-base font-bold transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+                      style={{ borderColor: 'var(--color-border)', color: '#1A4D2E' }}
+                    >
+                      <span className="inline-flex items-center gap-2 justify-center w-full">
+                        <MessageCircle size={18} /> Nachricht
+                      </span>
+                    </button>
+                  </div>
                 </>
               ) : (
                 <div className="rounded-2xl border px-4 py-4 text-sm" style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)' }}>
@@ -439,7 +525,7 @@ export default function ProductDetailPage() {
 
             <div className="mt-2 border-t pt-6" style={{ borderColor: 'var(--color-border)' }}>
               <h3 className="mb-4 text-sm font-bold" style={{ color: 'var(--color-text)' }}>
-                Ueber den Verkaeufer
+                Über den Verkäufer
               </h3>
               <div className="flex items-center justify-between gap-3">
                 <Link href={`/profile/${product.seller.id}`} className="group flex items-center gap-3">
@@ -480,7 +566,7 @@ export default function ProductDetailPage() {
         <div className="mt-20 border-t pt-12" style={{ borderColor: 'var(--color-border)' }}>
           <div className="mb-8 flex items-center justify-between">
             <h2 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>
-              Aehnliche Artikel
+              Ähnliche Artikel
             </h2>
           </div>
 

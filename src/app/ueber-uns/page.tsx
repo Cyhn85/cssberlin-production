@@ -35,12 +35,12 @@ export default function AboutPage() {
           </p>
         </motion.div>
 
-        <motion.div variants={container} initial="hidden" animate="show" className="mb-16 grid gap-6 md:grid-cols-3">
+        <motion.div variants={container} initial="hidden" animate="show" className="mb-16 grid gap-8 md:grid-cols-3">
           {[
             {
               icon: <ShieldCheck size={32} />,
-              title: 'Kaeuferschutz',
-              desc: 'Zahlungen bleiben geschuetzt, bis Bestellungen bestaetigt und sicher angekommen sind.',
+              title: 'Käuferschutz',
+              desc: 'Zahlungen bleiben geschützt, bis Bestellungen bestätigt und sicher angekommen sind.',
             },
             {
               icon: <Truck size={32} />,
@@ -53,11 +53,11 @@ export default function AboutPage() {
               desc: 'Nachrichten, Angebote und Profilseiten greifen auf dieselben Live-Daten zu.',
             },
           ].map((feature) => (
-            <motion.div key={feature.title} variants={item} className="glass-card p-8 text-center hover-lift">
-              <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl" style={{ background: 'var(--color-primary-50)', color: 'var(--color-primary)' }}>
+            <motion.div key={feature.title} variants={item} className="flex flex-col items-center p-8 text-center rounded-3xl shadow-sm border transition-all duration-300 hover:shadow-md hover:-translate-y-1 bg-white dark:bg-[#161b22]" style={{ borderColor: 'var(--color-border)' }}>
+              <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl" style={{ background: 'var(--color-primary-50)', color: 'var(--color-primary)' }}>
                 {feature.icon}
               </div>
-              <h3 className="mb-2 text-lg font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text)' }}>
+              <h3 className="mb-3 text-xl font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text)' }}>
                 {feature.title}
               </h3>
               <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
@@ -71,22 +71,22 @@ export default function AboutPage() {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="rounded-3xl border p-8 text-center md:p-12"
+          className="rounded-3xl border p-8 text-center md:p-14 shadow-sm"
           style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg-card)' }}
         >
-          <h2 className="mb-3 text-xl font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text)' }}>
+          <h2 className="mb-4 text-2xl md:text-3xl font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text)' }}>
             Second-Hand statt Neuware
           </h2>
-          <p className="mx-auto mb-6 max-w-lg text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+          <p className="mx-auto mb-8 max-w-lg text-base leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
             Jeder verkaufte Artikel spart Ressourcen, CO2 und Wasser. Unsere Community-Zahlen sind live und
             echt &mdash; kein Marketing-Platzhalter.
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <Link href="/eco-impact" className="nav-mars-earth rounded-full border px-5 py-2.5 text-sm font-semibold" style={{ borderColor: 'var(--color-border)' }}>
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            <Link href="/eco-impact" className="rounded-full border px-6 py-3 text-sm font-semibold hover:bg-black/5 dark:hover:bg-white/5 transition-colors" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}>
               Unseren Impact ansehen
             </Link>
-            <Link href="/catalog" className="btn-mars-earth rounded-full px-5 py-2.5 text-sm font-bold text-white" style={{ background: 'var(--color-orange)' }}>
-              <span>Jetzt stoebern</span>
+            <Link href="/catalog" className="btn-mars-earth rounded-full px-8 py-3 text-sm font-bold text-white transition-transform hover:scale-105" style={{ background: 'var(--color-orange)' }}>
+              <span>Jetzt stöbern</span>
             </Link>
           </div>
         </motion.div>

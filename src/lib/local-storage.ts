@@ -43,5 +43,7 @@ export async function saveProductImage(
   const filename = `${index}.${ext}`;
   await writeFile(path.join(dir, filename), buffer);
 
-  return `${PUBLIC_BASE_URL}/uploads/products/${productId}/${filename}`;
+  // Return a relative URL instead of absolute to prevent CORS and HTTPS mixed content 
+  // issues when the app is accessed via different hostnames or mobile devices.
+  return `/uploads/products/${productId}/${filename}`;
 }

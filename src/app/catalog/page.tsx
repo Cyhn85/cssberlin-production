@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { Suspense, startTransition, useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -476,39 +476,80 @@ function FilterSection({
   onSelect: (value: string) => void;
   isGrid?: boolean;
 }) {
-  return (
-    <div>
-      <h3 className="mb-3 text-sm font-bold" style={{ color: 'var(--color-text)' }}>{title}</h3>
-      <div className={isGrid ? 'grid grid-cols-3 gap-2' : 'max-h-64 space-y-2.5 overflow-y-auto pr-1'}>
-        {items.map((entry) => {
-          const isActive = active === entry;
-          if (isGrid) {
-            return (
-              <button
-                key={entry}
-                onClick={() => onSelect(entry)}
-                className={`rounded-xl py-2 text-xs transition-all ${isActive ? 'font-bold shadow-sm' : 'font-medium hover:bg-[var(--color-bg-secondary)]'}`}
-                style={{
-                  background: isActive ? 'var(--color-primary-50)' : 'transparent',
-                  color: isActive ? 'var(--color-primary-dark)' : 'var(--color-text)',
-                  border: `1px solid ${isActive ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                }}
-              >
-                {entry}
-              </button>
-            );
-          }
+  const [isOpen, setIsOpen] = useState(true);
 
-          return (
-            <label key={entry} className="group flex cursor-pointer items-center gap-3">
-              <Checkbox checked={isActive} onCheckedChange={() => onSelect(entry)} />
-              <span className="text-sm font-medium transition-colors group-hover:text-[var(--color-primary)]" style={{ color: isActive ? 'var(--color-text)' : 'var(--color-text-secondary)' }}>
-                {entry}
-              </span>
-            </label>
-          );
-        })}
-      </div>
+  // Auto-collapse logic when an item is selected could go here, 
+  // but keeping it user-controlled with default open is less jarring.
+  // We highlight the active selection even if collapsed.
+
+  return (
+    <div className="border-b pb-4 last:border-0" style={{ borderColor: 'var(--color-border)' }}>
+      <button 
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex w-full items-center justify-between py-2 text-left"
+      >
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-bold" style={{ color: 'var(--color-text)' }}>{title}</h3>
+          {active && (
+            <span className="flex h-2 w-2 rounded-full" style={{ background: 'var(--color-primary)' }} />
+          )}
+        </div>
+        <ChevronDown 
+          size={16} 
+          className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} 
+          style={{ color: 'var(--color-text-muted)' }} 
+        />
+      </button>
+
+      {/* When closed, if there is an active selection, show it briefly */}
+      {!isOpen && active && (
+        <div className="mt-1 text-xs font-semibold" style={{ color: 'var(--color-primary)' }}>
+          Gewählt: {active}
+        </div>
+      )}
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className={`mt-3 ${isGrid ? 'grid grid-cols-3 gap-2' : 'max-h-64 space-y-2.5 overflow-y-auto pr-1'}`}>
+              {items.map((entry) => {
+                const isActive = active === entry;
+                if (isGrid) {
+                  return (
+                    <button
+                      key={entry}
+                      onClick={() => onSelect(entry)}
+                      className={`rounded-xl py-2 text-xs transition-all ${isActive ? 'font-bold shadow-sm' : 'font-medium hover:bg-[var(--color-bg-secondary)]'}`}
+                      style={{
+                        background: isActive ? 'var(--color-primary-50)' : 'transparent',
+                        color: isActive ? 'var(--color-primary-dark)' : 'var(--color-text)',
+                        border: `1px solid ${isActive ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                      }}
+                    >
+                      {entry}
+                    </button>
+                  );
+                }
+
+                return (
+                  <label key={entry} className="group flex cursor-pointer items-center gap-3">
+                    <Checkbox checked={isActive} onCheckedChange={() => onSelect(entry)} />
+                    <span className="text-sm font-medium transition-colors group-hover:text-[var(--color-primary)]" style={{ color: isActive ? 'var(--color-text)' : 'var(--color-text-secondary)' }}>
+                      {entry}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
