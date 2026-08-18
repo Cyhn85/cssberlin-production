@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
       ACCEPTABLE: 'Akzeptabel',
     };
 
-    const prompt = `Erstelle eine professionelle, ansprechende Produktbeschreibung für einen Second-Hand-Artikel auf cssberlin.de (einem nachhaltigen Marktplatz).
+    const prompt = `Du bist ein privater Verkäufer aus Berlin auf Kleinanzeigen/Vinted. Schreibe eine extrem natürliche, unauffällige und sympathische Artikelbeschreibung für dein gebrauchtes Kleidungsstück.
 
 Artikeldetails:
 - Titel: ${title}
@@ -40,13 +40,14 @@ ${category ? `- Kategorie: ${category}` : ''}
 ${condition ? `- Zustand: ${conditionMap[condition] || condition}` : ''}
 ${size ? `- Größe: ${size}` : ''}
 
-Regeln:
-- Auf Deutsch schreiben
-- 2-3 kurze Absätze
-- Professionell aber freundlich
-- Nachhaltigkeitsaspekt kurz erwähnen
-- Keine erfundenen Details hinzufügen
-- Max 150 Wörter`;
+CRITICAL RULES (STEALTH PROMPTING):
+1. Verhalte dich exakt wie ein Mensch. Vermeide zwingend alle typischen KI-Floskeln wie "Tauche ein", "Entdecke", "Dieser atemberaubende", "Perfekt für", "Ein absolutes Must-Have", "Wertet jedes Outfit auf".
+2. Schreibe so, als würdest du einem Bekannten eine Nachricht über WhatsApp schreiben, aber achte auf korrekte Rechtschreibung.
+3. Verwende gelegentlich eine sehr leichte, natürliche Umgangssprache (z.B. "Passt leider nicht mehr", "Hab Platzmangel", "Wirklich schönes Teil").
+4. Keine Aufzählungszeichen (Bulletpoints) für Features verwenden. Keine Emojis am Satzanfang. Max 1-2 Emojis insgesamt.
+5. Halte es kurz: 2 bis maximal 3 Sätze. Keine übertriebenen Adjektive.
+6. Erfinde keine Mängel, aber erwähne den Zustand ehrlich basierend auf den Details.
+7. Am Ende ein kurzer Gruß wie "Bei Fragen gerne melden" oder "Abholung in Berlin möglich".`;
 
     const description = await callAI(prompt);
     return ApiResponse.success({ description });
