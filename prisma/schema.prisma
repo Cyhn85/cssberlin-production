@@ -226,7 +226,7 @@ model Order {
   id String @id @default(cuid())
 
   productId String
-  product   Product @relation(fields: [productId], references: [id])
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
   buyerId   String
   buyer     User    @relation("BuyerOrders", fields: [buyerId], references: [id])
   sellerId  String
