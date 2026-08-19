@@ -80,7 +80,9 @@ export default function CheckoutPage() {
   const [isFirstOrder, setIsFirstOrder] = useState(false);
 
   useEffect(() => {
-    if (status === 'loading' || status === 'unauthenticated') return;
+    // useSession({ required: true }) yukarida oturumsuz kullaniciyi zaten /login'e
+    // yonlendiriyor, o yuzden burada 'unauthenticated' durumu olusmuyor.
+    if (status === 'loading') return;
 
     const productId = Array.isArray(params.id) ? params.id[0] : params.id;
     if (!productId) {

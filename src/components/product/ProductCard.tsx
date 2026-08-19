@@ -1,3 +1,5 @@
+'use client';
+
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Heart, Leaf, ShoppingCart } from 'lucide-react';
@@ -77,10 +79,12 @@ export default function ProductCard({
             </div>
           )}
 
-          <div className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-white/90 px-2 py-1 text-[10px] font-bold shadow-sm">
-            <Leaf size={10} style={{ color: 'var(--color-primary)' }} />
-            <span style={{ color: 'var(--color-primary-dark)' }}>-{(product.ecoCO2Saved ?? 0).toFixed(1)}kg</span>
-          </div>
+          {product.ecoCO2Saved && product.ecoCO2Saved > 0 ? (
+            <div className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-white/90 px-2 py-1 text-[10px] font-bold shadow-sm">
+              <Leaf size={10} style={{ color: 'var(--color-primary)' }} />
+              <span style={{ color: 'var(--color-primary-dark)' }}>-{product.ecoCO2Saved.toFixed(1)}kg CO₂</span>
+            </div>
+          ) : null}
 
           <div className="absolute bottom-2 left-2 rounded-full bg-white/90 px-2 py-1 text-[10px] font-semibold shadow-sm" style={{ color: 'var(--color-text-secondary)' }}>
             {getConditionLabel(product.condition)}

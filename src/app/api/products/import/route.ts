@@ -124,6 +124,15 @@ export async function POST(request: NextRequest) {
         select: { id: true },
       });
       if (existing) {
+        // category_slug is only honoured when explicitly sent, so a re-publish
+        // that omits it keeps whatever category the listing already has. TATANGA
+        // relies on this to correct a wrong gender category after the fact.
+        let recategorised: string | undefined;
+        if (categorySlug) {
+          const resolved = await resolveCategoryId(categorySlug);
+          if (!resolved.fellBackTo) recategorised = resolved.categoryId;
+        }
+
         const updated = await prisma.product.update({
           where: { id: existing.id },
           data: {
@@ -133,6 +142,7 @@ export async function POST(request: NextRequest) {
             brand,
             size,
             condition: condition as never,
+            ...(recategorised ? { categoryId: recategorised } : {}),
           },
         });
         // IndexNow: Bing/Yandex'e guncellenen urunu tekrar taramasini bildir (fire-and-forget).

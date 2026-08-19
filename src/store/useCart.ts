@@ -1,64 +1,71 @@
-import { useState, useEffect } from 'react';
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+
+const STORAGE_KEY = 'cssberlin_cart';
+
+function readCart(): string[] {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+}
 
 export function useCart() {
   const [cartItems, setCartItems] = useState<string[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
+  // Initial load from localStorage
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem('cssberlin_cart');
-      if (stored) {
-        setCartItems(JSON.parse(stored));
-      }
-    } catch (e) {
-      console.error('Failed to load cart from local storage', e);
-    }
+    setCartItems(readCart());
     setIsLoaded(true);
   }, []);
 
-  const toggleCart = (productId: string) => {
+  // Persist to localStorage whenever cartItems changes (after initial load)
+  useEffect(() => {
+    if (!isLoaded) return;
+    try {
+      if (cartItems.length === 0) {
+        localStorage.removeItem(STORAGE_KEY);
+      } else {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(cartItems));
+      }
+    } catch (e) {
+      console.error('Failed to persist cart', e);
+    }
+  }, [cartItems, isLoaded]);
+
+  // Cross-tab sync via the native storage event
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key !== STORAGE_KEY) return;
+      setCartItems(e.newValue ? JSON.parse(e.newValue) : []);
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
+  const toggleCart = useCallback((productId: string) => {
     setCartItems((prev) => {
       const isInCart = prev.includes(productId);
-      const updated = isInCart
+      return isInCart
         ? prev.filter((id) => id !== productId)
         : [...prev, productId];
-        
-      try {
-        localStorage.setItem('cssberlin_cart', JSON.stringify(updated));
-        // trigger global event so other tabs/components update
-        window.dispatchEvent(new Event('cart-updated'));
-      } catch (e) {
-        console.error('Failed to save cart to local storage', e);
-      }
-      
-      return updated;
     });
-  };
-
-  const isInCart = (productId: string) => cartItems.includes(productId);
-
-  // Auto-sync if updated from another component
-  useEffect(() => {
-    const handleStorageChange = () => {
-      try {
-        const stored = localStorage.getItem('cssberlin_cart');
-        if (stored) {
-          setCartItems(JSON.parse(stored));
-        }
-      } catch (e) {
-        console.error('Failed to parse cart sync', e);
-      }
-    };
-
-    window.addEventListener('cart-updated', handleStorageChange);
-    return () => window.removeEventListener('cart-updated', handleStorageChange);
   }, []);
+
+  const isInCart = useCallback(
+    (productId: string) => cartItems.includes(productId),
+    [cartItems],
+  );
 
   return {
     cartItems,
     toggleCart,
     isInCart,
     count: cartItems.length,
-    isLoaded
+    isLoaded,
   };
 }
