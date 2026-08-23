@@ -8,6 +8,14 @@ generator client {
   provider      = "prisma-client-js"
   output        = "../src/generated/prisma"
   binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+  // omitApi lets lib/db.ts drop Product.reservedById from every query result by
+  // default. The product endpoints fetch with `include`, which returns every
+  // scalar on the model - so the moment a column is added to the schema it is
+  // in the public JSON. That is how the 3072-float image embedding ended up on
+  // the wire, and reservedById would have published which user is mid-checkout
+  // on which item. Omitting centrally is the only fix that also covers the
+  // next column somebody adds.
+  previewFeatures = ["omitApi"]
 }
 
 datasource db {
