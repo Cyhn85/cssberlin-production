@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+﻿import { NextRequest } from 'next/server';
 import prisma from '@/lib/db';
 import { requireAdmin } from '@/lib/auth';
 import { ApiResponse } from '@/lib/api-response';
@@ -22,7 +22,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
     const body = await request.json();
     const parsed = updateSchema.safeParse(body);
-    if (!parsed.success) return ApiResponse.validationError('Ungueltige Eingabe.');
+    if (!parsed.success) return ApiResponse.validationError('Ungültige Eingabe.');
 
     const updated = await prisma.category.update({
       where: { id },
@@ -53,7 +53,7 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
     });
     if (!category) return ApiResponse.notFound('Kategorie nicht gefunden.');
     if (category._count.products > 0 || category._count.children > 0) {
-      return ApiResponse.error('Kategorien mit Artikeln oder Unterkategorien koennen nicht geloescht werden.', 409);
+      return ApiResponse.error('Kategorien mit Artikeln oder Unterkategorien können nicht gelöscht werden.', 409);
     }
 
     await prisma.category.delete({ where: { id } });

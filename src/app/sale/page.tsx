@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   alternates: { canonical: 'https://cssberlin.de/sale' },
 };
 
-// Der Rabatt wird gegen originalPrice gerechnet - ein echter frueherer Preis,
+// Der Rabatt wird gegen originalPrice gerechnet - ein echter früherer Preis,
 // kein Fantasie-Streichpreis. Artikel ohne originalPrice tauchen hier gar nicht
 // erst auf.
 async function loadSaleProducts() {

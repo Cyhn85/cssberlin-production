@@ -65,12 +65,12 @@ export async function POST(request: NextRequest) {
       where: { id: productId },
       include: {
         seller: { select: { id: true, name: true } },
-        images: { take: 1, orderBy: { orderIndex: 'asc' } },
+        images: { take: 1, orderBy: { orderIndex: 'asc' }, /* embedding HARIC: 3072'lik vektor gorsel basina ~42 KB sisiriyor */ select: { id: true, url: true, thumbUrl: true, mediumUrl: true, orderIndex: true, productId: true, angle: true } },
       },
     });
 
     if (!product || product.status !== 'ACTIVE') {
-      return ApiResponse.error('Dieses Produkt ist nicht mehr verfuegbar.', 409);
+      return ApiResponse.error('Dieses Produkt ist nicht mehr verfügbar.', 409);
     }
 
     if (product.sellerId === session.user.id) {
@@ -190,7 +190,7 @@ export async function POST(request: NextRequest) {
         });
       } catch (createError: any) {
         if (createError.message === 'PRODUCT_UNAVAILABLE' || createError.message === 'ORDER_EXISTS') {
-          return ApiResponse.error('Dieses Produkt ist nicht mehr verfuegbar.', 409);
+          return ApiResponse.error('Dieses Produkt ist nicht mehr verfügbar.', 409);
         }
         throw createError;
       }
@@ -213,7 +213,7 @@ export async function POST(request: NextRequest) {
             product_data: {
               name: product.title,
               images: product.images[0] ? [product.images[0].url] : [],
-              description: `Verkaeufer: ${product.seller.name}`,
+              description: `Verkäufer: ${product.seller.name}`,
             },
             unit_amount: Math.round(itemPrice * 100),
           },
@@ -230,7 +230,7 @@ export async function POST(request: NextRequest) {
         {
           price_data: {
             currency: 'eur',
-            product_data: { name: 'Kaeuferschutz' },
+            product_data: { name: 'Käuferschutz' },
             unit_amount: Math.round(protectionFee * 100),
           },
           quantity: 1,

@@ -1,10 +1,10 @@
-import { MetadataRoute } from 'next';
+﻿import { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'cssberlin.de - Nachhaltiger Marktplatz',
     short_name: 'cssberlin',
-    description: 'Dein Second-Hand Marktplatz fuer Berlin.',
+    description: 'Dein Second-Hand Marktplatz für Berlin.',
     start_url: '/',
     display: 'standalone',
     background_color: '#ffffff',

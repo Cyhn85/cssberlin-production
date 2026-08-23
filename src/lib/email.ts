@@ -48,7 +48,7 @@ function renderEmailLayout(options: {
   const accent = options.accent || '#E8651A';
   const footer =
     options.footer ||
-    'Du erhaeltst diese Nachricht, weil es eine neue Aktivitaet zu deinem cssberlin.de Konto gibt.';
+    'Du erhältst diese Nachricht, weil es eine neue Aktivität zu deinem cssberlin.de Konto gibt.';
 
   return `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 640px; margin: 0 auto; padding: 24px; color: #1f2937;">
@@ -115,17 +115,17 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
 export function magicLinkEmail(url: string): EmailOptions {
   return {
     to: '',
-    subject: 'Dein Login-Link fuer cssberlin.de',
+    subject: 'Dein Login-Link für cssberlin.de',
     html: renderEmailLayout({
       title: 'Dein Login-Link',
-      intro: 'Klicke auf den Button, um dich ohne Passwort bei cssberlin.de einzuloggen. Der Link ist 24 Stunden gueltig und funktioniert nur einmal.',
+      intro: 'Klicke auf den Button, um dich ohne Passwort bei cssberlin.de einzuloggen. Der Link ist 24 Stunden gültig und funktioniert nur einmal.',
       body: `
-        <p style="margin: 0;">Wenn du diese E-Mail nicht angefordert hast, kannst du sie einfach ignorieren - es wurde nichts an deinem Konto veraendert.</p>
+        <p style="margin: 0;">Wenn du diese E-Mail nicht angefordert hast, kannst du sie einfach ignorieren - es wurde nichts an deinem Konto verändert.</p>
       `,
       ctaLabel: 'Jetzt einloggen',
       ctaUrl: url,
       accent: '#E8651A',
-      footer: 'Du erhaeltst diese E-Mail, weil ein Login-Link fuer dein cssberlin.de-Konto angefordert wurde.',
+      footer: 'Du erhältst diese E-Mail, weil ein Login-Link für dein cssberlin.de-Konto angefordert wurde.',
     }),
   };
 }
@@ -136,14 +136,14 @@ export function welcomeEmail(name: string): EmailOptions {
     subject: `Willkommen bei cssberlin.de, ${name}!`,
     html: renderEmailLayout({
       title: 'Willkommen bei cssberlin.de',
-      intro: `Hallo ${name}, schoen, dass du da bist. Gemeinsam machen wir Second-Hand einfacher und nachhaltiger.`,
+      intro: `Hallo ${name}, schön, dass du da bist. Gemeinsam machen wir Second-Hand einfacher und nachhaltiger.`,
       body: `
-        <p style="margin: 0;">Dein Konto ist bereit. Du kannst jetzt Artikel entdecken, handeln, verkaufen und spaeter auch die AI-Helfer fuer Commerce-Aufgaben nutzen.</p>
+        <p style="margin: 0;">Dein Konto ist bereit. Du kannst jetzt Artikel entdecken, handeln, verkaufen und später auch die AI-Helfer für Commerce-Aufgaben nutzen.</p>
       `,
       ctaLabel: 'Katalog entdecken',
       ctaUrl: resolveUrl('/catalog'),
       accent: '#2D6A4F',
-      footer: 'Du erhaeltst diese E-Mail, weil du dich bei cssberlin.de registriert hast.',
+      footer: 'Du erhältst diese E-Mail, weil du dich bei cssberlin.de registriert hast.',
     }),
   };
 }
@@ -157,14 +157,14 @@ export function offerReceivedEmail(
 ): EmailOptions {
   return {
     to: '',
-    subject: `Neues Angebot fuer "${productTitle}"`,
+    subject: `Neues Angebot für "${productTitle}"`,
     html: renderEmailLayout({
       title: 'Neues Angebot eingegangen',
       intro: `Hallo ${sellerName}, ${buyerName} hat dir ein Angebot geschickt.`,
       body: `
         <p style="margin: 0 0 12px;"><strong>Artikel:</strong> ${productTitle}</p>
         <p style="margin: 0 0 12px;"><strong>Angebot:</strong> ${offeredPrice.toFixed(2)} &euro;</p>
-        <p style="margin: 0;">Du kannst direkt auf cssberlin.de antworten und die Verhandlung in deiner Inbox oder in der Angebotsuebersicht weiterfuehren.</p>
+        <p style="margin: 0;">Du kannst direkt auf cssberlin.de antworten und die Verhandlung in deiner Inbox oder in der Angebotsübersicht weiterführen.</p>
       `,
       ctaLabel: 'Angebot ansehen',
       ctaUrl: productUrl,
@@ -180,9 +180,9 @@ export function orderConfirmedEmail(
 ): EmailOptions {
   return {
     to: '',
-    subject: `Bestellung bestaetigt - ${productTitle}`,
+    subject: `Bestellung bestätigt - ${productTitle}`,
     html: renderEmailLayout({
-      title: 'Deine Bestellung ist bestaetigt',
+      title: 'Deine Bestellung ist bestätigt',
       intro: `Hallo ${buyerName}, deine Zahlung war erfolgreich.`,
       body: `
         <p style="margin: 0 0 12px;"><strong>Artikel:</strong> ${productTitle}</p>
@@ -212,9 +212,9 @@ export function newSaleSellerEmail(
       body: `
         <p style="margin: 0 0 12px;"><strong>Artikel:</strong> ${productTitle}</p>
         <p style="margin: 0 0 12px;"><strong>Bestellwert:</strong> ${totalAmount.toFixed(2)} &euro;</p>
-        <p style="margin: 0;">Bitte hinterlege den Versanddienst und optional die Trackingnummer, damit der Kaeufer den Status sofort sehen kann.</p>
+        <p style="margin: 0;">Bitte hinterlege den Versanddienst und optional die Trackingnummer, damit der Käufer den Status sofort sehen kann.</p>
       `,
-      ctaLabel: 'Verkauf oeffnen',
+      ctaLabel: 'Verkauf öffnen',
       ctaUrl: resolveUrl(`/sales/${orderId}`),
     }),
   };
@@ -234,7 +234,7 @@ export function shippingUpdateEmail(
     to: '',
     subject: `Dein Paket ist unterwegs - ${productTitle}`,
     html: renderEmailLayout({
-      title: 'Versandupdate fuer deine Bestellung',
+      title: 'Versandupdate für deine Bestellung',
       intro: `Hallo ${buyerName}, dein Artikel "${productTitle}" wurde als versendet markiert.`,
       body: `
         <p style="margin: 0 0 12px;"><strong>Versanddienst:</strong> ${carrier}</p>
@@ -258,7 +258,7 @@ export function orderCompletedSellerEmail(
     subject: `Bestellung abgeschlossen - ${productTitle}`,
     html: renderEmailLayout({
       title: 'Die Bestellung ist abgeschlossen',
-      intro: `Hallo ${sellerName}, ${buyerName} hat den Erhalt bestaetigt.`,
+      intro: `Hallo ${sellerName}, ${buyerName} hat den Erhalt bestätigt.`,
       body: `
         <p style="margin: 0 0 12px;"><strong>Artikel:</strong> ${productTitle}</p>
         <p style="margin: 0;">Die Transaktion ist jetzt abgeschlossen. Alle Timeline-Details bleiben in deiner Verkaufsansicht dokumentiert.</p>
@@ -279,16 +279,16 @@ export function disputeOpenedSellerEmail(
 ): EmailOptions {
   return {
     to: '',
-    subject: `Streitfall fuer ${productTitle}`,
+    subject: `Streitfall für ${productTitle}`,
     html: renderEmailLayout({
-      title: 'Ein Streitfall wurde eroeffnet',
-      intro: `Hallo ${sellerName}, ${buyerName} hat fuer diese Bestellung einen Kaeuferschutz-Fall gemeldet.`,
+      title: 'Ein Streitfall wurde eröffnet',
+      intro: `Hallo ${sellerName}, ${buyerName} hat für diese Bestellung einen Käuferschutz-Fall gemeldet.`,
       body: `
         <p style="margin: 0 0 12px;"><strong>Artikel:</strong> ${productTitle}</p>
         <p style="margin: 0 0 12px;"><strong>Bestellung:</strong> ${orderId}</p>
         <p style="margin: 0;"><strong>Grund:</strong> ${reason}</p>
       `,
-      ctaLabel: 'Bestellung pruefen',
+      ctaLabel: 'Bestellung prüfen',
       ctaUrl: resolveUrl(`/sales/${orderId}`),
       accent: '#B45309',
     }),

@@ -3,6 +3,8 @@ import { rm } from 'fs/promises';
 import path from 'path';
 import prisma from '@/lib/db';
 
+import { timingSafeEqual } from 'crypto';
+
 export const runtime = 'nodejs';
 
 const UPLOAD_ROOT = process.env.LOCAL_UPLOAD_DIR || '/app/uploads';
@@ -29,7 +31,18 @@ export async function GET(request: Request) {
       console.error('CRON_SECRET is not configured; refusing to run cleanup.');
       return NextResponse.json({ error: 'Cleanup is not configured.' }, { status: 503 });
     }
-    if (authHeader !== `Bearer ${expected}`) {
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const token = authHeader.substring(7).trim();
+    const expectedTrimmed = expected.trim();
+    try {
+      if (!timingSafeEqual(Buffer.from(token), Buffer.from(expectedTrimmed))) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+    } catch {
+      // timingSafeEqual throws if lengths do not match
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

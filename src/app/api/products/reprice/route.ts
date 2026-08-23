@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { ApiResponse } from '@/lib/api-response';
 
 export const runtime = 'nodejs';
 
-// Ein einzelner Aufruf darf den Preis hoechstens halbieren. Das ist keine
+// Ein einzelner Aufruf darf den Preis höchstens halbieren. Das ist keine
 // fachliche Regel, sondern eine Notbremse: ein Rechenfehler auf TATANGA-Seite
 // soll nicht den gesamten Katalog verramschen.
 const MAX_DROP_RATIO = 0.5;
@@ -16,10 +16,10 @@ type RepriceItem = { hub_product_id?: string; product_id?: string; price?: numbe
  *
  * TATANGA meldet gesenkte Preise. Bewusst eng gehalten:
  *  - nur Artikel mit sourceHubId, also nur unsere eigenen Importe. Angebote
- *    echter Verkaeufer werden hier niemals angefasst.
- *  - originalPrice wird beim ersten Mal festgehalten und danach nie ueberschrieben,
+ *    echter Verkäufer werden hier niemals angefasst.
+ *  - originalPrice wird beim ersten Mal festgehalten und danach nie überschrieben,
  *    damit der Rabatt immer gegen den urspruenglichen Preis gerechnet wird.
- *  - Preiserhoehungen werden abgelehnt: diese Route senkt Preise, sonst nichts.
+ *  - Preiserhöhungen werden abgelehnt: diese Route senkt Preise, sonst nichts.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
       return ApiResponse.serverError('Reprice ist serverseitig nicht konfiguriert.');
     }
     if (request.headers.get('x-api-key') !== expectedKey) {
-      return ApiResponse.unauthorized('Ungueltiger API-Schluessel.');
+      return ApiResponse.unauthorized('Ungültiger API-Schlüssel.');
     }
 
     const payload = await request.json();
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
         skipped.push({ ref, reason: 'Artikel nicht gefunden' });
         continue;
       }
-      // Sicherheitsgrenze: fremde Angebote bleiben unberuehrt.
+      // Sicherheitsgrenze: fremde Angebote bleiben unberührt.
       if (!product.sourceHubId) {
         skipped.push({ ref, reason: 'kein TATANGA-Artikel - Preis wird nicht angefasst' });
         continue;
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
         continue;
       }
       if (newPrice < product.price * MAX_DROP_RATIO) {
-        skipped.push({ ref, reason: `Preissturz ueber ${(1 - MAX_DROP_RATIO) * 100}% - bitte manuell pruefen` });
+        skipped.push({ ref, reason: `Preissturz über ${(1 - MAX_DROP_RATIO) * 100}% - bitte manuell prüfen` });
         continue;
       }
 

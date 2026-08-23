@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+﻿import type { Metadata } from 'next';
 import { cache } from 'react';
 import prisma from '@/lib/db';
 
@@ -39,7 +39,7 @@ export async function generateMetadata(
 
   const title = p.brand ? `${p.title} – ${p.brand}` : p.title;
   const desc = (p.description
-    || `${p.title} bei cssberlin.de – nachhaltig gebraucht kaufen mit Kaeuferschutz.`).slice(0, 160);
+    || `${p.title} bei cssberlin.de – nachhaltig gebraucht kaufen mit Käuferschutz.`).slice(0, 160);
   const img = p.images[0]?.url ? abs(p.images[0].url) : undefined;
 
   return {

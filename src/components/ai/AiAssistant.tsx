@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
@@ -29,8 +29,8 @@ const PAGE_CONTEXT_LABELS: Array<{ test: (path: string) => boolean; label: strin
     { test: (p) => p.startsWith('/offers'), label: 'Pazarlıklarım (Angebote)' },
     { test: (p) => p.startsWith('/upload'), label: 'Artikel verkaufen (Upload)' },
     { test: (p) => p.startsWith('/settings'), label: 'Einstellungen' },
-    { test: (p) => p.startsWith('/purchases'), label: 'Meine Einkaeufe' },
-    { test: (p) => p.startsWith('/sales'), label: 'Meine Verkaeufe' },
+    { test: (p) => p.startsWith('/purchases'), label: 'Meine Einkäufe' },
+    { test: (p) => p.startsWith('/sales'), label: 'Meine Verkäufe' },
     { test: (p) => p.startsWith('/favorites'), label: 'Favoriten' },
     { test: (p) => p.startsWith('/profile'), label: 'Profilseite' },
 ];
@@ -47,7 +47,7 @@ export default function AiAssistant() {
     const [messages, setMessages] = useState<Message[]>([
         {
             role: 'assistant',
-            content: 'Hallo! Ich bin CSS Assist. Frag mich zu Versand, Kaeuferschutz, Verkaufen oder allem rund um nachhaltige Second-Hand-Mode.',
+            content: 'Hallo! Ich bin CSS Assist. Frag mich zu Versand, Käuferschutz, Verkaufen oder allem rund um nachhaltige Second-Hand-Mode.',
         },
     ]);
     const [input, setInput] = useState('');
@@ -145,7 +145,7 @@ export default function AiAssistant() {
 
     const quickLinks = [
         'Wie verkaufe ich?',
-        'Was ist Kaeuferschutz?',
+        'Was ist Käuferschutz?',
         'Wie funktioniert Versand?',
     ];
 
@@ -262,7 +262,7 @@ export default function AiAssistant() {
                                 </button>
                             </div>
                             <p className="text-xs text-center mt-2 text-muted-foreground">
-                                KI-gestuetzt &ndash; bei wichtigen Fragen bitte Checkout- und Rechtsseiten pruefen
+                                KI-gestützt &ndash; bei wichtigen Fragen bitte Checkout- und Rechtsseiten prüfen
                             </p>
                         </div>
                     </motion.div>

@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+﻿import { NextRequest } from 'next/server';
 import prisma from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
 import { ApiResponse } from '@/lib/api-response';
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest, { params }: Params) {
       include: {
         product: {
           include: {
-            images: { take: 1, orderBy: { orderIndex: 'asc' } },
+            images: { take: 1, orderBy: { orderIndex: 'asc' }, /* embedding HARIC: 3072'lik vektor gorsel basina ~42 KB sisiriyor */ select: { id: true, url: true, thumbUrl: true, mediumUrl: true, orderIndex: true, productId: true, angle: true } },
           },
         },
         buyer: { select: { id: true, name: true, avatar: true, isPersonaAccount: true, managedByUserId: true } },
@@ -86,7 +86,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
     const body = await request.json();
     const parsed = respondOfferSchema.safeParse(body);
     if (!parsed.success) {
-      return ApiResponse.validationError('Ungueltige Aktion.');
+      return ApiResponse.validationError('Ungültige Aktion.');
     }
 
     const offer = await prisma.offer.findUnique({
@@ -123,7 +123,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
     const requiresAvailableProduct = action !== 'reject';
 
     if (requiresAvailableProduct && offer.product.status !== 'ACTIVE') {
-      return ApiResponse.error('Dieser Artikel ist nicht mehr fuer neue Angebotsaktionen verfuegbar.', 409);
+      return ApiResponse.error('Dieser Artikel ist nicht mehr für neue Angebotsaktionen verfügbar.', 409);
     }
 
     if (requiresAvailableProduct) {
@@ -162,7 +162,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
             senderId: actingId,
             receiverId: offer.buyerId,
             offerId: id,
-            content: `Dein Angebot fuer ${offer.product.title} wurde angenommen. Du kannst jetzt den Checkout starten.`,
+            content: `Dein Angebot für ${offer.product.title} wurde angenommen. Du kannst jetzt den Checkout starten.`,
           });
         } else {
           await prisma.message.create({
@@ -179,7 +179,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
             senderId: actingId,
             receiverId: offer.sellerId,
             offerId: id,
-            content: `${offer.buyer.name || 'Ein Mitglied'} hat dein Gegenangebot fuer ${offer.product.title} angenommen.`,
+            content: `${offer.buyer.name || 'Ein Mitglied'} hat dein Gegenangebot für ${offer.product.title} angenommen.`,
           });
         }
 
@@ -207,7 +207,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
             senderId: actingId,
             receiverId: offer.buyerId,
             offerId: id,
-            content: `Dein Angebot fuer ${offer.product.title} wurde abgelehnt. Du kannst ein neues Angebot senden, solange der Artikel aktiv ist.`,
+            content: `Dein Angebot für ${offer.product.title} wurde abgelehnt. Du kannst ein neues Angebot senden, solange der Artikel aktiv ist.`,
           });
         } else {
           await prisma.message.create({
@@ -224,7 +224,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
             senderId: actingId,
             receiverId: offer.sellerId,
             offerId: id,
-            content: `${offer.buyer.name || 'Ein Mitglied'} hat dein Gegenangebot fuer ${offer.product.title} abgelehnt.`,
+            content: `${offer.buyer.name || 'Ein Mitglied'} hat dein Gegenangebot für ${offer.product.title} abgelehnt.`,
           });
         }
 
@@ -276,7 +276,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
             senderId: actingId,
             receiverId: offer.buyerId,
             offerId: counter.id,
-            content: `Du hast ein Gegenangebot ueber ${counterPrice.toFixed(2)} EUR fuer ${offer.product.title} erhalten.`,
+            content: `Du hast ein Gegenangebot über ${counterPrice.toFixed(2)} EUR für ${offer.product.title} erhalten.`,
           });
         } else {
           await prisma.message.create({
@@ -293,7 +293,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
             senderId: actingId,
             receiverId: offer.sellerId,
             offerId: counter.id,
-            content: `${offer.buyer.name || 'Ein Mitglied'} hat ein neues Angebot ueber ${counterPrice.toFixed(2)} EUR fuer ${offer.product.title} geschickt.`,
+            content: `${offer.buyer.name || 'Ein Mitglied'} hat ein neues Angebot über ${counterPrice.toFixed(2)} EUR für ${offer.product.title} geschickt.`,
           });
         }
 
@@ -301,7 +301,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
       }
 
       default:
-        return ApiResponse.error('Ungueltige Aktion.');
+        return ApiResponse.error('Ungültige Aktion.');
     }
   } catch (error: any) {
     if (error.name === 'AuthError') return ApiResponse.unauthorized();

@@ -64,9 +64,9 @@ function getNotificationAction(notification: NotificationItem) {
   ) {
     return {
       href: '/purchases',
-      label: 'Zu meinen Kaeufen',
+      label: 'Zu meinen Käufen',
       secondaryHref: '/sales',
-      secondaryLabel: 'Verkaeufe',
+      secondaryLabel: 'Verkäufe',
     };
   }
 
@@ -78,7 +78,7 @@ function getNotificationAction(notification: NotificationItem) {
   ) {
     return {
       href: '/sales',
-      label: 'Zu meinen Verkaeufen',
+      label: 'Zu meinen Verkäufen',
       secondaryHref: '/dashboard',
       secondaryLabel: 'Dashboard',
     };
@@ -221,7 +221,7 @@ export default function NotificationsPage() {
               Benachrichtigungen
             </h1>
             <p className="mt-2 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-              Systemhinweise und neue Aktivitaeten aus `/api/notifications`.
+              Systemhinweise und neue Aktivitäten aus `/api/notifications`.
             </p>
           </div>
           <button

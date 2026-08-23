@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -14,6 +14,7 @@ import {
   SendHorizontal,
   Tag,
   XCircle,
+  Info,
 } from 'lucide-react';
 import {
   formatPrice,
@@ -82,7 +83,7 @@ function getAvailabilityMeta(status: string) {
       return {
         label: 'Reserviert',
         tone: 'bg-amber-100 text-amber-800',
-        message: 'Der Artikel ist aktuell reserviert. Neue Abschluesse sind vorerst blockiert.',
+        message: 'Der Artikel ist aktuell reserviert. Neue Abschlüsse sind vorerst blockiert.',
       };
     case 'SOLD':
       return {
@@ -94,13 +95,13 @@ function getAvailabilityMeta(status: string) {
       return {
         label: 'Offline',
         tone: 'bg-slate-200 text-slate-700',
-        message: 'Das Listing ist nicht mehr oeffentlich verfuegbar.',
+        message: 'Das Listing ist nicht mehr öffentlich verfügbar.',
       };
     default:
       return {
         label: productStatusToLabel[status] || status,
         tone: 'bg-slate-200 text-slate-700',
-        message: 'Das Listing steht derzeit nicht fuer den normalen Kaufprozess bereit.',
+        message: 'Das Listing steht derzeit nicht für den normalen Kaufprozess bereit.',
       };
   }
 }
@@ -123,10 +124,10 @@ function getSentOfferMessage(offer: OfferItem) {
     return 'Dein Preis wurde akzeptiert. Du kannst jetzt mit diesem Angebot in den Checkout gehen.';
   }
   if (isBuyerCounterActionable(offer)) {
-    return 'Der Verkaeufer hat ein Gegenangebot geschickt. Du kannst es annehmen, ablehnen oder erneut verhandeln.';
+    return 'Der Verkäufer hat ein Gegenangebot geschickt. Du kannst es annehmen, ablehnen oder erneut verhandeln.';
   }
   if (offer.pendingOn === 'SELLER' && offer.product.status === 'ACTIVE') {
-    return 'Dein Angebot ist offen. Du wartest gerade auf die Rueckmeldung des Verkaeufers.';
+    return 'Dein Angebot ist offen. Du wartest gerade auf die Rückmeldung des Verkäufers.';
   }
   if (offer.product.status !== 'ACTIVE' && offer.status === 'PENDING') {
     return availability.message;
@@ -135,7 +136,7 @@ function getSentOfferMessage(offer: OfferItem) {
     return 'Dieses Angebot wurde beendet. Du kannst bei einem aktiven Listing ein neues Angebot senden.';
   }
   if (offer.status === 'COUNTERED') {
-    return 'Dieser Angebotsstand wurde von einer neueren Verhandlungsrunde abgeloest.';
+    return 'Dieser Angebotsstand wurde von einer neueren Verhandlungsrunde abgelöst.';
   }
   return availability.message;
 }
@@ -150,13 +151,13 @@ function getReceivedOfferMessage(offer: OfferItem) {
     return 'Dieses Angebot wartet auf deine Entscheidung. Du kannst annehmen, ablehnen oder ein Gegenangebot senden.';
   }
   if (offer.pendingOn === 'BUYER' && offer.originRole === 'SELLER_COUNTER') {
-    return 'Dein Gegenangebot ist offen. Jetzt wartest du auf die Rueckmeldung des Kaeufers.';
+    return 'Dein Gegenangebot ist offen. Jetzt wartest du auf die Rückmeldung des Käufers.';
   }
   if (offer.product.status !== 'ACTIVE' && offer.status === 'PENDING') {
     return availability.message;
   }
   if (offer.status === 'ACCEPTED') {
-    return 'Das Angebot wurde angenommen. Der Kaeufer kann nun in den Checkout gehen.';
+    return 'Das Angebot wurde angenommen. Der Käufer kann nun in den Checkout gehen.';
   }
   if (offer.status === 'REJECTED') {
     return 'Diese Verhandlungsrunde wurde abgelehnt.';
@@ -250,7 +251,7 @@ export default function OffersPage() {
 
   const submitOfferAction = async (offer: OfferItem, action: 'accept' | 'reject' | 'counter') => {
     if (action === 'counter' && !counterValue.trim()) {
-      setFeedback({ offerId: offer.id, type: 'error', message: 'Bitte gib zuerst einen Preis fuer das Gegenangebot ein.' });
+      setFeedback({ offerId: offer.id, type: 'error', message: 'Bitte gib zuerst einen Preis für das Gegenangebot ein.' });
       return;
     }
 
@@ -282,7 +283,7 @@ export default function OffersPage() {
         type: 'success',
         message:
           action === 'accept'
-            ? 'Angebot erfolgreich bestaetigt.'
+            ? 'Angebot erfolgreich bestätigt.'
             : action === 'reject'
               ? 'Angebot erfolgreich beendet.'
               : 'Neues Gegenangebot erfolgreich gesendet.',
@@ -309,7 +310,7 @@ export default function OffersPage() {
               Angebote und Verhandlungen
             </h1>
             <p className="mt-2 max-w-2xl text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-              Hier siehst du alle laufenden, akzeptierten, beendeten und nicht mehr verfuegbaren Preisverhandlungen an einem Ort.
+              Hier siehst du alle laufenden, akzeptierten, beendeten und nicht mehr verfügbaren Preisverhandlungen an einem Ort.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -324,7 +325,7 @@ export default function OffersPage() {
               Zur Inbox
             </Link>
             <Link href="/catalog" className="rounded-full px-5 py-3 text-sm font-bold text-white" style={{ background: 'var(--color-orange)' }}>
-              Weiter stoebern
+              Weiter stöbern
             </Link>
           </div>
         </div>
@@ -332,7 +333,7 @@ export default function OffersPage() {
         <div className="mb-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {[
             {
-              label: 'Warte auf Verkaeufer',
+              label: 'Warte auf Verkäufer',
               value: summary.waitingForSeller,
               icon: <Clock3 size={18} />,
             },
@@ -347,7 +348,7 @@ export default function OffersPage() {
               icon: <SendHorizontal size={18} />,
             },
             {
-              label: 'Nicht mehr verfuegbar',
+              label: 'Nicht mehr verfügbar',
               value: summary.unavailable,
               icon: <XCircle size={18} />,
             },
@@ -404,7 +405,7 @@ export default function OffersPage() {
               const canSellerAct = isSellerActionable(offer);
               const canBuyerAct = isBuyerCounterActionable(offer);
               const counterpart = view === 'sent' ? offer.seller : offer.buyer;
-              const counterpartLabel = view === 'sent' ? 'Verkaeufer' : 'Kaeufer';
+              const counterpartLabel = view === 'sent' ? 'Verkäufer' : 'Käufer';
               const feedbackForCard = feedback?.offerId === offer.id ? feedback : null;
               const checkoutHref = `/checkout/${offer.product.id}?offerId=${encodeURIComponent(offer.id)}`;
               const orderHref = view === 'sent' ? `/purchases/${offer.latestOrder?.id}` : `/sales/${offer.latestOrder?.id}`;
@@ -459,11 +460,9 @@ export default function OffersPage() {
                         ) : null}
 
                         {counterTargetId === offer.id ? (
-                          <div className="mt-4 rounded-2xl border p-4" style={{ borderColor: 'var(--color-border)' }}>
-                            <label className="mb-2 block text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>
-                              Neuer Preisvorschlag
-                            </label>
-                            <div className="flex flex-col gap-3 md:flex-row">
+                          <div className="mt-4 rounded-2xl border p-4" style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg-card)' }}>
+                            <p className="mb-2 text-sm font-bold" style={{ color: 'var(--color-text)' }}>Gegenangebot machen</p>
+                            <div className="flex gap-2">
                               <input
                                 type="number"
                                 min="0"
@@ -489,6 +488,12 @@ export default function OffersPage() {
                               >
                                 Abbrechen
                               </button>
+                            </div>
+                            <div className="mt-3 flex items-start gap-2 text-gray-500">
+                              <Info size={14} className="mt-0.5 shrink-0" />
+                              <span className="text-[10px] leading-tight">
+                                <strong>Verbindliches Angebot:</strong> Mit dem Senden eines Preisvorschlags erklärst du dich bereit, den Artikel zu diesem Preis zu kaufen/verkaufen. Nimmt die Gegenseite an, kommt ein verbindlicher Kaufvertrag zustande.
+                              </span>
                             </div>
                           </div>
                         ) : null}
@@ -588,8 +593,8 @@ export default function OffersPage() {
             </h2>
             <p className="mx-auto mt-2 max-w-md text-sm" style={{ color: 'var(--color-text-secondary)' }}>
               {view === 'sent'
-                ? 'Sobald du fuer einen Artikel einen Preis vorschlaegst, erscheint die gesamte Verhandlung hier.'
-                : 'Wenn Kaeufer auf deine Listings bieten, kannst du alle Entscheidungen hier zentral steuern.'}
+                ? 'Sobald du für einen Artikel einen Preis vorschlägst, erscheint die gesamte Verhandlung hier.'
+                : 'Wenn Käufer auf deine Listings bieten, kannst du alle Entscheidungen hier zentral steuern.'}
             </p>
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
               <Link href="/catalog" className="rounded-full px-5 py-3 font-bold text-white" style={{ background: 'var(--color-orange)' }}>

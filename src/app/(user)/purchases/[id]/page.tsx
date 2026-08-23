@@ -179,11 +179,11 @@ export default function PurchaseDetailPage() {
       });
       const result = await response.json();
       if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Empfang konnte nicht bestaetigt werden.');
+        throw new Error(result.error || 'Empfang konnte nicht bestätigt werden.');
       }
       await refreshOrder();
     } catch (actionError: any) {
-      setError(actionError.message || 'Empfang konnte nicht bestaetigt werden.');
+      setError(actionError.message || 'Empfang konnte nicht bestätigt werden.');
     } finally {
       setSubmitting(false);
     }
@@ -253,13 +253,13 @@ export default function PurchaseDetailPage() {
         <div className="rounded-3xl border border-dashed p-10 text-center" style={{ borderColor: 'var(--color-border)' }}>
           <AlertTriangle size={28} className="mx-auto mb-4" style={{ color: 'var(--color-primary)' }} />
           <h1 className="mb-2 text-2xl font-bold" style={{ color: 'var(--color-text)' }}>
-            Bestellung nicht verfuegbar
+            Bestellung nicht verfügbar
           </h1>
           <p className="mb-6 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
             {error || 'Diese Bestellung konnte nicht geladen werden.'}
           </p>
           <Link href="/purchases" className="rounded-full px-6 py-3 font-bold text-white btn-mars-earth" style={{ background: 'var(--color-orange)' }}>
-            <span>Zurueck zu meinen Kaeufen</span>
+            <span>Zurück zu meinen Käufen</span>
           </Link>
         </div>
       </div>
@@ -278,7 +278,7 @@ export default function PurchaseDetailPage() {
           className="mb-6 inline-flex items-center gap-2 text-sm font-semibold"
           style={{ color: 'var(--color-primary)' }}
         >
-          <ArrowLeft size={16} /> Zurueck zu meinen Kaeufen
+          <ArrowLeft size={16} /> Zurück zu meinen Käufen
         </button>
 
         <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -327,7 +327,7 @@ export default function PurchaseDetailPage() {
                   </h2>
                   <p className="mt-1 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
                     Zustand: {getConditionLabel(order.product.condition)}
-                    {order.product.size ? ` - Groesse ${order.product.size}` : ''}
+                    {order.product.size ? ` - Größe ${order.product.size}` : ''}
                   </p>
                   <Link href={`/product/${order.product.id}`} className="mt-3 inline-flex text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>
                     Produktseite ansehen
@@ -378,7 +378,7 @@ export default function PurchaseDetailPage() {
                 <div className="flex items-start gap-3">
                   <CheckCircle2 size={18} style={{ color: 'var(--color-primary)', marginTop: 2 }} />
                   <div>
-                    <p className="font-semibold" style={{ color: 'var(--color-text)' }}>Verkaeufer</p>
+                    <p className="font-semibold" style={{ color: 'var(--color-text)' }}>Verkäufer</p>
                     <p>{order.seller.name || 'cssberlin member'}{order.seller.location ? ` - ${order.seller.location}` : ''}</p>
                   </div>
                 </div>
@@ -396,7 +396,7 @@ export default function PurchaseDetailPage() {
                 <div className="mb-3 flex items-center gap-2">
                   <ShieldAlert size={18} style={{ color: 'var(--color-primary)' }} />
                   <h2 className="text-lg font-bold" style={{ color: 'var(--color-text)' }}>
-                    Streitfall eroeffnen
+                    Streitfall eröffnen
                   </h2>
                 </div>
                 <p className="mb-4 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
@@ -407,7 +407,7 @@ export default function PurchaseDetailPage() {
                   onChange={(event) => setDisputeReason(event.target.value)}
                   className="min-h-28 w-full rounded-2xl border px-4 py-3 text-sm outline-none"
                   style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }}
-                  placeholder="Beschreibe das Problem moeglichst konkret..."
+                  placeholder="Beschreibe das Problem möglichst konkret..."
                 />
                 <button
                   type="submit"
@@ -451,7 +451,7 @@ export default function PurchaseDetailPage() {
                 ) : (
                   <form onSubmit={handleSubmitReview}>
                     <p className="mb-4 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                      Wie war dein Kauf bei {order.seller.name || 'diesem Verkaeufer'}?
+                      Wie war dein Kauf bei {order.seller.name || 'diesem Verkäufer'}?
                     </p>
                     <div className="mb-4 flex items-center gap-1">
                       {[1, 2, 3, 4, 5].map((star) => (
@@ -477,7 +477,7 @@ export default function PurchaseDetailPage() {
                       minLength={3}
                       className="min-h-24 w-full rounded-2xl border px-4 py-3 text-sm outline-none"
                       style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)', background: 'var(--color-bg)' }}
-                      placeholder="Erzaehl anderen von deiner Erfahrung..."
+                      placeholder="Erzähl anderen von deiner Erfahrung..."
                     />
                     {reviewError ? (
                       <p className="mt-2 text-sm text-red-600">{reviewError}</p>
@@ -498,7 +498,7 @@ export default function PurchaseDetailPage() {
           <div className="lg:col-span-5">
             <div className="sticky top-24 rounded-3xl border bg-white p-6 shadow-sm" style={{ borderColor: 'var(--color-border)' }}>
               <h2 className="mb-4 text-lg font-bold" style={{ color: 'var(--color-text)' }}>
-                Kostenuebersicht
+                Kostenübersicht
               </h2>
               <div className="space-y-3 border-b pb-6 text-sm" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
                 <div className="flex justify-between">
@@ -510,7 +510,7 @@ export default function PurchaseDetailPage() {
                   <span className="font-semibold" style={{ color: 'var(--color-text)' }}>{formatPrice(order.shippingFee)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Kaeuferschutz</span>
+                  <span>Käuferschutz</span>
                   <span className="font-semibold" style={{ color: 'var(--color-primary)' }}>{formatPrice(order.protectionFee)}</span>
                 </div>
                 {order.offer ? (
@@ -534,13 +534,13 @@ export default function PurchaseDetailPage() {
                   className="w-full rounded-2xl py-4 text-lg font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
                   style={{ background: 'var(--color-orange)' }}
                 >
-                  {submitting ? 'Wird verarbeitet...' : 'Erhalt bestaetigen'}
+                  {submitting ? 'Wird verarbeitet...' : 'Erhalt bestätigen'}
                 </button>
               ) : null}
 
               <div className="mt-4 space-y-3">
                 <Link href={`/inbox?with=${order.seller.id}`} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-bold" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}>
-                  <MessageCircle size={16} /> Verkaeufer kontaktieren
+                  <MessageCircle size={16} /> Verkäufer kontaktieren
                 </Link>
                 {order.offer ? (
                   <Link href="/offers" className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-bold" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}>

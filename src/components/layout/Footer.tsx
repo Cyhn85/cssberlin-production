@@ -40,7 +40,7 @@ const footerSections = [
     links: [
       { name: 'Favoriten', href: '/favorites' },
       { name: 'Benachrichtigungen', href: '/notifications' },
-      { name: 'Kaeufe', href: '/purchases' },
+      { name: 'Käufe', href: '/purchases' },
       { name: 'Einstellungen', href: '/settings' },
     ],
   },
@@ -71,7 +71,7 @@ export default function Footer() {
               className="mb-4 max-w-xs text-sm leading-relaxed"
               style={{ color: 'var(--color-text-secondary)' }}
             >
-              Dein nachhaltiger Marktplatz in Berlin. Kaufe und verkaufe Second-Hand fuer dich und die Umwelt.
+              Dein nachhaltiger Marktplatz in Berlin. Kaufe und verkaufe Second-Hand für dich und die Umwelt.
             </p>
 
             <div className="space-y-2 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
@@ -138,7 +138,7 @@ export default function Footer() {
         >
           <p>&copy; {new Date().getFullYear()} cssberlin.de - Alle Rechte vorbehalten.</p>
           <p className="flex items-center gap-1">
-            Mit <Leaf size={12} style={{ color: 'var(--color-primary)' }} /> fuer die Umwelt gemacht in Berlin
+            Mit <Leaf size={12} style={{ color: 'var(--color-primary)' }} /> für die Umwelt gemacht in Berlin
           </p>
         </div>
       </div>

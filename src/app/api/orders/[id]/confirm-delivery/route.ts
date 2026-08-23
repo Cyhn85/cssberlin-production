@@ -25,10 +25,10 @@ export async function POST(request: NextRequest, { params }: Params) {
 
     if (!order) return ApiResponse.notFound('Bestellung nicht gefunden.');
     if (order.buyerId !== session.user.id) {
-      return ApiResponse.forbidden('Nur der Kaeufer kann den Empfang bestaetigen.');
+      return ApiResponse.forbidden('Nur der Käufer kann den Empfang bestätigen.');
     }
     if (order.status !== 'DELIVERED' && order.status !== 'SHIPPED') {
-      return ApiResponse.error('Empfangsbestaetigung nur fuer versendete oder zugestellte Bestellungen moeglich.');
+      return ApiResponse.error('Empfangsbestaetigung nur für versendete oder zugestellte Bestellungen möglich.');
     }
 
     const updated = await prisma.$transaction(async (tx) => {

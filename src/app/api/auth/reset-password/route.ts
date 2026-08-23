@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import prisma from '@/lib/db';
@@ -12,7 +12,7 @@ const MIN_PASSWORD_LENGTH = 8;
  * POST /api/auth/reset-password  { token, password }
  *
  * Setzt das neue Passwort. Das Token wird gehasht nachgeschlagen, muss unbenutzt
- * und noch gueltig sein, und wird direkt danach als verbraucht markiert - ein
+ * und noch gültig sein, und wird direkt danach als verbraucht markiert - ein
  * Link funktioniert also genau einmal.
  */
 export async function POST(request: NextRequest) {
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     const rl = await rateLimit(getClientIP(request), 'AUTH');
     if (!rl.success) {
       return NextResponse.json(
-        { success: false, error: 'Zu viele Versuche. Bitte spaeter erneut versuchen.' },
+        { success: false, error: 'Zu viele Versuche. Bitte später erneut versuchen.' },
         { status: 429 },
       );
     }
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     const password = String(body?.password || '');
 
     if (!token) {
-      return NextResponse.json({ success: false, error: 'Link ist unvollstaendig.' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'Link ist unvollständig.' }, { status: 400 });
     }
     if (password.length < MIN_PASSWORD_LENGTH) {
       return NextResponse.json(
@@ -58,11 +58,11 @@ export async function POST(request: NextRequest) {
       prisma.passwordResetToken.update({ where: { id: record.id }, data: { usedAt: new Date() } }),
     ]);
 
-    return NextResponse.json({ success: true, message: 'Passwort geaendert. Du kannst dich jetzt anmelden.' });
+    return NextResponse.json({ success: true, message: 'Passwort geändert. Du kannst dich jetzt anmelden.' });
   } catch (error) {
     console.error('POST /api/auth/reset-password error:', error);
     return NextResponse.json(
-      { success: false, error: 'Passwort konnte nicht geaendert werden.' },
+      { success: false, error: 'Passwort konnte nicht geändert werden.' },
       { status: 500 },
     );
   }

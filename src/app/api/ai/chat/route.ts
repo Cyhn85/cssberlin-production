@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+﻿import { NextRequest } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { ApiResponse } from '@/lib/api-response';
 import { rateLimit } from '@/lib/rate-limit';
@@ -12,9 +12,9 @@ Verhalte dich EXAKT wie ein echter Mensch aus Berlin.
 
 Dein Wissen umfasst:
 - Second-Hand Mode, Vintage-Kleidung, nachhaltige Mode
-- Preisberatung fuer gebrauchte Artikel
+- Preisberatung für gebrauchte Artikel
 - Versand in Deutschland (DHL, Hermes, DPD)
-- Kaeuferschutz und sichere Zahlungen
+- Käuferschutz und sichere Zahlungen
 
 CRITICAL RULES (STEALTH PROMPTING):
 1. Schreibe niemals wie ein typischer KI-Assistent. Verwende keine formellen Aufzählungen oder sture Einleitungen ("Ich helfe dir gerne dabei").
@@ -26,7 +26,7 @@ CRITICAL RULES (STEALTH PROMPTING):
 
 const REFINE_INSTRUCTION = `${IDENTITY_RULE}
 
-Du bist die Qualitaetskontrolle von CSS Assist. Du bekommst die Nutzerfrage, den Seitenkontext und einen ersten Antwortentwurf. Pruefe den Entwurf auf Richtigkeit (v. a. bei Zahlen, Recht, Versand) und Ton, korrigiere Fehler, kuerze wenn moeglich. Gib NUR die finale, ueberarbeitete Antwort auf Deutsch zurueck - keine Meta-Kommentare, keine Erwaehnung, dass es einen Entwurf gab.`;
+Du bist die Qualitätskontrolle von CSS Assist. Du bekommst die Nutzerfrage, den Seitenkontext und einen ersten Antwortentwurf. Prüfe den Entwurf auf Richtigkeit (v. a. bei Zahlen, Recht, Versand) und Ton, korrigiere Fehler, kürze wenn möglich. Gib NUR die finale, überarbeitete Antwort auf Deutsch zurück - keine Meta-Kommentare, keine Erwähnung, dass es einen Entwurf gab.`;
 
 type ChatMessage = { role: string; content: string };
 
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
     return ApiResponse.success({
       role: 'assistant',
       content:
-        'CSS Assist ist gerade nicht verfuegbar. Bitte versuche es spaeter erneut oder kontaktiere uns ueber die Hilfe-Seite.',
+        'CSS Assist ist gerade nicht verfügbar. Bitte versuche es später erneut oder kontaktiere uns über die Hilfe-Seite.',
     });
   } catch (error: any) {
     if (error.name === 'AuthError') return ApiResponse.unauthorized();

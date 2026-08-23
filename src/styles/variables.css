@@ -17,6 +17,10 @@
   --color-orange-100: #FFE0C2;
   --color-orange-200: #FFCA99;
   --color-orange-glow: rgba(232, 101, 26, 0.35);
+  /* Halo behind the `glow` button variant. Defined here, and overridden in
+     the dark block below, so the effect follows the theme instead of
+     freezing the light-mode green into a literal rgba(). */
+  --color-primary-glow: rgba(45, 106, 79, 0.20);
 
   /* ── Brand Gradients (Mars → Earth) ── */
   --gradient-mars-earth: linear-gradient(135deg, #E8651A 0%, #F28A3D 25%, #40916C 75%, #2D6A4F 100%);
@@ -132,6 +136,7 @@
     --color-text: var(--color-dark-text);
     --color-text-secondary: var(--color-dark-text-secondary);
     --color-border: var(--color-dark-border);
+    --color-primary-glow: rgba(64, 145, 108, 0.28);
   }
 }
 
@@ -142,4 +147,5 @@
   --color-text: var(--color-dark-text);
   --color-text-secondary: var(--color-dark-text-secondary);
   --color-border: var(--color-dark-border);
+  --color-primary-glow: rgba(64, 145, 108, 0.28);
 }

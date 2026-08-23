@@ -31,19 +31,38 @@ export async function saveProductImage(
   productId: string,
   index: number,
   mimeType: string
-): Promise<string> {
+): Promise<{ url: string; thumbUrl: string; mediumUrl: string }> {
   const ext = extensionForMimeType(mimeType);
   if (!ext) {
-    throw new Error(`Nicht unterstuetzter Bildtyp: ${mimeType}`);
+    throw new Error(`Nicht unterstützter Bildtyp: ${mimeType}`);
   }
 
   const dir = path.join(UPLOAD_ROOT, 'products', productId);
   await mkdir(dir, { recursive: true });
 
-  const filename = `${index}.${ext}`;
-  await writeFile(path.join(dir, filename), buffer);
+  const sharp = (await import('sharp')).default;
 
-  // Return a relative URL instead of absolute to prevent CORS and HTTPS mixed content 
-  // issues when the app is accessed via different hostnames or mobile devices.
-  return `/uploads/products/${productId}/${filename}`;
+  const filename = `${index}.${ext}`;
+  const origPath = path.join(dir, filename);
+  await sharp(buffer)
+    .resize(1200, 1200, { fit: 'cover' })
+    .toFile(origPath);
+
+  const thumbFilename = `${index}-thumb.webp`;
+  await sharp(buffer)
+    .resize(320, 320, { fit: 'cover' })
+    .webp({ quality: 80 })
+    .toFile(path.join(dir, thumbFilename));
+
+  const mediumFilename = `${index}-medium.webp`;
+  await sharp(buffer)
+    .resize(800, 800, { fit: 'cover' })
+    .webp({ quality: 85 })
+    .toFile(path.join(dir, mediumFilename));
+
+  return {
+    url: `/uploads/products/${productId}/${filename}`,
+    thumbUrl: `/uploads/products/${productId}/${thumbFilename}`,
+    mediumUrl: `/uploads/products/${productId}/${mediumFilename}`
+  };
 }

@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { ApiResponse } from '@/lib/api-response';
 
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
       return ApiResponse.serverError('Import ist serverseitig nicht konfiguriert.');
     }
     if (request.headers.get('x-api-key') !== expectedKey) {
-      return ApiResponse.unauthorized('Ungueltiger API-Schluessel.');
+      return ApiResponse.unauthorized('Ungültiger API-Schlüssel.');
     }
 
     const payload = await request.json();
@@ -63,9 +63,9 @@ export async function POST(request: NextRequest) {
         rejected.push({ source_id: sourceId, reason: `unbekannte kind/lang Kombination (${kind}/${lang})` });
         continue;
       }
-      // Kein Beleg, keine Veroeffentlichung - das ist der ganze Sinn dieser Route.
+      // Kein Beleg, keine Veröffentlichung - das ist der ganze Sinn dieser Route.
       if (!evidence) {
-        rejected.push({ source_id: sourceId, reason: 'evidence fehlt - Aussage waere nicht nachvollziehbar' });
+        rejected.push({ source_id: sourceId, reason: 'evidence fehlt - Aussage wäre nicht nachvollziehbar' });
         continue;
       }
 

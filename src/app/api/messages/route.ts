@@ -1,10 +1,11 @@
-import { NextRequest } from 'next/server';
+﻿import { NextRequest } from 'next/server';
 import prisma from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
 import { ApiResponse } from '@/lib/api-response';
 import { createMessageSchema } from '@/lib/validations';
 import { CHANNELS, EVENTS, triggerEvent } from '@/lib/pusher';
 import { relayToPersonaManagerIfNeeded } from '@/lib/notifications';
+import { recordAction } from '@/lib/abuse-monitor';
 
 const messageOfferSelect = {
   id: true,
@@ -108,7 +109,7 @@ export async function POST(request: NextRequest) {
 
     const parsed = createMessageSchema.safeParse(body);
     if (!parsed.success) {
-      return ApiResponse.validationError('Ungueltige Nachricht.');
+      return ApiResponse.validationError('Ungültige Nachricht.');
     }
 
     const { receiverId, content, type, offerId } = parsed.data;
@@ -122,7 +123,13 @@ export async function POST(request: NextRequest) {
       select: { id: true },
     });
     if (!receiver) {
-      return ApiResponse.notFound('Empfaenger nicht gefunden.');
+      return ApiResponse.notFound('Empfänger nicht gefunden.');
+    }
+
+    // Volume ceiling: crossing it suspends the account. Checked before the
+    // write so the message that trips the ceiling is never delivered.
+    if (await recordAction(session.user.id, 'message')) {
+      return ApiResponse.error('Dein Konto wurde wegen ungewöhnlicher Aktivität gesperrt.');
     }
 
     const message = await prisma.message.create({

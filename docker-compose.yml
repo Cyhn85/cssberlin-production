@@ -1,6 +1,11 @@
-# Legacy compose file kept only for reference.
-# Use docker-compose.cloudflare.yml for active production deployments.
-# This file still reflects the old certbot-based flow and should not be the default path.
+# THIS is the file production runs. Verified on the live host from the running
+# container's own label:
+#   com.docker.compose.project.config_files = /opt/cssberlin-v2/docker-compose.yml
+#
+# It used to carry a header pointing at docker-compose.cloudflare.yml as the
+# "active" path. That was wrong and cost a deploy's worth of doubt: the
+# cloudflare file has not been touched since 9 August, this one since 19 August.
+# Deploy command (CLAUDE.md) calls plain `docker compose`, which resolves here.
 
 services:
   postgres:
@@ -58,6 +63,7 @@ services:
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
+      CRON_SECRET: ${CRON_SECRET:-}
       EMAIL_FROM: ${EMAIL_FROM:-noreply@cssberlin.de}
       UPSTASH_REDIS_REST_URL: ${UPSTASH_REDIS_REST_URL:-}
       UPSTASH_REDIS_REST_TOKEN: ${UPSTASH_REDIS_REST_TOKEN:-}

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Shared UI label and formatting helpers.
  */
 
@@ -60,23 +60,23 @@ export type OrderTimelineStep = {
 const ORDER_TIMELINE_BLUEPRINT = [
   {
     key: 'payment',
-    label: 'Zahlung bestaetigt',
-    description: 'Die Bestellung ist erfolgreich eingegangen und fuer beide Seiten sichtbar.',
+    label: 'Zahlung bestätigt',
+    description: 'Die Bestellung ist erfolgreich eingegangen und für beide Seiten sichtbar.',
   },
   {
     key: 'shipment',
-    label: 'Versand durch Verkaeufer',
-    description: 'Der Verkaeufer hinterlegt Versanddienst und Tracking.',
+    label: 'Versand durch Verkäufer',
+    description: 'Der Verkäufer hinterlegt Versanddienst und Tracking.',
   },
   {
     key: 'delivery',
-    label: 'Lieferung beim Kaeufer',
-    description: 'Die Sendung ist angekommen oder wird vom Kaeufer bestaetigt.',
+    label: 'Lieferung beim Käufer',
+    description: 'Die Sendung ist angekommen oder wird vom Käufer bestätigt.',
   },
   {
     key: 'completion',
     label: 'Bestellung abgeschlossen',
-    description: 'Die Transaktion ist beendet und der Artikel wechselt endgueltig in den Bestand des Kaeufers.',
+    description: 'Die Transaktion ist beendet und der Artikel wechselt endgültig in den Bestand des Käufers.',
   },
 ] as const;
 

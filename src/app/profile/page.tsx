@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -137,7 +137,7 @@ export default function ProfilePage() {
                   <Settings size={16} /> Profil bearbeiten
                 </Link>
                 <Link href="/dashboard" className="flex w-full items-center justify-center gap-2 rounded-xl border py-3 text-sm font-bold" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}>
-                  <ShoppingBag size={16} /> Verkaeufer-Dashboard
+                  <ShoppingBag size={16} /> Verkäufer-Dashboard
                 </Link>
               </div>
             </motion.div>
@@ -148,7 +148,7 @@ export default function ProfilePage() {
               {[
                 { label: 'Aktive Listings', value: profile._count.products, icon: <ShoppingBag size={18} /> },
                 { label: 'Follower', value: profile._count.followers, icon: <User size={18} /> },
-                { label: 'Verkaeufe', value: profile._count.ordersAsSeller, icon: <Star size={18} /> },
+                { label: 'Verkäufe', value: profile._count.ordersAsSeller, icon: <Star size={18} /> },
                 { label: 'CO2 gespart', value: `${profile.ecoCO2Saved.toFixed(1)}kg`, icon: <Leaf size={18} /> },
               ].map((stat) => (
                 <div key={stat.label} className="glass-card p-4 text-center">
@@ -164,13 +164,13 @@ export default function ProfilePage() {
             <div className="rounded-3xl border p-6" style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg-card)' }}>
               <div className="mb-4 flex items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-xl font-bold" style={{ color: 'var(--color-text)' }}>Ueber dich</h2>
+                  <h2 className="text-xl font-bold" style={{ color: 'var(--color-text)' }}>Über dich</h2>
                   <p className="mt-1 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                    {profile.bio || 'Fuege in den Einstellungen noch eine kurze Bio hinzu.'}
+                    {profile.bio || 'Füge in den Einstellungen noch eine kurze Bio hinzu.'}
                   </p>
                 </div>
                 <div className="flex gap-3 text-sm">
-                  <Link href="/purchases" style={{ color: 'var(--color-primary)' }}>Kaeufe</Link>
+                  <Link href="/purchases" style={{ color: 'var(--color-primary)' }}>Käufe</Link>
                   <Link href="/eco-impact" style={{ color: 'var(--color-primary)' }}>Eco-Impact</Link>
                 </div>
               </div>

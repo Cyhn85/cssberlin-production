@@ -224,13 +224,13 @@ export default function SaleDetailPage() {
         <div className="rounded-3xl border border-dashed p-10 text-center" style={{ borderColor: 'var(--color-border)' }}>
           <AlertTriangle size={28} className="mx-auto mb-4" style={{ color: 'var(--color-primary)' }} />
           <h1 className="mb-2 text-2xl font-bold" style={{ color: 'var(--color-text)' }}>
-            Verkauf nicht verfuegbar
+            Verkauf nicht verfügbar
           </h1>
           <p className="mb-6 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
             {error || 'Dieser Verkauf konnte nicht geladen werden.'}
           </p>
           <Link href="/sales" className="rounded-full px-6 py-3 font-bold text-white" style={{ background: 'var(--color-orange)' }}>
-            Zurueck zu meinen Verkaeufen
+            Zurück zu meinen Verkäufen
           </Link>
         </div>
       </div>
@@ -246,14 +246,14 @@ export default function SaleDetailPage() {
             Kein Seller-Zugriff
           </h1>
           <p className="mb-6 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-            Diese Bestellansicht ist fuer den verknuepften Verkaeufer gedacht. Als Kaeufer findest du deine Daten unter Meine Kaeufe.
+            Diese Bestellansicht ist für den verknüpften Verkäufer gedacht. Als Käufer findest du deine Daten unter Meine Käufe.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Link href="/sales" className="rounded-full border px-5 py-3 font-bold" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}>
-              Zurueck zu Verkaeufen
+              Zurück zu Verkäufen
             </Link>
             <Link href={`/purchases/${order.id}`} className="rounded-full px-5 py-3 font-bold text-white" style={{ background: 'var(--color-orange)' }}>
-              Kaufansicht oeffnen
+              Kaufansicht öffnen
             </Link>
           </div>
         </div>
@@ -273,7 +273,7 @@ export default function SaleDetailPage() {
           className="mb-6 inline-flex items-center gap-2 text-sm font-semibold"
           style={{ color: 'var(--color-primary)' }}
         >
-          <ArrowLeft size={16} /> Zurueck zu meinen Verkaeufen
+          <ArrowLeft size={16} /> Zurück zu meinen Verkäufen
         </button>
 
         <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -320,7 +320,7 @@ export default function SaleDetailPage() {
                   </h2>
                   <p className="mt-1 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
                     Zustand: {getConditionLabel(order.product.condition)}
-                    {order.product.size ? ` - Groesse ${order.product.size}` : ''}
+                    {order.product.size ? ` - Größe ${order.product.size}` : ''}
                   </p>
                   <Link href={`/product/${order.product.id}`} className="mt-3 inline-flex text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>
                     Produktseite ansehen
@@ -355,13 +355,13 @@ export default function SaleDetailPage() {
 
             <div className="rounded-3xl border bg-white p-6 shadow-sm" style={{ borderColor: 'var(--color-border)' }}>
               <h2 className="mb-4 text-lg font-bold" style={{ color: 'var(--color-text)' }}>
-                Kaeufer und Versandziel
+                Käufer und Versandziel
               </h2>
               <div className="space-y-4 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
                 <div className="flex items-start gap-3">
                   <CheckCircle2 size={18} style={{ color: 'var(--color-primary)', marginTop: 2 }} />
                   <div>
-                    <p className="font-semibold" style={{ color: 'var(--color-text)' }}>Kaeufer</p>
+                    <p className="font-semibold" style={{ color: 'var(--color-text)' }}>Käufer</p>
                     <p>{order.buyer.name || 'cssberlin member'}{order.buyer.location ? ` - ${order.buyer.location}` : ''}</p>
                     <Link href={`/profile/${order.buyer.id}`} className="mt-2 inline-flex text-xs font-semibold" style={{ color: 'var(--color-primary)' }}>
                       Profil ansehen
@@ -394,7 +394,7 @@ export default function SaleDetailPage() {
                   </h2>
                 </div>
                 <p className="mb-4 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                  Sobald du den Versanddienst und optionales Tracking speicherst, sieht der Kaeufer den aktualisierten Versandstatus sofort in seinen Kaeufen und Benachrichtigungen.
+                  Sobald du den Versanddienst und optionales Tracking speicherst, sieht der Käufer den aktualisierten Versandstatus sofort in seinen Käufen und Benachrichtigungen.
                 </p>
                 <div className="grid gap-4 md:grid-cols-2">
                   <label className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
@@ -439,10 +439,10 @@ export default function SaleDetailPage() {
                   </h2>
                 </div>
                 <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                  {order.status === 'DELIVERED' && 'Die Sendung ist zugestellt. Warte jetzt auf die finale Bestaetigung des Kaeufers.'}
+                  {order.status === 'DELIVERED' && 'Die Sendung ist zugestellt. Warte jetzt auf die finale Bestätigung des Käufers.'}
                   {order.status === 'COMPLETED' && 'Diese Bestellung ist abgeschlossen. Alle relevanten Versanddaten bleiben hier dokumentiert.'}
-                  {order.status === 'DISPUTED' && 'Fuer diese Bestellung ist ein Streitfall offen. Pruefe die Details und dokumentiere alle Versandinformationen.'}
-                  {order.status === 'PENDING_PAYMENT' && 'Die Zahlung ist noch nicht bestaetigt. Versandaktionen werden erst nach erfolgreicher Zahlung freigeschaltet.'}
+                  {order.status === 'DISPUTED' && 'Für diese Bestellung ist ein Streitfall offen. Prüfe die Details und dokumentiere alle Versandinformationen.'}
+                  {order.status === 'PENDING_PAYMENT' && 'Die Zahlung ist noch nicht bestätigt. Versandaktionen werden erst nach erfolgreicher Zahlung freigeschaltet.'}
                 </p>
               </div>
             )}
@@ -451,7 +451,7 @@ export default function SaleDetailPage() {
           <div className="lg:col-span-5">
             <div className="sticky top-24 rounded-3xl border bg-white p-6 shadow-sm" style={{ borderColor: 'var(--color-border)' }}>
               <h2 className="mb-4 text-lg font-bold" style={{ color: 'var(--color-text)' }}>
-                Verkaufsuebersicht
+                Verkaufsübersicht
               </h2>
               <div className="space-y-3 border-b pb-6 text-sm" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
                 <div className="flex justify-between">
@@ -463,7 +463,7 @@ export default function SaleDetailPage() {
                   <span className="font-semibold" style={{ color: 'var(--color-text)' }}>{formatPrice(order.shippingFee)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Kaeuferschutz</span>
+                  <span>Käuferschutz</span>
                   <span className="font-semibold" style={{ color: 'var(--color-primary)' }}>{formatPrice(order.protectionFee)}</span>
                 </div>
                 {order.offer ? (
@@ -482,7 +482,7 @@ export default function SaleDetailPage() {
 
               <div className="space-y-3">
                 <Link href={`/inbox?with=${order.buyer.id}`} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-bold" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}>
-                  <MessageCircle size={16} /> Kaeufer kontaktieren
+                  <MessageCircle size={16} /> Käufer kontaktieren
                 </Link>
                 {order.offer ? (
                   <Link href="/offers" className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-bold" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}>

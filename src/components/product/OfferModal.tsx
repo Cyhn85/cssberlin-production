@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, X } from 'lucide-react';
+import { Loader2, X, Info } from 'lucide-react';
 
 type OfferModalProps = {
   isOpen: boolean;
@@ -181,16 +181,23 @@ export default function OfferModal({
             <textarea
               value={note}
               onChange={(event) => setNote(event.target.value)}
-              placeholder="Kurze Nachricht an den Verkaeufer (optional)"
+              placeholder="Kurze Nachricht an den Verkäufer (optional)"
               className="mt-4 min-h-[96px] w-full rounded-xl border border-gray-200 p-3 text-sm outline-none focus:border-[var(--color-primary)]"
             />
 
             {error ? <p className="mt-3 text-sm text-red-500">{error}</p> : null}
             {success ? <p className="mt-3 text-sm text-green-600">{success}</p> : null}
 
-            <p className="mb-6 mt-4 text-xs leading-relaxed text-[var(--color-text-secondary)]">
-              Mindestangebot: {minOffer.toFixed(2).replace('.', ',')} EUR. Offene Angebote koennen vom Verkaeufer angenommen, abgelehnt oder mit einem Gegenangebot beantwortet werden.
+            <p className="mb-4 mt-4 text-xs leading-relaxed text-[var(--color-text-secondary)]">
+              Mindestangebot: {minOffer.toFixed(2).replace('.', ',')} EUR. Offene Angebote können vom Verkäufer angenommen, abgelehnt oder mit einem Gegenangebot beantwortet werden.
             </p>
+            
+            <div className="mb-6 flex items-start gap-2 rounded-lg bg-gray-50 p-3 text-gray-600">
+              <Info size={16} className="mt-0.5 shrink-0" />
+              <span className="text-[11px] leading-tight">
+                <strong>Verbindliches Angebot:</strong> Mit dem Senden eines Preisvorschlags erklärst du dich bereit, den Artikel zu diesem Preis zu kaufen. Nimmt der Verkäufer an, kommt ein rechtsverbindlicher Kaufvertrag zustande.
+              </span>
+            </div>
 
             <button
               disabled={isSubmitDisabled}

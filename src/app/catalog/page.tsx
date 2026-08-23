@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { Suspense, startTransition, useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -204,7 +204,7 @@ function CatalogContent() {
         onSelect={(value) => setSelectedBrand(value === selectedBrand ? '' : value)}
       />
       <FilterSection
-        title="Groessen"
+        title="Größen"
         items={filters.sizes}
         active={selectedSize}
         onSelect={(value) => setSelectedSize(value === selectedSize ? '' : value)}
@@ -315,7 +315,7 @@ function CatalogContent() {
                 {minPrice || maxPrice ? <FilterTag label={`${minPrice || 0} - ${maxPrice || '∞'} EUR`} onRemove={() => { setMinPrice(''); setMaxPrice(''); }} /> : null}
                 {selectedSort !== 'newest' ? <FilterTag label={activeSortLabel} onRemove={() => setSelectedSort('newest')} /> : null}
                 <button onClick={clearAllFilters} className="px-2 text-xs font-bold underline" style={{ color: 'var(--color-text-muted)' }}>
-                  Alles loeschen
+                  Alles löschen
                 </button>
               </div>
             ) : null}
@@ -345,12 +345,12 @@ function CatalogContent() {
                     : 'Versuche andere Begriffe oder entferne ein paar Filter.'}
                 </p>
                 <button onClick={clearAllFilters} className="rounded-full px-6 py-2 font-bold text-white btn-mars-earth" style={{ background: 'var(--color-orange)' }}>
-                  <span>{catalogDegraded ? 'Erneut versuchen' : 'Filter zuruecksetzen'}</span>
+                  <span>{catalogDegraded ? 'Erneut versuchen' : 'Filter zurücksetzen'}</span>
                 </button>
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 ">
                   {products.map((product) => (
                     <ProductCard key={product.id} product={product} showSeller />
                   ))}

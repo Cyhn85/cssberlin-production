@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -148,10 +148,10 @@ function getOfferSummary(offer: OfferContext, selfId: string) {
     return { text: 'Der Artikel wurde bereits verkauft und kann nicht mehr abgeschlossen werden.', actionHref: '/offers', actionLabel: 'Zu Angeboten' };
   }
   if (offer.product.status === 'RESERVED') {
-    return { text: 'Der Artikel ist aktuell reserviert. Neue Abschluesse sind vorerst blockiert.', actionHref: '/offers', actionLabel: 'Zu Angeboten' };
+    return { text: 'Der Artikel ist aktuell reserviert. Neue Abschlüsse sind vorerst blockiert.', actionHref: '/offers', actionLabel: 'Zu Angeboten' };
   }
   if (offer.product.status === 'HIDDEN') {
-    return { text: 'Das Listing ist nicht mehr oeffentlich verfuegbar.', actionHref: '/offers', actionLabel: 'Zu Angeboten' };
+    return { text: 'Das Listing ist nicht mehr öffentlich verfügbar.', actionHref: '/offers', actionLabel: 'Zu Angeboten' };
   }
   if (offer.status === 'ACCEPTED' && selfId === offer.buyerId) {
     return {
@@ -161,19 +161,19 @@ function getOfferSummary(offer: OfferContext, selfId: string) {
     };
   }
   if (offer.status === 'ACCEPTED') {
-    return { text: 'Das Angebot wurde angenommen. Jetzt kann der Kaeufer den Checkout abschliessen.', actionHref: '/offers', actionLabel: 'Zu Angeboten' };
+    return { text: 'Das Angebot wurde angenommen. Jetzt kann der Käufer den Checkout abschließen.', actionHref: '/offers', actionLabel: 'Zu Angeboten' };
   }
   if (offer.status === 'PENDING') {
-    return { text: 'Diese Verhandlung ist noch offen.', actionHref: '/offers', actionLabel: 'Verhandlung oeffnen' };
+    return { text: 'Diese Verhandlung ist noch offen.', actionHref: '/offers', actionLabel: 'Verhandlung öffnen' };
   }
   if (offer.status === 'COUNTERED') {
-    return { text: 'Dieser Stand wurde von einer neueren Verhandlungsrunde abgeloest.', actionHref: '/offers', actionLabel: 'Zu Angeboten' };
+    return { text: 'Dieser Stand wurde von einer neueren Verhandlungsrunde abgelöst.', actionHref: '/offers', actionLabel: 'Zu Angeboten' };
   }
   if (offer.status === 'REJECTED') {
     return { text: 'Diese Verhandlungsrunde wurde beendet.', actionHref: '/offers', actionLabel: 'Zu Angeboten' };
   }
 
-  return { text: 'Der aktuelle Status ist in deiner Angebotsuebersicht verfuegbar.', actionHref: '/offers', actionLabel: 'Zu Angeboten' };
+  return { text: 'Der aktuelle Status ist in deiner Angebotsübersicht verfügbar.', actionHref: '/offers', actionLabel: 'Zu Angeboten' };
 }
 
 /**
@@ -211,7 +211,7 @@ export default function InboxThread({ selfId, apiBase, title }: { selfId: string
     if (!activePartnerId || offerActionBusyId) return;
     const counterPrice = action === 'counter' ? Number((counterDrafts[offer.id] || '').replace(',', '.')) : undefined;
     if (action === 'counter' && (!counterPrice || Number.isNaN(counterPrice))) {
-      setOfferActionError('Bitte gib einen gueltigen Gegenpreis ein.');
+      setOfferActionError('Bitte gib einen gültigen Gegenpreis ein.');
       return;
     }
 
@@ -225,7 +225,7 @@ export default function InboxThread({ selfId, apiBase, title }: { selfId: string
       });
       const result = await response.json().catch(() => null);
       if (!response.ok || !result?.success) {
-        setOfferActionError(result?.error || 'Aktion konnte nicht ausgefuehrt werden.');
+        setOfferActionError(result?.error || 'Aktion konnte nicht ausgeführt werden.');
         return;
       }
       setExpandedCounterOfferId(null);
@@ -463,7 +463,7 @@ export default function InboxThread({ selfId, apiBase, title }: { selfId: string
                         </p>
                         {conversation.offer ? (
                           <p className="mt-1 truncate text-xs font-semibold" style={{ color: 'var(--color-primary)' }}>
-                            {conversationOfferSummary?.text || 'Angebotsstatus verfuegbar'}
+                            {conversationOfferSummary?.text || 'Angebotsstatus verfügbar'}
                           </p>
                         ) : null}
                       </div>
@@ -551,7 +551,7 @@ export default function InboxThread({ selfId, apiBase, title }: { selfId: string
               <div className="flex h-full items-center justify-center text-center">
                 <div>
                   <MessageCircle size={32} className="mx-auto mb-4" style={{ color: 'var(--color-primary)' }} />
-                  <p style={{ color: 'var(--color-text-secondary)' }}>Waehle links eine Unterhaltung aus.</p>
+                  <p style={{ color: 'var(--color-text-secondary)' }}>Wähle links eine Unterhaltung aus.</p>
                 </div>
               </div>
             ) : loadingMessages ? (
@@ -564,7 +564,7 @@ export default function InboxThread({ selfId, apiBase, title }: { selfId: string
                   <div className="flex gap-3">
                     <ShieldCheck size={18} className="mt-0.5 shrink-0" />
                     <p>
-                      Preise, Angebote und Nachweise bleiben innerhalb des Systems nachvollziehbar. Das hilft bei Schutzfaellen und beim Abschluss der Bestellung.
+                      Preise, Angebote und Nachweise bleiben innerhalb des Systems nachvollziehbar. Das hilft bei Schutzfällen und beim Abschluss der Bestellung.
                     </p>
                   </div>
                 </div>
@@ -691,7 +691,7 @@ export default function InboxThread({ selfId, apiBase, title }: { selfId: string
                     handleSend();
                   }
                 }}
-                placeholder={activePartnerId ? 'Schreibe hier deine Nachricht' : 'Waehle zuerst eine Unterhaltung'}
+                placeholder={activePartnerId ? 'Schreibe hier deine Nachricht' : 'Wähle zuerst eine Unterhaltung'}
                 disabled={!activePartnerId || sending}
                 className="flex-1 bg-transparent text-sm text-gray-700 outline-none"
               />
@@ -705,7 +705,7 @@ export default function InboxThread({ selfId, apiBase, title }: { selfId: string
             </div>
             {!activePartnerId ? (
               <p className="mt-3 text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                Noch keine Konversation? Oeffne ein Produkt und nutze &quot;Verkaeufer kontaktieren&quot;.
+                Noch keine Konversation? Öffne ein Produkt und nutze &quot;Verkäufer kontaktieren&quot;.
               </p>
             ) : null}
           </div>

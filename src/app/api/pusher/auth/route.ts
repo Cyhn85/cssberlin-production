@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
 import { ApiResponse } from '@/lib/api-response';
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     const channelName = formData.get('channel_name');
 
     if (typeof socketId !== 'string' || typeof channelName !== 'string') {
-      return ApiResponse.validationError('Ungueltige Realtime-Anfrage.');
+      return ApiResponse.validationError('Ungültige Realtime-Anfrage.');
     }
 
     const isAuthorized =
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
       (await canAccessPersonaChannel(channelName, session.user.id));
 
     if (!isAuthorized) {
-      return ApiResponse.forbidden('Dieser Realtime-Kanal ist nicht fuer dich freigegeben.');
+      return ApiResponse.forbidden('Dieser Realtime-Kanal ist nicht für dich freigegeben.');
     }
 
     const pusher = await getPusher();

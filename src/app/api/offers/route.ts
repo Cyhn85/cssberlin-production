@@ -1,9 +1,10 @@
-import { NextRequest } from 'next/server';
+﻿import { NextRequest } from 'next/server';
 import prisma from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
 import { ApiResponse } from '@/lib/api-response';
 import { createOfferSchema } from '@/lib/validations';
 import { rateLimit } from '@/lib/rate-limit';
+import { recordAction } from '@/lib/abuse-monitor';
 import { createSystemNotification } from '@/lib/notifications';
 
 const FINALIZED_ORDER_STATUSES = ['PAID', 'SHIPPED', 'DELIVERED', 'COMPLETED'] as const;
@@ -138,15 +139,21 @@ export async function POST(request: NextRequest) {
     const rl = await rateLimit(session.user.id, 'OFFER');
     if (!rl.success) {
       return ApiResponse.error(
-        `Du hast dein taegliches Angebotslimit erreicht (${rl.limit}). Versuche es morgen erneut.`,
+        `Du hast dein tägliches Angebotslimit erreicht (${rl.limit}). Versuche es morgen erneut.`,
         429
       );
+    }
+
+    // The daily limit above throttles; this ceiling suspends. It sits well
+    // above 25/day so only scripted volume across many accounts reaches it.
+    if (await recordAction(session.user.id, 'offer')) {
+      return ApiResponse.error('Dein Konto wurde wegen ungewöhnlicher Aktivität gesperrt.', 403);
     }
 
     const body = await request.json();
     const parsed = createOfferSchema.safeParse(body);
     if (!parsed.success) {
-      return ApiResponse.validationError('Ungueltiges Angebot.');
+      return ApiResponse.validationError('Ungültiges Angebot.');
     }
 
     const { productId, offeredPrice, message } = parsed.data;
@@ -154,10 +161,10 @@ export async function POST(request: NextRequest) {
     const product = await prisma.product.findUnique({ where: { id: productId } });
     if (!product) return ApiResponse.notFound('Artikel nicht gefunden.');
     if (product.status !== 'ACTIVE') {
-      return ApiResponse.error('Dieser Artikel ist nicht mehr verfuegbar.', 409);
+      return ApiResponse.error('Dieser Artikel ist nicht mehr verfügbar.', 409);
     }
     if (product.sellerId === session.user.id) {
-      return ApiResponse.error('Du kannst kein Angebot fuer deinen eigenen Artikel abgeben.');
+      return ApiResponse.error('Du kannst kein Angebot für deinen eigenen Artikel abgeben.');
     }
 
     const minPrice = product.price * 0.6;
@@ -175,7 +182,7 @@ export async function POST(request: NextRequest) {
       },
     });
     if (existingOffer) {
-      return ApiResponse.error('Du hast bereits ein offenes Angebot fuer diesen Artikel.');
+      return ApiResponse.error('Du hast bereits ein offenes Angebot für diesen Artikel.');
     }
 
     const offer = await prisma.offer.create({
@@ -207,7 +214,7 @@ export async function POST(request: NextRequest) {
       senderId: session.user.id,
       receiverId: product.sellerId,
       offerId: offer.id,
-      content: `${offer.buyer.name || 'Ein Mitglied'} hat dir ein neues Angebot ueber ${offeredPrice.toFixed(2)} EUR fuer ${offer.product.title} geschickt.`,
+      content: `${offer.buyer.name || 'Ein Mitglied'} hat dir ein neues Angebot über ${offeredPrice.toFixed(2)} EUR für ${offer.product.title} geschickt.`,
     });
 
     return ApiResponse.created(offer);

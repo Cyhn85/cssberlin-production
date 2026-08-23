@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+﻿import { NextRequest } from 'next/server';
 import prisma from '@/lib/db';
 import { requireAdmin } from '@/lib/auth';
 import { ApiResponse } from '@/lib/api-response';
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const parsed = createSchema.safeParse(body);
     if (!parsed.success) {
-      return ApiResponse.validationError(parsed.error.issues[0]?.message || 'Ungueltige Eingabe.');
+      return ApiResponse.validationError(parsed.error.issues[0]?.message || 'Ungültige Eingabe.');
     }
 
     const category = await prisma.category.create({

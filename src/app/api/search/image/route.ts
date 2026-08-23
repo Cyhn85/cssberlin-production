@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+﻿import { NextRequest } from 'next/server';
 import prisma from '@/lib/db';
 import { ApiResponse } from '@/lib/api-response';
 import { respondWithApiError } from '@/lib/api-error';
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
       return ApiResponse.validationError('Bitte lade ein Bild hoch.');
     }
     if (!file.type.startsWith('image/')) {
-      return ApiResponse.validationError('Nur Bilddateien werden unterstuetzt.');
+      return ApiResponse.validationError('Nur Bilddateien werden unterstützt.');
     }
     if (file.size > 8 * 1024 * 1024) {
       return ApiResponse.validationError('Das Bild darf maximal 8 MB gross sein.');
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
 
     const queryEmbedding = await embedImageFromBase64(base64, file.type);
     if (!queryEmbedding) {
-      return ApiResponse.error('Die Bildsuche ist gerade nicht verfuegbar. Bitte versuche es spaeter erneut.');
+      return ApiResponse.error('Die Bildsuche ist gerade nicht verfügbar. Bitte versuche es später erneut.');
     }
 
     const images = await prisma.productImage.findMany({

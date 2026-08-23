@@ -1,4 +1,4 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 import { CheckCircle2, PackageCheck, ShieldCheck } from 'lucide-react';
 
 type PageProps = {
@@ -26,19 +26,19 @@ export default async function CheckoutSuccessPage({ params, searchParams }: Page
 
           <div className="text-center">
             <h1 className="text-3xl font-bold" style={{ color: 'var(--color-text)', fontFamily: 'var(--font-display)' }}>
-              {isDevMode ? 'Bestellung bestaetigt' : 'Zahlung erfolgreich uebermittelt'}
+              {isDevMode ? 'Bestellung bestätigt' : 'Zahlung erfolgreich übermittelt'}
             </h1>
             <p className="mx-auto mt-4 max-w-2xl text-sm leading-7" style={{ color: 'var(--color-text-secondary)' }}>
               {isDevMode
-                ? 'Deine Bestellung wurde aufgenommen und der Artikel fuer dich reserviert. Die Zahlungsabwicklung wird in Kuerze abgeschlossen.'
-                : 'Deine Zahlung wurde an den sicheren Checkout uebergeben. Die Bestellung wird ueber den Stripe-Webhook abgeschlossen. Falls sie nicht sofort unter Einkaeufe erscheint, aktualisiere die Seite in ein paar Sekunden.'}
+                ? 'Deine Bestellung wurde aufgenommen und der Artikel für dich reserviert. Die Zahlungsabwicklung wird in Kürze abgeschlossen.'
+                : 'Deine Zahlung wurde an den sicheren Checkout übergeben. Die Bestellung wird über den Stripe-Webhook abgeschlossen. Falls sie nicht sofort unter Einkäufe erscheint, aktualisiere die Seite in ein paar Sekunden.'}
             </p>
           </div>
 
           <div className="mt-8 grid gap-4 md:grid-cols-2">
             <div className="rounded-3xl p-5" style={{ background: 'var(--color-primary-50)' }}>
               <div className="mb-3 flex items-center gap-2 text-sm font-bold" style={{ color: 'var(--color-primary-dark)' }}>
-                <ShieldCheck size={18} /> Geschuetzter Kauf
+                <ShieldCheck size={18} /> Geschützter Kauf
               </div>
               <p className="text-sm leading-6" style={{ color: 'var(--color-primary)' }}>
                 Deine Zahlung bleibt abgesichert, bis der Versandprozess sauber gestartet ist.
@@ -49,25 +49,25 @@ export default async function CheckoutSuccessPage({ params, searchParams }: Page
                 <PackageCheck size={18} /> Referenz
               </div>
               <p className="break-all text-sm leading-6" style={{ color: 'var(--color-text-secondary)' }}>
-                {reference || 'Noch keine Referenz verfuegbar'}
+                {reference || 'Noch keine Referenz verfügbar'}
               </p>
             </div>
           </div>
 
           <div className="mt-8 rounded-3xl border p-5" style={{ borderColor: 'var(--color-border)' }}>
             <h2 className="text-sm font-bold" style={{ color: 'var(--color-text)' }}>
-              Naechste Schritte
+              Nächste Schritte
             </h2>
             <ul className="mt-3 space-y-3 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-              <li>Pruefe deine Einkaeufe fuer den aktuellen Bestellstatus.</li>
-              <li>Der Verkaeufer wird nach erfolgreicher Zahlungsbestaetigung benachrichtigt.</li>
-              <li>Bei Rueckfragen findest du den Artikel weiter auf der Produktseite.</li>
+              <li>Prüfe deine Einkäufe für den aktuellen Bestellstatus.</li>
+              <li>Der Verkäufer wird nach erfolgreicher Zahlungsbestaetigung benachrichtigt.</li>
+              <li>Bei Rückfragen findest du den Artikel weiter auf der Produktseite.</li>
             </ul>
           </div>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Link href="/purchases" className="btn-mars-earth flex-1 rounded-2xl px-6 py-4 text-center font-bold text-white" style={{ background: 'var(--color-orange)' }}>
-              <span>Zu meinen Einkaeufen</span>
+              <span>Zu meinen Einkäufen</span>
             </Link>
             <Link href={`/product/${id}`} className="flex-1 rounded-2xl border px-6 py-4 text-center font-bold" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}>
               Zur Produktseite

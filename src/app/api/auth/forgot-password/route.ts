@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import prisma from '@/lib/db';
 import { rateLimit, getClientIP } from '@/lib/rate-limit';
@@ -12,10 +12,10 @@ const TOKEN_TTL_MINUTES = 60;
 /**
  * POST /api/auth/forgot-password  { email }
  *
- * Schickt einen Zuruecksetzen-Link. Zwei Dinge sind bewusst so gebaut:
+ * Schickt einen Zurücksetzen-Link. Zwei Dinge sind bewusst so gebaut:
  *
  *  - Die Antwort ist immer dieselbe, egal ob die Adresse existiert. Sonst
- *    koennte man ueber dieses Formular herausfinden, wer hier ein Konto hat.
+ *    könnte man über dieses Formular herausfinden, wer hier ein Konto hat.
  *  - In der Datenbank liegt nur der SHA-256-Hash des Tokens. Das Klartext-Token
  *    steht ausschliesslich in der Mail.
  *
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     const rl = await rateLimit(getClientIP(request), 'AUTH');
     if (!rl.success) {
       return NextResponse.json(
-        { success: false, error: 'Zu viele Versuche. Bitte spaeter erneut versuchen.' },
+        { success: false, error: 'Zu viele Versuche. Bitte später erneut versuchen.' },
         { status: 429 },
       );
     }
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     const token = crypto.randomBytes(32).toString('hex');
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
 
-    // Aeltere offene Anfragen entwerten, damit immer nur ein Link gueltig ist.
+    // Aeltere offene Anfragen entwerten, damit immer nur ein Link gültig ist.
     await prisma.passwordResetToken.deleteMany({ where: { userId: user.id, usedAt: null } });
     await prisma.passwordResetToken.create({
       data: {
@@ -69,12 +69,12 @@ export async function POST(request: NextRequest) {
     const link = `${businessProfile.websiteUrl}/passwort-zuruecksetzen?token=${token}`;
     await sendMail({
       to: email,
-      subject: 'Passwort zuruecksetzen',
+      subject: 'Passwort zurücksetzen',
       text:
-        `Du hast ein neues Passwort fuer dein Konto bei ${businessProfile.brandName} angefordert.\n\n` +
+        `Du hast ein neues Passwort für dein Konto bei ${businessProfile.brandName} angefordert.\n\n` +
         `${link}\n\n` +
         `Der Link gilt ${TOKEN_TTL_MINUTES} Minuten. Warst du das nicht, kannst du diese ` +
-        `E-Mail einfach ignorieren - dein Passwort bleibt unveraendert.`,
+        `E-Mail einfach ignorieren - dein Passwort bleibt unverändert.`,
     });
 
     return genericAnswer;

@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+﻿import type { Metadata } from 'next';
 import ConditionalChrome from '@/components/layout/ConditionalChrome';
 import AuthProvider from '@/components/providers/AuthProvider';
 import CookieBanner from '@/components/ui/CookieBanner';
@@ -16,8 +16,8 @@ export const metadata: Metadata = {
     template: '%s | cssberlin.de',
   },
   description:
-    'Nachhaltig kaufen und verkaufen in Berlin. Spare CO2, entdecke Vintage-Schaetze und profitiere von unserem sicheren Kaeuferschutz.',
-  keywords: ['Second Hand Berlin', 'Vintage Kleidung', 'Nachhaltigkeit', 'Gebraucht kaufen', 'Flohmarkt online', 'Kaeuferschutz', 'CO2 sparen'],
+    'Nachhaltig kaufen und verkaufen in Berlin. Spare CO2, entdecke Vintage-Schätze und profitiere von unserem sicheren Käuferschutz.',
+  keywords: ['Second Hand Berlin', 'Vintage Kleidung', 'Nachhaltigkeit', 'Gebraucht kaufen', 'Flohmarkt online', 'Käuferschutz', 'CO2 sparen'],
   authors: [{ name: 'cssberlin Team' }],
   creator: 'cssberlin',
   metadataBase: new URL('https://cssberlin.de'),
@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     url: 'https://cssberlin.de',
     siteName: 'cssberlin.de',
     title: 'cssberlin.de - Nachhaltiger Marktplatz',
-    description: 'Dein smarter Second-Hand Marktplatz fuer Mode, Elektronik und mehr.',
+    description: 'Dein smarter Second-Hand Marktplatz für Mode, Elektronik und mehr.',
     images: [
       {
         url: '/og-image.png',
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'cssberlin.de - Gebraucht kaufen und CO2 sparen',
-    description: 'Marktplatz fuer nachhaltigen Konsum in Berlin.',
+    description: 'Marktplatz für nachhaltigen Konsum in Berlin.',
     images: ['/og-image.png'],
   },
   icons: {
@@ -76,7 +76,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               url: 'https://cssberlin.de',
               logo: 'https://cssberlin.de/icon-512.png',
               description:
-                'Nachhaltiger Second-Hand Marktplatz in Berlin. Gebraucht kaufen und verkaufen, CO2 sparen, mit Kaeuferschutz.',
+                'Nachhaltiger Second-Hand Marktplatz in Berlin. Gebraucht kaufen und verkaufen, CO2 sparen, mit Käuferschutz.',
               areaServed: { '@type': 'Country', name: 'Deutschland' },
               potentialAction: {
                 '@type': 'SearchAction',

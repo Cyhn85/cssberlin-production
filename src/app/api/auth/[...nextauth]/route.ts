@@ -6,6 +6,22 @@ import { PrismaAdapter } from '@auth/prisma-adapter';
 import prisma from '@/lib/db';
 import bcrypt from 'bcryptjs';
 import { sendEmail, magicLinkEmail } from '@/lib/email';
+import { rateLimit } from '@/lib/rate-limit';
+
+/**
+ * How long a JWT may keep serving a cached copy of role / isSuspended.
+ *
+ * These two fields used to be written once, at sign-in, and never again. A JWT
+ * session carries no server-side record, so suspending an account that was
+ * already logged in changed nothing: the user's token still said
+ * `isSuspended: false` and the middleware waved them through until the token
+ * expired - up to 30 days. Same for a revoked ADMIN role.
+ *
+ * Re-reading on *every* request would put a database round-trip in front of
+ * each page load. 60 seconds is the compromise: a ban takes effect within a
+ * minute, at roughly one extra query per user per minute.
+ */
+const CLAIMS_MAX_AGE_MS = 60 * 1000;
 
 const googleEnabled = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
 
@@ -13,6 +29,10 @@ export const authOptions: NextAuthOptions = {
     adapter: PrismaAdapter(prisma) as any,
     session: {
         strategy: 'jwt',
+        // Default updateAge is 24h: the cookie is only re-issued once a day, so
+        // the refreshed claims from the jwt callback would sit in memory and
+        // never reach the browser. 60s matches CLAIMS_MAX_AGE_MS below.
+        updateAge: 60,
     },
     pages: {
         signIn: '/login',
@@ -46,9 +66,25 @@ export const authOptions: NextAuthOptions = {
                 email: { label: 'Email', type: 'email' },
                 password: { label: 'Password', type: 'password' },
             },
-            async authorize(credentials) {
+            async authorize(credentials, req) {
                 if (!credentials?.email || !credentials?.password) {
                     throw new Error('Bitte fülle alle Felder aus.');
+                }
+
+                // Password login was the one unthrottled entrance left: every
+                // other sensitive route goes through rateLimit(), but NextAuth
+                // owns this handler so /api/auth/callback/credentials never
+                // reached our middleware. Without this, an attacker can try
+                // passwords as fast as bcrypt answers. Keyed by IP *and* email
+                // so one attacker cannot lock out an unrelated account by
+                // burning that account's budget from a different address.
+                const forwarded = req?.headers?.['x-forwarded-for'];
+                const ip = (Array.isArray(forwarded) ? forwarded[0] : forwarded)?.split(',')[0]?.trim()
+                    || (req?.headers?.['x-real-ip'] as string | undefined)
+                    || '127.0.0.1';
+                const throttle = await rateLimit(`${ip}:${credentials.email.toLowerCase()}`, 'AUTH');
+                if (!throttle.success) {
+                    throw new Error('Zu viele Anmeldeversuche. Bitte warte eine Minute.');
                 }
 
                 const user = await prisma.user.findUnique({
@@ -112,7 +148,41 @@ export const authOptions: NextAuthOptions = {
                 token.username = (user as any).username || null;
                 token.isVerified = (user as any).isVerified || false;
                 token.isSuspended = (user as any).isSuspended || false;
+                token.claimsAt = Date.now();
+                return token;
             }
+
+            if (!token.id) return token;
+
+            const claimsAt = typeof token.claimsAt === 'number' ? token.claimsAt : 0;
+            if (Date.now() - claimsAt < CLAIMS_MAX_AGE_MS) return token;
+
+            try {
+                const fresh = await prisma.user.findUnique({
+                    where: { id: token.id as string },
+                    select: { role: true, username: true, isVerified: true, isSuspended: true },
+                });
+
+                if (fresh) {
+                    token.role = fresh.role;
+                    token.username = fresh.username;
+                    token.isVerified = fresh.isVerified;
+                    token.isSuspended = fresh.isSuspended;
+                } else {
+                    // Account deleted while the token was still valid. Treat it
+                    // as suspended rather than trusting stale claims - the
+                    // middleware then blocks every protected route.
+                    token.isSuspended = true;
+                    token.role = 'USER';
+                }
+                token.claimsAt = Date.now();
+            } catch (error) {
+                // A database blip must not sign everyone out. Keep the existing
+                // claims and retry on the next request; claimsAt is left
+                // untouched on purpose so the retry happens immediately.
+                console.error('jwt claim refresh failed:', error);
+            }
+
             return token;
         },
     },
@@ -121,3 +191,4 @@ export const authOptions: NextAuthOptions = {
 const handler = NextAuth(authOptions);
 
 export { handler as GET, handler as POST };
+

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -26,7 +26,7 @@ const BUYER_PROTECTION_RATE = 0.05;
 const BUYER_PROTECTION_FIXED = 0.99;
 
 const shippingMethods = [
-  { id: 'HAND', name: 'Elden Ücretsiz Teslim', eta: 'Nach Absprache (Berlin/Brandenburg)' },
+  { id: 'HAND', name: 'Kostenlose Selbstabholung', eta: 'Nach Absprache (Berlin/Brandenburg)' },
   { id: 'DHL', name: 'DHL Paket', eta: '1-3 Werktage' },
   { id: 'HERMES', name: 'Hermes Päckchen', eta: '2-4 Werktage' },
   { id: 'DPD', name: 'DPD Classic', eta: '1-2 Werktage' },
@@ -127,16 +127,16 @@ export default function CheckoutPage() {
             const offerData = offerResult.data as CheckoutOffer;
 
             if (offerData.latestOrder) {
-              setOfferNotice('Zu diesem Angebot existiert bereits eine Bestellung. Bitte pruefe zuerst deine Kaeufe.');
+              setOfferNotice('Zu diesem Angebot existiert bereits eine Bestellung. Bitte prüfe zuerst deine Käufe.');
             } else if (offerData.status === 'ACCEPTED') {
               setOffer(offerData);
             } else if (offerData.pendingOn === 'BUYER') {
-              setOfferNotice('Dieses Gegenangebot muss zuerst in deiner Angebotsliste bestaetigt werden.');
+              setOfferNotice('Dieses Gegenangebot muss zuerst in deiner Angebotsliste bestätigt werden.');
             } else {
-              setOfferNotice('Das uebergebene Angebot ist aktuell nicht checkout-bereit. Es wird der Listenpreis verwendet.');
+              setOfferNotice('Das übergebene Angebot ist aktuell nicht checkout-bereit. Es wird der Listenpreis verwendet.');
             }
           } else if (!cancelled) {
-            setOfferNotice(offerResult?.error || 'Das uebergebene Angebot konnte nicht geladen werden.');
+            setOfferNotice(offerResult?.error || 'Das übergebene Angebot konnte nicht geladen werden.');
           }
         }
       } catch (loadError: any) {
@@ -235,7 +235,7 @@ export default function CheckoutPage() {
         return;
       }
 
-      throw new Error('Checkout-Antwort war unvollstaendig.');
+      throw new Error('Checkout-Antwort war unvollständig.');
     } catch (checkoutError: any) {
       setError(checkoutError.message || 'Checkout konnte nicht gestartet werden.');
     } finally {
@@ -260,13 +260,13 @@ export default function CheckoutPage() {
         <div className="rounded-3xl border border-dashed p-10 text-center" style={{ borderColor: 'var(--color-border)' }}>
           <Info size={28} className="mx-auto mb-4" style={{ color: 'var(--color-primary)' }} />
           <h1 className="mb-2 text-2xl font-bold" style={{ color: 'var(--color-text)' }}>
-            Checkout nicht verfuegbar
+            Checkout nicht verfügbar
           </h1>
           <p className="mb-6 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
             {error || 'Dieser Artikel kann gerade nicht gekauft werden.'}
           </p>
           <Link href="/catalog" className="rounded-full px-6 py-3 font-bold text-white btn-mars-earth" style={{ background: 'var(--color-orange)' }}>
-            <span>Zurueck zum Katalog</span>
+            <span>Zurück zum Katalog</span>
           </Link>
         </div>
       </div>
@@ -292,11 +292,11 @@ export default function CheckoutPage() {
               Sicherer Checkout
             </h1>
             <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-              Adresse und Zahlungsart werden im geschuetzten Bezahlfenster erfasst.
+              Adresse und Zahlungsart werden im geschützten Bezahlfenster erfasst.
             </p>
           </div>
           <div className="ml-auto flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-green-700" style={{ background: 'rgba(34, 197, 94, 0.12)' }}>
-            <Lock size={16} /> Verschluesselte Zahlung
+            <Lock size={16} /> Verschlüsselte Zahlung
           </div>
         </div>
 
@@ -312,7 +312,7 @@ export default function CheckoutPage() {
               <Tag size={18} style={{ marginTop: 2 }} />
               <div>
                 <p className="font-semibold">Du kaufst mit einem akzeptierten Angebot.</p>
-                <p className="mt-1">Fuer diesen Checkout wird dein verhandelter Preis von {formatPrice(offer.offeredPrice)} verwendet.</p>
+                <p className="mt-1">Für diesen Checkout wird dein verhandelter Preis von {formatPrice(offer.offeredPrice)} verwendet.</p>
               </div>
             </div>
           </div>
@@ -326,7 +326,7 @@ export default function CheckoutPage() {
 
         {isUnavailable ? (
           <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            Dieser Artikel ist aktuell nicht mehr aktiv. Bitte pruefe zuerst die Produktseite.
+            Dieser Artikel ist aktuell nicht mehr aktiv. Bitte prüfe zuerst die Produktseite.
           </div>
         ) : null}
 
@@ -335,10 +335,10 @@ export default function CheckoutPage() {
             <ShieldCheck size={22} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
             <div>
               <h2 className="text-sm font-bold" style={{ color: 'var(--color-primary-dark)' }}>
-                Kaeuferschutz ist automatisch enthalten
+                Käuferschutz ist automatisch enthalten
               </h2>
               <p className="mt-1 text-sm" style={{ color: 'var(--color-primary)' }}>
-                Deine Zahlung bleibt geschuetzt, bis der Artikel angekommen ist. Der Schutzbetrag wird im Gesamtpreis transparent ausgewiesen.
+                Deine Zahlung bleibt geschützt, bis der Artikel angekommen ist. Der Schutzbetrag wird im Gesamtpreis transparent ausgewiesen.
               </p>
             </div>
           </div>
@@ -351,9 +351,12 @@ export default function CheckoutPage() {
                 <Truck size={20} />
                 <h2 className="text-lg font-bold">Versandmethode</h2>
               </div>
-              <div className="mb-4 rounded-xl p-4 text-sm font-bold shadow-sm" style={{ background: 'var(--color-primary-50)', color: 'var(--color-primary-dark)', border: '1px solid var(--color-primary-100)' }}>
-                🎉 Aksiyon: Yarın 23:59'a kadar sipariş verirseniz Kargo Bedava!
-              </div>
+              {/* Removed: a hard-coded "free shipping until tomorrow 23:59"
+                  banner, in Turkish, rendered unconditionally on every
+                  checkout. The deadline never moved and no code honoured it -
+                  the only real rule is `shipping.free` (first order), shown
+                  right below. A permanent countdown that is not true is
+                  misleading advertising under UWG, not a design detail. */}
               {shipping.free ? (
                 <div className="mb-4 flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold text-emerald-800" style={{ background: 'rgba(16, 185, 129, 0.10)' }}>
                   <Leaf size={16} /> Deine erste Bestellung ist versandkostenfrei.
@@ -400,7 +403,7 @@ export default function CheckoutPage() {
 
           <div className="lg:col-span-5">
             <div className="sticky top-24 rounded-3xl border bg-white p-6 shadow-sm" style={{ borderColor: 'var(--color-border)' }}>
-              <h2 className="mb-4 text-lg font-bold">Bestelluebersicht</h2>
+              <h2 className="mb-4 text-lg font-bold">Bestellübersicht</h2>
 
               <div className="mb-6 flex items-center gap-4 border-b pb-6" style={{ borderColor: 'var(--color-border)' }}>
                 <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl" style={{ background: 'var(--color-bg-secondary)' }}>
@@ -470,7 +473,7 @@ export default function CheckoutPage() {
                   )}
                 </div>
                 <div className="flex justify-between">
-                  <span>Kaeuferschutz</span>
+                  <span>Käuferschutz</span>
                   <span className="font-semibold" style={{ color: 'var(--color-primary)' }}>{formatPrice(protectionFee)}</span>
                 </div>
               </div>
@@ -482,8 +485,38 @@ export default function CheckoutPage() {
                 </span>
               </div>
 
+              {/* HUKUKİ ONAYLAR (GDPR & Tüketici Hakları) */}
+              <div className="mb-6 space-y-3 rounded-xl bg-gray-50 p-4 border border-gray-200">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input type="checkbox" id="agb" className="mt-1 h-4 w-4 rounded border-gray-300 text-[var(--color-primary)] focus:ring-[var(--color-primary)]" required />
+                  <span className="text-xs text-gray-600 leading-relaxed">
+                    Ich habe die <Link href="/agb" className="font-bold text-[var(--color-primary)] hover:underline" target="_blank">AGB</Link> gelesen und erkläre mich mit diesen einverstanden. Die <Link href="/datenschutz" className="font-bold text-[var(--color-primary)] hover:underline" target="_blank">Datenschutzerklärung</Link> habe ich zur Kenntnis genommen.
+                  </span>
+                </label>
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input type="checkbox" id="widerruf" className="mt-1 h-4 w-4 rounded border-gray-300 text-[var(--color-primary)] focus:ring-[var(--color-primary)]" required />
+                  <span className="text-xs text-gray-600 leading-relaxed">
+                    Ich stimme ausdrücklich zu, dass cssberlin vor Ablauf der Widerrufsfrist mit der Ausführung des Vertrags beginnt. Mir ist bekannt, dass ich dadurch mein <Link href="/widerruf" className="font-bold text-[var(--color-primary)] hover:underline" target="_blank">Widerrufsrecht</Link> verliere. (Gemäß § 356 Abs. 4 BGB)
+                  </span>
+                </label>
+                <div className="flex items-start gap-3">
+                  <Info size={16} className="mt-0.5 shrink-0 text-gray-500" />
+                  <span className="text-[11px] text-gray-500 leading-relaxed">
+                    <strong>Hinweis zum Privatverkauf:</strong> Sofern der Verkäufer nicht explizit als gewerblich gekennzeichnet ist, kaufst du von einer Privatperson (C2C). Die EU-Verbraucherrechte (Widerrufsrecht, Gewährleistung) gelten in diesem Fall nicht für den Kaufvertrag zwischen dir und dem Verkäufer. Dein <span className="font-bold text-[var(--color-primary)]">Käuferschutz</span> durch cssberlin bleibt davon unberührt.
+                  </span>
+                </div>
+              </div>
+
               <button
-                onClick={handleCheckout}
+                onClick={(e) => {
+                  const agb = document.getElementById('agb') as HTMLInputElement;
+                  const widerruf = document.getElementById('widerruf') as HTMLInputElement;
+                  if (!agb?.checked || !widerruf?.checked) {
+                    alert('Bitte akzeptiere die rechtlichen Bedingungen, um fortzufahren.');
+                    return;
+                  }
+                  handleCheckout();
+                }}
                 disabled={submitting || isUnavailable}
                 className="btn-mars-earth w-full rounded-2xl py-4 text-lg font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
                 style={{ background: 'var(--color-orange)' }}
@@ -493,18 +526,18 @@ export default function CheckoutPage() {
                     <Loader2 size={18} className="animate-spin" /> Checkout startet...
                   </span>
                 ) : offer ? (
-                  <span>Mit Angebot sicher bezahlen</span>
+                  <span>Kostenpflichtig bestellen</span>
                 ) : (
-                  <span>Sicher bezahlen</span>
+                  <span>Kostenpflichtig bestellen</span>
                 )}
               </button>
 
               <div className="mt-4 text-center text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                Mit dem Klick startest du den geschuetzten Kaufprozess fuer diesen Artikel.
+                Mit dem Klick auf "Kostenpflichtig bestellen" schließt du einen rechtsverbindlichen Vertrag ab.
               </div>
 
               <Link href={`/product/${product.id}`} className="mt-4 block text-center text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>
-                Zurueck zur Produktseite
+                Zurück zur Produktseite
               </Link>
             </div>
           </div>

@@ -16,7 +16,7 @@ export async function GET() {
       include: {
         product: {
           include: {
-            images: { orderBy: { orderIndex: 'asc' }, take: 1 },
+            images: { orderBy: { orderIndex: 'asc' }, take: 1, /* embedding HARIC: 3072'lik vektor gorsel basina ~42 KB sisiriyor */ select: { id: true, url: true, thumbUrl: true, mediumUrl: true, orderIndex: true, productId: true, angle: true } },
             seller: { select: { id: true, name: true, avatar: true } },
             category: { select: { name: true, emoji: true } },
           },

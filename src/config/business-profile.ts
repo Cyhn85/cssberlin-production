@@ -14,7 +14,7 @@
   websiteHost: 'www.cssberlin.de',
   vatId: 'DE459278750',
   tradeActivity:
-    'Onlinehandel mit gebrauchter Bekleidung und Gebrauchsartikeln sowie Verkauf auf Flohmaerkten und mobilen Staenden',
+    'Onlinehandel mit gebrauchter Bekleidung und Gebrauchsartikeln sowie Verkauf auf Flohmärkten und mobilen Ständen',
   tradeRegistrationAuthority: 'Berlin Spandau',
   tradeStartDate: '2025-11-01',
 } as const;

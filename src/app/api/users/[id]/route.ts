@@ -33,7 +33,7 @@ export async function GET(request: NextRequest, { params }: Params) {
             orderBy: { createdAt: 'desc' },
             take: 24,
             include: {
-              images: { orderBy: { orderIndex: 'asc' }, take: 1 },
+              images: { orderBy: { orderIndex: 'asc' }, take: 1, /* embedding HARIC: ~42 KB/gorsel */ select: { id: true, url: true, thumbUrl: true, mediumUrl: true, orderIndex: true, productId: true, angle: true } },
               category: { select: { id: true, name: true, emoji: true } },
               seller: { select: { id: true, name: true, avatar: true, username: true } },
               _count: { select: { favorites: true, offers: true } },

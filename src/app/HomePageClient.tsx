@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
@@ -112,7 +112,7 @@ export default function HomePageClient() {
               initial="hidden"
               whileInView="show"
               viewport={{ once: true }}
-              className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
+              className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4"
             >
               {featuredProducts.map((product) => (
                 <motion.div key={product.id} variants={item}>
@@ -157,7 +157,7 @@ export default function HomePageClient() {
       <section className="hero-banner-gradient py-16">
         <div className="container text-center">
           <h2 className="mb-4 text-3xl font-bold text-white md:text-4xl" style={{ fontFamily: 'var(--font-display)' }}>
-            Bereit fuer deinen ersten Verkauf?
+            Bereit für deinen ersten Verkauf?
           </h2>
           <p className="mx-auto mb-8 max-w-lg text-lg text-white/80">
             Lade Fotos hoch, beschreibe deinen Artikel und dein Inserat ist in wenigen Minuten live.

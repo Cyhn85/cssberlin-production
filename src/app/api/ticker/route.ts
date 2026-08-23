@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 
 export const runtime = 'nodejs';
@@ -7,12 +7,12 @@ export const revalidate = 300; // 5 Minuten - der Ticker muss nicht sekundenaktu
 /**
  * GET /api/ticker?lang=de
  *
- * Liefert die Zeilen fuer den Header-Ticker. Zwei Quellen, beide echt:
+ * Liefert die Zeilen für den Header-Ticker. Zwei Quellen, beide echt:
  *  - freigegebene Kampagnen aus der Campaign-Tabelle (von TATANGA gepusht)
  *  - die Community-Zahlen, direkt aus der Datenbank gerechnet
  *
- * Es gibt bewusst keinen statischen Fuellinhalt: gibt es nichts Belegbares zu
- * sagen, kommt eine leere Liste zurueck und der Ticker bleibt aus.
+ * Es gibt bewusst keinen statischen Füllinhalt: gibt es nichts Belegbares zu
+ * sagen, kommt eine leere Liste zurück und der Ticker bleibt aus.
  */
 export async function GET(request: NextRequest) {
   const lang = (request.nextUrl.searchParams.get('lang') || 'de').toLowerCase();

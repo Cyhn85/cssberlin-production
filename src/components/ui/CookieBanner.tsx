@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -16,7 +16,7 @@ import {
 const CATEGORY_LABELS: Record<Exclude<ConsentCategory, 'necessary'>, { title: string; description: string }> = {
     functional: {
         title: 'Funktional',
-        description: 'Ermoeglicht Nachrichten, Angebote und Live-Updates in Echtzeit (z. B. Inbox und Pazarlik-Benachrichtigungen).',
+        description: 'Ermöglicht Nachrichten, Angebote und Live-Updates in Echtzeit (z. B. Inbox und Pazarlik-Benachrichtigungen).',
     },
     analytics: {
         title: 'Analyse',
@@ -24,7 +24,7 @@ const CATEGORY_LABELS: Record<Exclude<ConsentCategory, 'necessary'>, { title: st
     },
     marketing: {
         title: 'Marketing',
-        description: 'Wird fuer personalisierte Angebote und Werbung verwendet.',
+        description: 'Wird für personalisierte Angebote und Werbung verwendet.',
     },
 };
 
@@ -103,10 +103,10 @@ export default function CookieBanner() {
                                     className="text-sm font-bold tracking-tight"
                                     style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text)' }}
                                 >
-                                    Deine Privatsphaere zaehlt
+                                    Deine Privatsphäre zählt
                                 </h3>
                                 <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                                    Wir nutzen Cookies fuer Login, Warenkorb und optional fuer Statistik/Werbung. Du entscheidest, welche Kategorien du zulaesst.{' '}
+                                    Wir nutzen Cookies für Login, Warenkorb und optional für Statistik/Werbung. Du entscheidest, welche Kategorien du zulässt.{' '}
                                     <Link href="/datenschutz" className="font-semibold underline" style={{ color: 'var(--color-orange)' }}>
                                         Details
                                     </Link>
@@ -122,7 +122,7 @@ export default function CookieBanner() {
                                             <div>
                                                 <p className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>Notwendig</p>
                                                 <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                                                    Immer aktiv &ndash; erforderlich fuer Login, Warenkorb und Sicherheit.
+                                                    Immer aktiv &ndash; erforderlich für Login, Warenkorb und Sicherheit.
                                                 </p>
                                             </div>
                                             <span className="text-xs font-bold" style={{ color: 'var(--color-primary)' }}>An</span>
@@ -199,7 +199,7 @@ export default function CookieBanner() {
                                 onClick={() => setIsVisible(false)}
                                 className="absolute top-2.5 right-2.5 rounded-full p-1.5 transition-colors"
                                 style={{ color: 'var(--color-text-secondary)' }}
-                                aria-label="Schliessen"
+                                aria-label="Schließen"
                             >
                                 <X size={14} />
                             </button>

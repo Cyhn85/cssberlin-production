@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -61,7 +61,7 @@ export default function PurchasesPage() {
         <div className="mb-8 flex items-end justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text)' }}>
-              Meine Kaeufe
+              Meine Käufe
             </h1>
             <p className="mt-2 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
               Alle Bestellungen aus deinem Kaufkonto auf einen Blick.
@@ -75,7 +75,7 @@ export default function PurchasesPage() {
             >
               <RefreshCcw size={16} /> Aktualisieren
             </button>
-            <Link href="/catalog" style={{ color: 'var(--color-primary)' }}>Weiter stoebern</Link>
+            <Link href="/catalog" style={{ color: 'var(--color-primary)' }}>Weiter stöbern</Link>
           </div>
         </div>
 
@@ -111,7 +111,7 @@ export default function PurchasesPage() {
                     <div>
                       <p className="font-semibold" style={{ color: 'var(--color-text)' }}>{purchase.product.title}</p>
                       <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                        Verkaeufer: {purchase.seller.name || 'cssberlin member'}
+                        Verkäufer: {purchase.seller.name || 'cssberlin member'}
                       </p>
                       <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
                         {new Date(purchase.createdAt).toLocaleDateString('de-DE')}
@@ -132,7 +132,7 @@ export default function PurchasesPage() {
         ) : (
           <div className="rounded-3xl border border-dashed p-10 text-center" style={{ borderColor: 'var(--color-border)' }}>
             <PackageSearch size={28} className="mx-auto mb-4" style={{ color: 'var(--color-primary)' }} />
-            <p style={{ color: 'var(--color-text-secondary)' }}>Noch keine Kaeufe vorhanden.</p>
+            <p style={{ color: 'var(--color-text-secondary)' }}>Noch keine Käufe vorhanden.</p>
           </div>
         )}
       </div>

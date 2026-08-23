@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { use, useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
@@ -42,5 +42,5 @@ export default function PersonaInboxPage({ params }: { params: Promise<{ id: str
     return <p className="text-sm text-red-600">{error || 'Profil nicht gefunden.'}</p>;
   }
 
-  return <InboxThread selfId={persona.id} apiBase={`/api/personas/${persona.id}/messages`} title={`Postfach: ${persona.name || 'Verkaeufer-Profil'}`} />;
+  return <InboxThread selfId={persona.id} apiBase={`/api/personas/${persona.id}/messages`} title={`Postfach: ${persona.name || 'Verkäufer-Profil'}`} />;
 }

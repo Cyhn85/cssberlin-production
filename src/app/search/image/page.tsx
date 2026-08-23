@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useRef, useState } from 'react';
 import Link from 'next/link';
@@ -62,14 +62,14 @@ export default function ImageSearchPage() {
     <div className="min-h-screen py-8" style={{ background: 'var(--color-bg)' }}>
       <div className="container max-w-5xl">
         <Link href="/catalog" className="mb-6 inline-flex items-center gap-2 text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>
-          <ArrowLeft size={16} /> Zurueck zum Katalog
+          <ArrowLeft size={16} /> Zurück zum Katalog
         </Link>
 
         <h1 className="mb-2 text-3xl font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text)' }}>
           Bildsuche
         </h1>
         <p className="mb-8 max-w-xl text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-          Lade ein Foto hoch und wir finden aehnliche Artikel im Marktplatz &ndash; basierend auf echtem visuellem
+          Lade ein Foto hoch und wir finden ähnliche Artikel im Marktplatz &ndash; basierend auf echtem visuellem
           Abgleich, nicht nur auf Stichworten.
         </p>
 
@@ -91,7 +91,7 @@ export default function ImageSearchPage() {
             className="btn-mars-earth flex items-center gap-2 rounded-full px-6 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? <Loader2 size={16} className="animate-spin" /> : <UploadCloud size={16} />}
-            <span>{loading ? 'Suche laeuft...' : previewUrl ? 'Anderes Foto waehlen' : 'Foto hochladen'}</span>
+            <span>{loading ? 'Suche läuft...' : previewUrl ? 'Anderes Foto wählen' : 'Foto hochladen'}</span>
           </button>
         </div>
 
@@ -103,18 +103,18 @@ export default function ImageSearchPage() {
           results.length === 0 ? (
             <div className="rounded-3xl border border-dashed p-10 text-center" style={{ borderColor: 'var(--color-border)' }}>
               <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                Keine aehnlichen Artikel gefunden. Versuche ein anderes Foto oder durchsuche den{' '}
+                Keine ähnlichen Artikel gefunden. Versuche ein anderes Foto oder durchsuche den{' '}
                 <Link href="/catalog" className="font-semibold" style={{ color: 'var(--color-primary)' }}>Katalog</Link>.
               </p>
             </div>
           ) : (
             <div>
               <p className="mb-4 text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
-                {results.length} aehnliche Artikel gefunden
+                {results.length} ähnliche Artikel gefunden
               </p>
               <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
                 {results.map((product) => (
-                  <ProductCard key={product.id} product={product} subtitle={`${Math.round(product.similarity * 100)}% aehnlich`} />
+                  <ProductCard key={product.id} product={product} subtitle={`${Math.round(product.similarity * 100)}% ähnlich`} />
                 ))}
               </div>
             </div>

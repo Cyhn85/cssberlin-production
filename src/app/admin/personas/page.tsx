@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -59,7 +59,7 @@ export default function AdminPersonasPage() {
       });
       const result = await res.json();
       if (!res.ok || !result.success) {
-        setError(result.error || 'Verkaeufer-Profil konnte nicht erstellt werden.');
+        setError(result.error || 'Verkäufer-Profil konnte nicht erstellt werden.');
         return;
       }
       setName('');
@@ -95,11 +95,11 @@ export default function AdminPersonasPage() {
   return (
     <div>
       <h1 className="mb-2 text-2xl font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text)' }}>
-        Verkaeufer-Profile
+        Verkäufer-Profile
       </h1>
       <p className="mb-6 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-        Echte Verkaeuferkonten, denen importierte Artikel automatisch zugewiesen werden. Jede Nachricht und jedes
-        Angebot, das ein solches Konto erhaelt, wird dir in Echtzeit weitergeleitet - du schreibst oder bestaetigst
+        Echte Verkäuferkonten, denen importierte Artikel automatisch zugewiesen werden. Jede Nachricht und jedes
+        Angebot, das ein solches Konto erhält, wird dir in Echtzeit weitergeleitet - du schreibst oder bestätigst
         jede Antwort selbst.
       </p>
 
@@ -149,7 +149,7 @@ export default function AdminPersonasPage() {
         <Loader2 size={24} className="animate-spin" style={{ color: 'var(--color-primary)' }} />
       ) : personas.length === 0 ? (
         <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-          Noch keine Verkaeufer-Profile. Importierte Artikel koennen erst zugewiesen werden, wenn mindestens eines existiert.
+          Noch keine Verkäufer-Profile. Importierte Artikel können erst zugewiesen werden, wenn mindestens eines existiert.
         </p>
       ) : (
         <div className="space-y-2">

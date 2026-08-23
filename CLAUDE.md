@@ -17,5 +17,27 @@
 ## Yayın kapsamı (giyim+ayakkabı+aksesuar)
 - `src/config/launch-scope.ts` tek kaynak. 7 kök açık, 5 kapalı. Silme yok, gizle.
 
+## Süreç hijyeni — HER görevde geçerli, hatırlatma beklenmez
+- **Hiç bitmeyen komutu asılı bırakma.** `npm run dev`, `npx unlighthouse`,
+  `Get-Content -Wait`, `tail -f` kendiliğinden bitmez. Kullandıysan işin bitince
+  **sonlandır**. Görev listesinde asılı süreç = yarım kalmış iş.
+- Log okumak için `-Wait` kullanma; tek seferlik `-Tail 50` yeterli.
+- "Tamamladım" derken arkada çalışan süreç kalmamalı.
+
+## Ölçüm ve rapor disiplini — HER denetimde geçerli
+- **Selector doğrulanmadan ölçüm yok.** `docs/audit/selectors.json` sicilinde
+  `dogrulandi: true` olmayan selector kullanılmaz.
+- **`0` ve `N/A` yasak.** Ölçüm alınamadıysa `OLCULEMEDI: <sebep>` yaz; sebep
+  spesifik olsun ("article 15sn icinde DOM'a gelmedi — istemci render").
+- **`OLCULEMEDI` hesaba girmez** (medyan/ortalama/öneri). Geçerli veri 2'den
+  azsa `YETERSIZ VERI` yaz, öneri üretme.
+- **İddia ettiğin her `src/...` yolu diskte olmalı** — yazmadan önce kontrol et.
+- **Test edemediğine TAMAM yazma.** `DOĞRULANMADI, şu sebeple` kabul edilir;
+  yanlış TAMAM edilmez.
+- **İstemci-render sayfalarda** (katalog, ürün listesi) ölçümden önce
+  `waitForSelector` + `img.decode()` bekle — ilk HTML'de `<article>` yok.
+- **Prompt'ta istenip raporda geçmeyen metrik** `KAPSANMADI: <metrik>` olarak
+  listelenir. Sessizce atlama.
+
 ## Gizli bilgiler NEREDE (asla commit'e girmez)
 - `.env.production` yalnız Hetzner'de. Yerelde `.env*` gitignore'da. SSH: root@195.201.146.224.

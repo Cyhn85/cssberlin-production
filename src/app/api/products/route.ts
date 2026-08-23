@@ -104,7 +104,19 @@ export async function GET(request: NextRequest) {
       take: limit + 1,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       include: {
-        images: { orderBy: { orderIndex: 'asc' }, take: 1 },
+        // `embedding` ASLA buradan donmemeli: 3072 elemanli gorsel-arama
+        // vektoru, gorsel basina ~42 KB. limit=16 istegi 130 KB'i asiyor ve
+        // tarayicinin HTTP/3 fetch'i "Failed to fetch" ile dusuyor — katalog
+        // bombos goruntuleniyordu. Ayrica arama vektorlerini disariya sizdirir.
+        // Bu yuzden include degil, ACIK alan listesi kullaniyoruz.
+        images: {
+          orderBy: { orderIndex: 'asc' },
+          take: 1,
+          select: {
+            id: true, url: true, thumbUrl: true, mediumUrl: true,
+            orderIndex: true, productId: true, angle: true,
+          },
+        },
         seller: { select: { id: true, name: true, avatar: true, username: true, location: true } },
         category: { select: { id: true, name: true, emoji: true } },
         _count: { select: { favorites: true, offers: true } },
@@ -177,7 +189,7 @@ export async function POST(request: NextRequest) {
         },
       },
       include: {
-        images: { orderBy: { orderIndex: 'asc' } },
+        images: { orderBy: { orderIndex: 'asc' }, /* embedding HARIC: 3072'lik vektor gorsel basina ~42 KB */ select: { id: true, url: true, thumbUrl: true, mediumUrl: true, orderIndex: true, productId: true, angle: true } },
         seller: { select: { id: true, name: true, avatar: true } },
         category: { select: { id: true, name: true, emoji: true } },
       },

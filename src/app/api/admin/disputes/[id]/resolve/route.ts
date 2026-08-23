@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+﻿import { NextRequest } from 'next/server';
 import prisma from '@/lib/db';
 import { requireAdmin } from '@/lib/auth';
 import { ApiResponse } from '@/lib/api-response';
@@ -8,7 +8,7 @@ type Params = { params: Promise<{ id: string }> };
 
 const resolveSchema = z.object({
   outcome: z.enum(['REFUNDED', 'COMPLETED']),
-  note: z.string().min(5, 'Bitte kurz begruenden.').max(1000),
+  note: z.string().min(5, 'Bitte kurz begründen.').max(1000),
 });
 
 /**
@@ -25,13 +25,13 @@ export async function POST(request: NextRequest, { params }: Params) {
     const body = await request.json();
     const parsed = resolveSchema.safeParse(body);
     if (!parsed.success) {
-      return ApiResponse.validationError(parsed.error.issues[0]?.message || 'Ungueltige Eingabe.');
+      return ApiResponse.validationError(parsed.error.issues[0]?.message || 'Ungültige Eingabe.');
     }
 
     const order = await prisma.order.findUnique({ where: { id } });
     if (!order) return ApiResponse.notFound('Bestellung nicht gefunden.');
     if (order.status !== 'DISPUTED') {
-      return ApiResponse.error('Diese Bestellung hat aktuell keinen offenen Kaeuferschutz-Fall.', 409);
+      return ApiResponse.error('Diese Bestellung hat aktuell keinen offenen Käuferschutz-Fall.', 409);
     }
 
     const updated = await prisma.order.update({

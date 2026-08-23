@@ -17,7 +17,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     const product = await prisma.product.findUnique({
       where: { id },
       include: {
-        images: { orderBy: { orderIndex: 'asc' } },
+        images: { orderBy: { orderIndex: 'asc' }, /* embedding HARIC: 3072'lik vektor gorsel basina ~42 KB */ select: { id: true, url: true, thumbUrl: true, mediumUrl: true, orderIndex: true, productId: true, angle: true } },
         seller: {
           select: {
             id: true,
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest, { params }: Params) {
       take: 6,
       orderBy: { createdAt: 'desc' },
       include: {
-        images: { orderBy: { orderIndex: 'asc' }, take: 1 },
+        images: { orderBy: { orderIndex: 'asc' }, take: 1, /* embedding HARIC: 3072'lik vektor gorsel basina ~42 KB */ select: { id: true, url: true, thumbUrl: true, mediumUrl: true, orderIndex: true, productId: true, angle: true } },
         seller: { select: { name: true } },
       },
     });
@@ -111,7 +111,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
       where: { id },
       data: parsed.data,
       include: {
-        images: { orderBy: { orderIndex: 'asc' } },
+        images: { orderBy: { orderIndex: 'asc' }, /* embedding HARIC: ~42 KB/gorsel */ select: { id: true, url: true, thumbUrl: true, mediumUrl: true, orderIndex: true, productId: true, angle: true } },
         category: true,
       },
     });

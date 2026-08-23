@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+﻿import { NextRequest } from 'next/server';
 import prisma from '@/lib/db';
 import { requireAdmin } from '@/lib/auth';
 import { ApiResponse } from '@/lib/api-response';
@@ -21,16 +21,16 @@ export async function POST(request: NextRequest, { params }: Params) {
 
     const body = await request.json();
     const parsed = moderateSchema.safeParse(body);
-    if (!parsed.success) return ApiResponse.validationError('Ungueltige Eingabe.');
+    if (!parsed.success) return ApiResponse.validationError('Ungültige Eingabe.');
 
     if (parsed.data.action === 'HIDE' && !parsed.data.reason?.trim()) {
-      return ApiResponse.validationError('Bitte gib einen Grund fuer die Entfernung an.');
+      return ApiResponse.validationError('Bitte gib einen Grund für die Entfernung an.');
     }
 
     const product = await prisma.product.findUnique({ where: { id }, select: { status: true } });
     if (!product) return ApiResponse.notFound('Artikel nicht gefunden.');
     if (product.status === 'SOLD' || product.status === 'RESERVED') {
-      return ApiResponse.error('Verkaufte oder reservierte Artikel koennen nicht moderiert werden.', 409);
+      return ApiResponse.error('Verkaufte oder reservierte Artikel können nicht moderiert werden.', 409);
     }
 
     const updated = await prisma.product.update({

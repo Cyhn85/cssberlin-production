@@ -4,7 +4,7 @@ import { businessAddressLines, businessProfile } from '@/config/business-profile
 
 export const metadata: Metadata = {
   title: 'Impressum',
-  description: 'Rechtliche Informationen ueber cssberlin.de.',
+  description: 'Rechtliche Informationen über cssberlin.de.',
 };
 
 export default function ImpressumPage() {
@@ -14,7 +14,7 @@ export default function ImpressumPage() {
         <h1 className="text-4xl font-extrabold tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>
           Impressum
         </h1>
-        <p className="mt-4 text-lg leading-relaxed text-muted-foreground">Angaben gemaess Paragraph 5 DDG</p>
+        <p className="mt-4 text-lg leading-relaxed text-muted-foreground">Angaben gemäß Paragraph 5 DDG</p>
       </div>
 
       <section className="space-y-4">
@@ -55,7 +55,7 @@ export default function ImpressumPage() {
       <section className="space-y-4">
         <h2 className="border-b pb-2 text-2xl font-bold">Unternehmensprofil</h2>
         <p className="text-lg leading-loose">
-          Taetigkeit: {businessProfile.tradeActivity}
+          Tätigkeit: {businessProfile.tradeActivity}
           <br />
           Gewerbeanmeldung / Betriebsort: {businessProfile.tradeRegistrationAuthority}
         </p>
@@ -64,12 +64,12 @@ export default function ImpressumPage() {
       <section className="space-y-4">
         <h2 className="border-b pb-2 text-2xl font-bold">Umsatzsteuer-ID</h2>
         <p className="text-lg leading-loose">
-          Umsatzsteuer-Identifikationsnummer gemaess Paragraph 27a UStG: {businessProfile.vatId}
+          Umsatzsteuer-Identifikationsnummer gemäß Paragraph 27a UStG: {businessProfile.vatId}
         </p>
       </section>
 
       <section className="space-y-4">
-        <h2 className="border-b pb-2 text-2xl font-bold">Verantwortlich fuer Inhalte</h2>
+        <h2 className="border-b pb-2 text-2xl font-bold">Verantwortlich für Inhalte</h2>
         <p className="text-lg leading-loose">
           {businessProfile.ownerName}
           <br />

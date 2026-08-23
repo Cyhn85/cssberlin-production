@@ -14,7 +14,7 @@ export async function GET() {
         where: { buyerId: session.user.id },
         orderBy: { createdAt: 'desc' },
         include: {
-          product: { include: { images: { take: 1 } } },
+          product: { include: { images: { take: 1, /* embedding HARIC: 3072'lik vektor gorsel basina ~42 KB sisiriyor */ select: { id: true, url: true, thumbUrl: true, mediumUrl: true, orderIndex: true, productId: true, angle: true } } } },
           seller: { select: { id: true, name: true, avatar: true } },
           review: true,
         },
@@ -23,7 +23,7 @@ export async function GET() {
         where: { sellerId: session.user.id },
         orderBy: { createdAt: 'desc' },
         include: {
-          product: { include: { images: { take: 1 } } },
+          product: { include: { images: { take: 1, /* embedding HARIC: 3072'lik vektor gorsel basina ~42 KB sisiriyor */ select: { id: true, url: true, thumbUrl: true, mediumUrl: true, orderIndex: true, productId: true, angle: true } } } },
           buyer: { select: { id: true, name: true, avatar: true } },
           review: true,
         },

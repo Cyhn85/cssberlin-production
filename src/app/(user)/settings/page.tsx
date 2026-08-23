@@ -150,7 +150,7 @@ export default function SettingsPage() {
               { id: 'profile', icon: User, label: 'Profil bearbeiten' },
               { id: 'verification', icon: ShieldCheck, label: 'Verifizierung & Trust' },
               { id: 'payment', icon: CreditCard, label: 'Zahlung & Auszahlung' },
-              { id: 'bundle', icon: Package, label: 'Rabatte fuer Pakete' },
+              { id: 'bundle', icon: Package, label: 'Rabatte für Pakete' },
               { id: 'notifications', icon: Bell, label: 'Benachrichtigungen' },
             ].map((tab) => {
               const Icon = tab.icon;
@@ -189,7 +189,7 @@ export default function SettingsPage() {
                     </div>
                     <div>
                       <p className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>{profile?.email}</p>
-                      <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Avatar-Upload kann spaeter an Uploadthing angebunden werden.</p>
+                      <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Avatar-Upload kann später an Uploadthing angebunden werden.</p>
                     </div>
                   </div>
 
@@ -220,8 +220,8 @@ export default function SettingsPage() {
                   <p className="mb-8 text-sm" style={{ color: 'var(--color-text-secondary)' }}>Der aktuelle Status kommt direkt aus deinem Nutzerkonto.</p>
 
                   <StatusRow title="E-Mail-Adresse" description={profile.email} status={profile.isVerified ? 'Verifiziert' : 'Offen'} />
-                  <StatusRow title="Telefonnummer" description={profile.phoneVerified ? 'Telefon bestaetigt' : 'Noch nicht verifiziert'} status={profile.phoneVerified ? 'Aktiv' : 'Offen'} />
-                  <StatusRow title="Identitaetspruefung" description={profile.idVerified ? 'Identitaet bestaetigt' : 'Noch nicht hinterlegt'} status={profile.idVerified ? 'Aktiv' : 'Optional'} />
+                  <StatusRow title="Telefonnummer" description={profile.phoneVerified ? 'Telefon bestätigt' : 'Noch nicht verifiziert'} status={profile.phoneVerified ? 'Aktiv' : 'Offen'} />
+                  <StatusRow title="Identitätsprüfung" description={profile.idVerified ? 'Identität bestätigt' : 'Noch nicht hinterlegt'} status={profile.idVerified ? 'Aktiv' : 'Optional'} />
                 </div>
 
                 <div className="rounded-3xl border border-[var(--color-primary-100)] bg-[var(--color-primary-50)] p-6">
@@ -238,12 +238,12 @@ export default function SettingsPage() {
                 <h2 className="mb-6 text-xl font-bold" style={{ color: 'var(--color-text)' }}>Guthaben & Auszahlung</h2>
                 <div className="mb-6 flex items-center justify-between rounded-2xl p-6" style={{ background: 'var(--color-bg-secondary)' }}>
                   <div>
-                    <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Verkaeufe mit abgeschlossenem Status</p>
+                    <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Verkäufe mit abgeschlossenem Status</p>
                     <p className="mt-1 text-4xl font-bold" style={{ color: 'var(--color-primary)', fontFamily: 'var(--font-display)' }}>{profile._count.ordersAsSeller}</p>
                   </div>
                   <div className="text-right text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                    <p>Kaeufe insgesamt: {profile._count.ordersAsBuyer}</p>
-                    <p>Stripe-Auszahlung folgt im naechsten Sprint.</p>
+                    <p>Käufe insgesamt: {profile._count.ordersAsBuyer}</p>
+                    <p>Stripe-Auszahlung folgt im nächsten Sprint.</p>
                   </div>
                 </div>
               </div>
@@ -292,7 +292,7 @@ export default function SettingsPage() {
               <div className="rounded-3xl p-6 md:p-8" style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}>
                 <h2 className="mb-2 text-xl font-bold" style={{ color: 'var(--color-text)' }}>Benachrichtigungen</h2>
                 <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                  Das Notification-Center arbeitet bereits ueber /api/notifications. Eine eigene Einstellungsmaske folgt als naechster Feinschliff.
+                  Das Notification-Center arbeitet bereits über /api/notifications. Eine eigene Einstellungsmaske folgt als nächster Feinschliff.
                 </p>
               </div>
             ) : null}

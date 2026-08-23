@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { ApiResponse } from '@/lib/api-response';
 import { rateLimit, getClientIP } from '@/lib/rate-limit';
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
       return ApiResponse.serverError('Import ist serverseitig nicht konfiguriert.');
     }
     if (!apiKey || apiKey !== expectedKey) {
-      return ApiResponse.unauthorized('Ungueltiger API-Schluessel.');
+      return ApiResponse.unauthorized('Ungültiger API-Schlüssel.');
     }
 
     const rl = await rateLimit(getClientIP(request), 'UPLOAD');
@@ -145,6 +145,41 @@ export async function POST(request: NextRequest) {
             ...(recategorised ? { categoryId: recategorised } : {}),
           },
         });
+
+        // 1) Delete old files from disk
+        try {
+          const { rm } = await import('fs/promises');
+          const path = await import('path');
+          const UPLOAD_ROOT = process.env.LOCAL_UPLOAD_DIR || '/app/uploads';
+          await rm(path.join(UPLOAD_ROOT, 'products', existing.id), { recursive: true, force: true });
+        } catch (err) {
+          console.warn('Failed to delete old images from disk for', existing.id, err);
+        }
+
+        // 2) Delete old rows
+        await prisma.productImage.deleteMany({ where: { productId: existing.id } });
+
+        // 3) Save new images
+        let orderIndex = 0;
+        if (hasFullAngleUpload) {
+          for (const { angle, file } of angleFiles) {
+            const buffer = Buffer.from(await file.arrayBuffer());
+            const { url, thumbUrl, mediumUrl } = await saveProductImage(buffer, existing.id, orderIndex, file.type || 'image/jpeg');
+            await prisma.productImage.create({
+              data: { url, thumbUrl, mediumUrl, orderIndex, productId: existing.id, angle },
+            });
+            orderIndex += 1;
+          }
+        }
+        for (const file of imageFiles) {
+          const buffer = Buffer.from(await file.arrayBuffer());
+          const { url, thumbUrl, mediumUrl } = await saveProductImage(buffer, existing.id, orderIndex, file.type || 'image/jpeg');
+          await prisma.productImage.create({
+            data: { url, thumbUrl, mediumUrl, orderIndex, productId: existing.id },
+          });
+          orderIndex += 1;
+        }
+
         // IndexNow: Bing/Yandex'e guncellenen urunu tekrar taramasini bildir (fire-and-forget).
         void import('@/lib/indexnow').then((m) =>
           m.pingIndexNow([`https://cssberlin.de/product/${updated.id}`])
@@ -163,7 +198,7 @@ export async function POST(request: NextRequest) {
     const sellerId = await pickPersonaSellerId();
     if (!sellerId) {
       return ApiResponse.error(
-        'Kein Persona-Verkaeuferkonto vorhanden. Bitte zuerst unter /admin/personas mindestens ein Konto anlegen.',
+        'Kein Persona-Verkäuferkonto vorhanden. Bitte zuerst unter /admin/personas mindestens ein Konto anlegen.',
         422
       );
     }
@@ -191,9 +226,9 @@ export async function POST(request: NextRequest) {
     if (hasFullAngleUpload) {
       for (const { angle, file } of angleFiles) {
         const buffer = Buffer.from(await file.arrayBuffer());
-        const url = await saveProductImage(buffer, product.id, orderIndex, file.type || 'image/jpeg');
+        const { url, thumbUrl, mediumUrl } = await saveProductImage(buffer, product.id, orderIndex, file.type || 'image/jpeg');
         const image = await prisma.productImage.create({
-          data: { url, orderIndex, productId: product.id, angle },
+          data: { url, thumbUrl, mediumUrl, orderIndex, productId: product.id, angle },
         });
         savedImages.push({ id: image.id, url });
         orderIndex += 1;
@@ -202,9 +237,9 @@ export async function POST(request: NextRequest) {
 
     for (const file of imageFiles) {
       const buffer = Buffer.from(await file.arrayBuffer());
-      const url = await saveProductImage(buffer, product.id, orderIndex, file.type || 'image/jpeg');
+      const { url, thumbUrl, mediumUrl } = await saveProductImage(buffer, product.id, orderIndex, file.type || 'image/jpeg');
       const image = await prisma.productImage.create({
-        data: { url, orderIndex, productId: product.id },
+        data: { url, thumbUrl, mediumUrl, orderIndex, productId: product.id },
       });
       savedImages.push({ id: image.id, url });
       orderIndex += 1;

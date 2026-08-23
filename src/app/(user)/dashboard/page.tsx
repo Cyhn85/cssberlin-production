@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -57,7 +57,7 @@ export default function DashboardPage() {
           throw new Error(profileResult.error || 'Profil konnte nicht geladen werden.');
         }
         if (!ordersResponse.ok || !ordersResult.success) {
-          throw new Error(ordersResult.error || 'Verkaeufe konnten nicht geladen werden.');
+          throw new Error(ordersResult.error || 'Verkäufe konnten nicht geladen werden.');
         }
 
         if (!cancelled) {
@@ -99,10 +99,10 @@ export default function DashboardPage() {
       <div className="container py-16">
         <div className="rounded-3xl border border-dashed p-10 text-center" style={{ borderColor: 'var(--color-border)' }}>
           <AlertTriangle size={28} className="mx-auto mb-4" style={{ color: 'var(--color-primary)' }} />
-          <h1 className="mb-2 text-2xl font-bold" style={{ color: 'var(--color-text)' }}>Dashboard nicht verfuegbar</h1>
+          <h1 className="mb-2 text-2xl font-bold" style={{ color: 'var(--color-text)' }}>Dashboard nicht verfügbar</h1>
           <p className="mb-6 text-sm" style={{ color: 'var(--color-text-secondary)' }}>{error}</p>
           <Link href="/sales" className="rounded-full px-6 py-3 font-bold text-white" style={{ background: 'var(--color-orange)' }}>
-            Zu meinen Verkaeufen
+            Zu meinen Verkäufen
           </Link>
         </div>
       </div>
@@ -118,12 +118,12 @@ export default function DashboardPage() {
       <div className="container">
         <div className="mb-8 flex items-end justify-between">
           <div>
-            <h1 className="text-3xl font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text)' }}>Verkaeufer-Dashboard</h1>
-            <p className="mt-2 text-sm" style={{ color: 'var(--color-text-secondary)' }}>Deine Listings, Versandaufgaben und aktuellen Verkaeufe auf einen Blick.</p>
+            <h1 className="text-3xl font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text)' }}>Verkäufer-Dashboard</h1>
+            <p className="mt-2 text-sm" style={{ color: 'var(--color-text-secondary)' }}>Deine Listings, Versandaufgaben und aktuellen Verkäufe auf einen Blick.</p>
           </div>
           <div className="flex items-center gap-3">
             <Link href="/offers" className="rounded-full border px-5 py-3 font-bold" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}>Angebote</Link>
-            <Link href="/sales" className="rounded-full border px-5 py-3 font-bold" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}>Verkaeufe</Link>
+            <Link href="/sales" className="rounded-full border px-5 py-3 font-bold" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}>Verkäufe</Link>
             <Link href="/upload" className="rounded-full px-5 py-3 font-bold text-white" style={{ background: 'var(--color-orange)' }}>Neuen Artikel hochladen</Link>
           </div>
         </div>
@@ -149,14 +149,14 @@ export default function DashboardPage() {
               <div className="flex items-start gap-3">
                 <ShieldAlert size={20} style={{ color: '#B45309', marginTop: 2 }} />
                 <div>
-                  <p className="font-semibold" style={{ color: 'var(--color-text)' }}>Offene Streitfaelle</p>
+                  <p className="font-semibold" style={{ color: 'var(--color-text)' }}>Offene Streitfälle</p>
                   <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
                     {summary.disputes} Bestellung{summary.disputes === 1 ? '' : 'en'} braucht gerade besondere Aufmerksamkeit.
                   </p>
                 </div>
               </div>
               <Link href="/sales" className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>
-                Verkaeufe pruefen
+                Verkäufe prüfen
               </Link>
             </div>
           </div>
@@ -165,7 +165,7 @@ export default function DashboardPage() {
         <div className="mb-10">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>Deine Listings</h2>
-            <Link href="/upload" style={{ color: 'var(--color-primary)' }}>Listing hinzufuegen</Link>
+            <Link href="/upload" style={{ color: 'var(--color-primary)' }}>Listing hinzufügen</Link>
           </div>
           <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
             {data.profile.products.map((product) => (
@@ -176,8 +176,8 @@ export default function DashboardPage() {
 
         <div>
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>Neueste Verkaeufe</h2>
-            <Link href="/sales" style={{ color: 'var(--color-primary)' }}>Alle Verkaeufe anzeigen</Link>
+            <h2 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>Neueste Verkäufe</h2>
+            <Link href="/sales" style={{ color: 'var(--color-primary)' }}>Alle Verkäufe anzeigen</Link>
           </div>
           <div className="space-y-3">
             {data.sales.length > 0 ? data.sales.slice(0, 6).map((sale) => (
@@ -186,13 +186,13 @@ export default function DashboardPage() {
                   <div>
                     <p className="font-semibold" style={{ color: 'var(--color-text)' }}>{sale.product.title}</p>
                     <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                      Kaeufer: {sale.buyer.name || 'cssberlin member'} | Status: {orderStatusToLabel[sale.status] || sale.status}
+                      Käufer: {sale.buyer.name || 'cssberlin member'} | Status: {orderStatusToLabel[sale.status] || sale.status}
                     </p>
                   </div>
                   <div className="text-right font-bold" style={{ color: 'var(--color-primary)' }}>{formatPrice(sale.totalAmount)}</div>
                 </div>
               </Link>
-            )) : <p style={{ color: 'var(--color-text-secondary)' }}>Noch keine Verkaeufe vorhanden.</p>}
+            )) : <p style={{ color: 'var(--color-text-secondary)' }}>Noch keine Verkäufe vorhanden.</p>}
           </div>
         </div>
       </div>

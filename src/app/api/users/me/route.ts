@@ -35,7 +35,7 @@ export async function GET() {
             orderBy: { createdAt: 'desc' },
             take: 24,
             include: {
-              images: { orderBy: { orderIndex: 'asc' }, take: 1 },
+              images: { orderBy: { orderIndex: 'asc' }, take: 1, /* embedding HARIC: ~42 KB/gorsel */ select: { id: true, url: true, thumbUrl: true, mediumUrl: true, orderIndex: true, productId: true, angle: true } },
               category: { select: { id: true, name: true, emoji: true } },
               _count: { select: { favorites: true, offers: true } },
             },
@@ -80,7 +80,7 @@ export async function PUT(request: NextRequest) {
 
     const parsed = updateProfileSchema.safeParse(body);
     if (!parsed.success) {
-      return ApiResponse.validationError('Ungueltige Profildaten.');
+      return ApiResponse.validationError('Ungültige Profildaten.');
     }
 
     if (parsed.data.username) {

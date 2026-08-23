@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+﻿import { NextRequest } from 'next/server';
 import prisma from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
 import { ApiResponse } from '@/lib/api-response';
@@ -117,17 +117,17 @@ export async function POST(request: NextRequest, { params }: Params) {
     const body = await request.json();
     const parsed = createMessageSchema.safeParse(body);
     if (!parsed.success) {
-      return ApiResponse.validationError('Ungueltige Nachricht.');
+      return ApiResponse.validationError('Ungültige Nachricht.');
     }
 
     const { receiverId, content, type, offerId } = parsed.data;
 
     if (receiverId === personaId) {
-      return ApiResponse.error('Ungueltiger Empfaenger.');
+      return ApiResponse.error('Ungültiger Empfänger.');
     }
 
     const receiver = await prisma.user.findUnique({ where: { id: receiverId }, select: { id: true } });
-    if (!receiver) return ApiResponse.notFound('Empfaenger nicht gefunden.');
+    if (!receiver) return ApiResponse.notFound('Empfänger nicht gefunden.');
 
     const message = await prisma.message.create({
       data: {

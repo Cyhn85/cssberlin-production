@@ -33,23 +33,23 @@ export async function POST(request: NextRequest, { params }: Params) {
     if (!order) return ApiResponse.notFound('Bestellung nicht gefunden.');
 
     if (order.buyerId !== session.user.id) {
-      return ApiResponse.forbidden('Nur der Kaeufer kann einen Kaeuferschutz-Fall eroeffnen.');
+      return ApiResponse.forbidden('Nur der Käufer kann einen Käuferschutz-Fall eröffnen.');
     }
 
     if (order.status !== 'DELIVERED' && order.status !== 'SHIPPED') {
-      return ApiResponse.error('Kaeuferschutz ist nur fuer versendete oder zugestellte Bestellungen moeglich.');
+      return ApiResponse.error('Käuferschutz ist nur für versendete oder zugestellte Bestellungen möglich.');
     }
 
     const twoDaysMs = 2 * 24 * 60 * 60 * 1000;
     const timeSinceUpdate = Date.now() - order.updatedAt.getTime();
     if (timeSinceUpdate > twoDaysMs) {
-      return ApiResponse.error('Der Kaeuferschutz-Zeitraum (2 Tage nach Zustellung) ist abgelaufen.');
+      return ApiResponse.error('Der Käuferschutz-Zeitraum (2 Tage nach Zustellung) ist abgelaufen.');
     }
 
     const body = await request.json();
     const parsed = disputeSchema.safeParse(body);
     if (!parsed.success) {
-      return ApiResponse.validationError('Bitte gib einen gueltigen Grund an.');
+      return ApiResponse.validationError('Bitte gib einen gültigen Grund an.');
     }
 
     const updated = await prisma.order.update({

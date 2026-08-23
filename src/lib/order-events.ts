@@ -66,7 +66,7 @@ function buildSummary(input: PublishOrderLifecycleEventInput) {
 
   switch (eventType) {
     case 'ORDER_PAID':
-      return `${order.product.title}: Zahlung bestaetigt. Versand kann jetzt vorbereitet werden.`;
+      return `${order.product.title}: Zahlung bestätigt. Versand kann jetzt vorbereitet werden.`;
     case 'ORDER_SHIPPED':
       if (wasAlreadyShipped) {
         return order.trackingCode
@@ -79,7 +79,7 @@ function buildSummary(input: PublishOrderLifecycleEventInput) {
     case 'ORDER_COMPLETED':
       return `${order.product.title}: Bestellung wurde erfolgreich abgeschlossen.`;
     case 'ORDER_DISPUTED':
-      return `${order.product.title}: Ein Streitfall wurde eroeffnet.`;
+      return `${order.product.title}: Ein Streitfall wurde eröffnet.`;
     default:
       return `${order.product.title}: Status ist jetzt ${statusLabel}.`;
   }
@@ -87,8 +87,8 @@ function buildSummary(input: PublishOrderLifecycleEventInput) {
 
 function buildNotifications(input: PublishOrderLifecycleEventInput): NotificationPlan[] {
   const { order, eventType, wasAlreadyShipped } = input;
-  const buyerName = displayName(order.buyer.name, 'Der Kaeufer');
-  const sellerName = displayName(order.seller.name, 'Der Verkaeufer');
+  const buyerName = displayName(order.buyer.name, 'Der Käufer');
+  const sellerName = displayName(order.seller.name, 'Der Verkäufer');
   const trackingSuffix = order.trackingCode ? ` (Tracking: ${order.trackingCode})` : '';
 
   switch (eventType) {
@@ -102,7 +102,7 @@ function buildNotifications(input: PublishOrderLifecycleEventInput): Notificatio
         {
           senderId: order.seller.id,
           receiverId: order.buyer.id,
-          content: `Deine Zahlung fuer ${order.product.title} wurde bestaetigt. Die Bestellung ist jetzt in deinen Kaeufen sichtbar.`,
+          content: `Deine Zahlung für ${order.product.title} wurde bestätigt. Die Bestellung ist jetzt in deinen Käufen sichtbar.`,
         },
       ];
     case 'ORDER_SHIPPED':
@@ -111,7 +111,7 @@ function buildNotifications(input: PublishOrderLifecycleEventInput): Notificatio
           senderId: order.seller.id,
           receiverId: order.buyer.id,
           content: wasAlreadyShipped
-            ? `${sellerName} hat die Versanddaten fuer ${order.product.title} aktualisiert${trackingSuffix}.`
+            ? `${sellerName} hat die Versanddaten für ${order.product.title} aktualisiert${trackingSuffix}.`
             : `${sellerName} hat ${order.product.title} als versendet markiert${trackingSuffix}.`,
         },
       ];
@@ -120,7 +120,7 @@ function buildNotifications(input: PublishOrderLifecycleEventInput): Notificatio
         {
           senderId: order.buyer.id,
           receiverId: order.seller.id,
-          content: `${buyerName} hat den Erhalt von ${order.product.title} bestaetigt. Die Bestellung ist jetzt abgeschlossen.`,
+          content: `${buyerName} hat den Erhalt von ${order.product.title} bestätigt. Die Bestellung ist jetzt abgeschlossen.`,
         },
       ];
     case 'ORDER_DISPUTED':
@@ -128,7 +128,7 @@ function buildNotifications(input: PublishOrderLifecycleEventInput): Notificatio
         {
           senderId: order.buyer.id,
           receiverId: order.seller.id,
-          content: `${buyerName} hat fuer ${order.product.title} einen Streitfall eroeffnet. Bitte pruefe die Bestellung.`,
+          content: `${buyerName} hat für ${order.product.title} einen Streitfall eröffnet. Bitte prüfe die Bestellung.`,
         },
       ];
     default:
@@ -204,8 +204,8 @@ function buildEmails(input: PublishOrderLifecycleEventInput): Array<EmailOptions
 function buildRealtimeEvent(input: PublishOrderLifecycleEventInput): OrderStatusEvent {
   const { order, actorId, eventType } = input;
   const actorName = actorId === order.buyer.id
-    ? displayName(order.buyer.name, 'Der Kaeufer')
-    : displayName(order.seller.name, 'Der Verkaeufer');
+    ? displayName(order.buyer.name, 'Der Käufer')
+    : displayName(order.seller.name, 'Der Verkäufer');
   const paths = buildOrderPaths(order.id);
 
   return {

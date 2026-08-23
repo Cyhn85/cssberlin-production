@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -80,7 +80,7 @@ export default function FavoritesPage() {
             </p>
           </div>
           <Link href="/catalog" className="text-sm font-bold" style={{ color: 'var(--color-primary)' }}>
-            Weiter stoebern
+            Weiter stöbern
           </Link>
         </div>
 
@@ -111,7 +111,7 @@ export default function FavoritesPage() {
             </div>
             <h2 className="text-xl font-bold" style={{ color: 'var(--color-text)' }}>Noch keine Favoriten</h2>
             <p className="mx-auto mt-2 max-w-md text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-              Speichere interessante Artikel mit dem Herz, damit du sie spaeter schnell wiederfindest.
+              Speichere interessante Artikel mit dem Herz, damit du sie später schnell wiederfindest.
             </p>
             <Link href="/catalog" className="mt-6 inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-bold text-white" style={{ background: 'var(--color-primary)' }}>
               <Search size={16} /> Zum Katalog

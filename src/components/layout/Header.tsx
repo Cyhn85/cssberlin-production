@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useDeferredValue, useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
@@ -140,12 +140,14 @@ export default function Header() {
         const result = await response.json();
         if (!cancelled && result.success) {
           const tree = (result.data?.tree ?? []) as NavCategory[];
-          setNavCategories(sortCategoriesByPriority(tree).slice(0, 8));
+          // No placeholder list when the answer is empty. Invented entries
+          // ("Elektronik" is not even in our launch scope) send a real shopper
+          // into an empty catalog and put a promise on the page we do not keep.
+          // An empty strip is honest, and it collapses on its own.
+          setNavCategories(tree.length > 0 ? sortCategoriesByPriority(tree).slice(0, 8) : []);
         }
       } catch {
-        if (!cancelled) {
-          setNavCategories([]);
-        }
+        if (!cancelled) setNavCategories([]);
       }
     };
 
@@ -265,7 +267,7 @@ export default function Header() {
   }, [session?.user?.id]);
 
   // Ticker-Inhalte kommen komplett aus /api/ticker: freigegebene Kampagnen plus
-  // die echten Community-Zahlen. Nichts davon steht fest im Code - laesst sich
+  // die echten Community-Zahlen. Nichts davon steht fest im Code - lässt sich
   // eine Aussage nicht belegen, wird sie schlicht nicht angezeigt.
   const [tickerFeed, setTickerFeed] = useState<Array<{ key: string; label: string; href: string; kind: string }>>([]);
   useEffect(() => {
@@ -294,7 +296,7 @@ export default function Header() {
       icon: tickerIcon(item.kind),
       label: item.label,
     })),
-    { key: 'protection', href: '/ueber-uns', icon: <ShieldCheck size={14} className="text-[#1b4332]" />, label: 'Kaeuferschutz bei jedem Kauf inklusive' },
+    { key: 'protection', href: '/ueber-uns', icon: <ShieldCheck size={14} className="text-[#1b4332]" />, label: 'Käuferschutz bei jedem Kauf inklusive' },
     ...(!session ? [{ key: 'register', href: '/register', icon: <Sparkles size={14} className="text-[#1b4332]" />, label: 'Neu hier? Jetzt kostenlos registrieren' }] : []),
   ];
 
@@ -346,9 +348,9 @@ export default function Header() {
       <div className="container">
         <div className="flex h-14 items-center justify-between gap-3">
           <Link href="/" className="group flex shrink-0 items-center leading-none">
-            <span className="text-gradient-mars-earth" style={{ fontFamily: 'var(--font-display)' }}>
-              <span className="text-3xl font-extrabold tracking-tight">css</span>
-              <span className="text-lg font-bold tracking-tight">berlin</span>
+            <span className="text-gradient-mars-earth drop-shadow-sm" style={{ fontFamily: 'var(--font-display)' }}>
+              <span className="text-[32px] sm:text-[40px] leading-none font-extrabold tracking-tight">CSS</span>
+              <span className="text-[20px] sm:text-[24px] leading-none font-bold tracking-tight ml-1.5">berlin</span>
             </span>
           </Link>
 
@@ -357,7 +359,7 @@ export default function Header() {
               <input
                 type="text"
                 placeholder="Climate Smart Solutions"
-                className="h-10 w-full rounded-full pl-11 pr-11 text-sm transition-all duration-200"
+                className="h-11 w-full rounded-full pl-12 pr-12 text-sm transition-all duration-200"
                 style={{ background: 'var(--color-bg-secondary)', border: `2px solid ${isSearchFocused ? 'var(--color-primary)' : 'transparent'}`, color: 'var(--color-text)', textAlign: 'center' }}
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
@@ -368,7 +370,7 @@ export default function Header() {
                 }}
                 id="main-search"
               />
-              <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }} />
+              <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }} />
               <Link
                 href="/search/image"
                 className="icon-mars-earth p-1.5"
@@ -376,7 +378,7 @@ export default function Header() {
                 aria-label="Mit Foto suchen"
                 title="Mit Foto suchen"
               >
-                <Camera size={18} />
+                <Camera size={20} />
               </Link>
             </motion.div>
 
@@ -434,7 +436,7 @@ export default function Header() {
                     </>
                   ) : (
                     <div className="p-4 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                      Keine Vorschlaege gefunden. Druecke Enter fuer die Vollsuche.
+                      Keine Vorschläge gefunden. Drücke Enter für die Vollsuche.
                     </div>
                   )}
                 </motion.div>
@@ -442,41 +444,49 @@ export default function Header() {
             </AnimatePresence>
           </div>
 
-          <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             {/* Dark mode toggle — logodan buraya taşındı, header kompaktlaştı */}
             <motion.button
               whileHover={{ scale: 1.08 }}
               whileTap={{ scale: 0.92 }}
               onClick={() => setIsDarkMode(!isDarkMode)}
-              className="hidden h-8 w-8 items-center justify-center rounded-full transition-colors sm:flex"
+              className="hidden h-11 w-11 items-center justify-center rounded-full transition-colors sm:flex"
               style={{ background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}
               aria-label="Dark Mode Toggle"
             >
-              {isDarkMode ? <Sun size={14} /> : <Moon size={14} />}
+              {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
             </motion.button>
 
             <Link href="/upload">
               <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="btn-mars-earth hidden items-center text-white sm:flex"
-                style={{ background: 'var(--color-orange)', padding: '0.45rem 0.85rem', fontSize: '0.8rem', gap: '0.35rem' }}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                className="btn-mars-earth hidden items-center text-white sm:flex h-11"
+                style={{ background: 'var(--color-orange)', padding: '0 1.2rem', gap: '0.4rem' }}
               >
-                <Plus size={14} /> <span>Verkaufen</span>
+                <Plus size={18} /> <span>Verkaufen</span>
               </motion.button>
             </Link>
 
-            <div className="hidden items-center gap-1 sm:flex md:gap-1.5">
-              <Link href="/favorites" className="icon-mars-earth relative p-2.5" aria-label="Favoriten">
-                <Heart size={20} />
+            <div className="hidden items-center gap-1 sm:flex md:gap-2">
+              <Link href="/favorites" className="icon-mars-earth relative inline-flex items-center justify-center p-3 min-w-[44px] min-h-[44px]" aria-label="Favoriten">
+                <Heart size={22} />
+                {/* The counter was read from useFavorites() but never rendered,
+                    so favouriting from a card gave no feedback anywhere in the
+                    chrome. Same badge treatment as the cart, right next to it. */}
+                {favoritesLoaded && favoriteCount > 0 ? (
+                  <span className="absolute -right-1 -top-1 min-w-5 rounded-full bg-[var(--color-orange)] px-1.5 py-0.5 text-center text-[11px] font-bold leading-none text-white border-2 border-[var(--color-bg-card)]">
+                    {favoriteCount > 99 ? '99+' : favoriteCount}
+                  </span>
+                ) : null}
               </Link>
-              <Link href="/offers" className="icon-mars-earth p-2.5" aria-label="Angebote">
-                <Tag size={20} />
+              <Link href="/offers" className="icon-mars-earth inline-flex items-center justify-center p-3 min-w-[44px] min-h-[44px]" aria-label="Angebote">
+                <Tag size={22} />
               </Link>
-              <Link href="/cart" className="icon-mars-earth relative p-2.5" aria-label="Warenkorb">
-                <ShoppingCart size={20} />
+              <Link href="/cart" className="icon-mars-earth relative inline-flex items-center justify-center p-3 min-w-[44px] min-h-[44px]" aria-label="Warenkorb">
+                <ShoppingCart size={22} />
                 {cartLoaded && cartCount > 0 ? (
-                  <span className="absolute -right-0.5 -top-0.5 min-w-5 rounded-full bg-[var(--color-primary)] px-1.5 text-center text-[10px] font-bold leading-5 text-white">
+                  <span className="absolute -right-1 -top-1 min-w-5 rounded-full bg-[var(--color-primary)] px-1.5 py-0.5 text-center text-[11px] font-bold leading-none text-white border-2 border-[var(--color-bg-card)]">
                     {cartCount > 99 ? '99+' : cartCount}
                   </span>
                 ) : null}
@@ -491,10 +501,10 @@ export default function Header() {
                   if (open) void openNotifications();
                 }}
               >
-                <DropdownMenuTrigger className="icon-mars-earth relative p-2.5" aria-label="Benachrichtigungen">
-                  <Bell size={20} />
+                <DropdownMenuTrigger className="icon-mars-earth relative inline-flex items-center justify-center p-3 min-w-[44px] min-h-[44px]" aria-label="Benachrichtigungen">
+                  <Bell size={22} />
                   {activityCounts.unreadNotifications + activityCounts.unreadMessages > 0 ? (
-                    <span className="absolute -right-0.5 -top-0.5 min-w-5 rounded-full bg-[var(--color-primary)] px-1.5 text-center text-[10px] font-bold leading-5 text-white">
+                    <span className="absolute -right-1 -top-1 min-w-5 rounded-full bg-[var(--color-primary)] px-1.5 py-0.5 text-center text-[11px] font-bold leading-none text-white border-2 border-[var(--color-bg-card)]">
                       {activityCounts.unreadNotifications + activityCounts.unreadMessages > 99 ? '99+' : activityCounts.unreadNotifications + activityCounts.unreadMessages}
                     </span>
                   ) : null}
@@ -549,38 +559,38 @@ export default function Header() {
                 open={isAccountMenuOpen}
                 onOpenChange={(open) => setOpenHeaderMenu(open ? 'account' : null)}
               >
-                <DropdownMenuTrigger className="icon-mars-earth p-2.5" aria-label="Konto-Menue">
-                  <User size={20} />
+                <DropdownMenuTrigger className="icon-mars-earth inline-flex items-center justify-center p-3 min-w-[44px] min-h-[44px]" aria-label="Konto-Menü">
+                  <User size={22} />
                 </DropdownMenuTrigger>
 
                 <DropdownMenuContent align="end" sideOffset={12} className="w-56">
                   <DropdownMenuGroup>
                     <DropdownMenuItem render={<Link href="/profile" />} className="gap-3 px-2.5 py-2">
-                      <User size={16} /> Mein Profil
+                      <User size={18} /> Mein Profil
                     </DropdownMenuItem>
                     <DropdownMenuItem render={<Link href="/favorites" />} className="gap-3 px-2.5 py-2">
-                      <Heart size={16} /> Favoriten
+                      <Heart size={18} /> Favoriten
                     </DropdownMenuItem>
                     <DropdownMenuItem render={<Link href="/inbox" />} className="gap-3 px-2.5 py-2">
-                      <MessageCircle size={16} /> Nachrichten
+                      <MessageCircle size={18} /> Nachrichten
                     </DropdownMenuItem>
                   </DropdownMenuGroup>
                   <DropdownMenuSeparator />
                   <DropdownMenuGroup>
                     <DropdownMenuItem render={<Link href="/offers" />} className="gap-3 px-2.5 py-2">
-                      <Tag size={16} /> Pazarlıklarım
+                      <Tag size={18} /> Angebotem
                     </DropdownMenuItem>
                     <DropdownMenuItem render={<Link href="/purchases" />} className="gap-3 px-2.5 py-2">
-                      <Package size={16} /> Meine Einkaeufe
+                      <Package size={18} /> Meine Einkäufe
                     </DropdownMenuItem>
                     <DropdownMenuItem render={<Link href="/sales" />} className="gap-3 px-2.5 py-2">
-                      <ShoppingBag size={16} /> Meine Verkaeufe
+                      <ShoppingBag size={18} /> Meine Verkäufe
                     </DropdownMenuItem>
                   </DropdownMenuGroup>
                   <DropdownMenuSeparator />
                   <DropdownMenuGroup>
                     <DropdownMenuItem render={<Link href="/settings" />} className="gap-3 px-2.5 py-2">
-                      <Settings size={16} /> Einstellungen
+                      <Settings size={18} /> Einstellungen
                     </DropdownMenuItem>
                   </DropdownMenuGroup>
                   <DropdownMenuSeparator />
@@ -589,37 +599,24 @@ export default function Header() {
                     onClick={() => signOut({ callbackUrl: '/' })}
                     className="gap-3 px-2.5 py-2"
                   >
-                    <LogOut size={16} /> Abmelden
+                    <LogOut size={18} /> Abmelden
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : authLoading ? (
-              // Oturum yuklenirken NE giris NE cikis gosterilir — yanlis durum
-              // gostermek, hic gostermemekten kotudur. Yer tutucu, header'in
-              // ziplamasini da onler.
               <div
-                className="h-9 w-9 shrink-0 animate-pulse rounded-full"
+                className="h-11 w-11 shrink-0 animate-pulse rounded-full"
                 style={{ background: 'var(--color-bg-secondary)' }}
                 aria-label="Anmeldestatus wird geladen"
               />
             ) : (
-              // MOBILDE DE GORUNUR: eskiden `hidden sm:flex` idi, yani telefonda
-              // giris baglantisi hic cizilmiyordu. Kullanici giris yapip
-              // yapmadigini anlayamiyordu. Dar ekranda sadece "Anmelden"
-              // gosterilir (kisa), genis ekranda ikisi birden.
-              <div className="flex items-center gap-2">
+              <div className="flex items-center">
                 <Link
                   href="/login"
-                  className="nav-mars-earth whitespace-nowrap px-2 text-sm font-semibold"
+                  className="inline-flex h-11 items-center justify-center rounded-full px-5 text-sm font-semibold transition-colors bg-[var(--color-bg-secondary)] hover:bg-[var(--color-border)] text-[var(--color-text)]"
                 >
+                  <User size={18} className="mr-2" />
                   Anmelden
-                </Link>
-                <Link
-                  href="/register"
-                  className="btn-mars-earth-outline hidden text-xs sm:inline-flex"
-                  style={{ padding: '0.45rem 1rem' }}
-                >
-                  Registrieren
                 </Link>
               </div>
             )}
@@ -741,12 +738,12 @@ export default function Header() {
           oyuncak gosteriyor. Vinted, eBay, Kleinanzeigen — hicbiri kullanmiyor.
           Serit ince tutulur: gezinme cubugu icerigi bastirmamali. */}
       <div className="border-t" style={{ borderColor: 'var(--color-border)' }}>
-        <div className="container flex items-center justify-start gap-1 overflow-x-auto py-2 md:justify-center md:gap-3 md:py-2.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="container flex items-center justify-start gap-2 overflow-x-auto py-2 md:justify-center md:gap-4 md:py-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {navCategories.map((category) => (
             <Link
               key={category.id}
               href={`/catalog?category=${encodeURIComponent(category.name)}`}
-              className="cat-nav-link shrink-0 whitespace-nowrap px-2 py-1 text-[13px] font-medium md:px-2.5 md:text-sm"
+              className="cat-nav-link shrink-0 whitespace-nowrap px-3 py-2 text-[15px] font-medium md:px-4 md:py-2.5 md:text-[16px] flex items-center"
             >
               {/* Dar ekranda kisaltilmis etiket ("Taschen & Accessoires" -> "Taschen") */}
               <span className="md:hidden">{shortLabel(category.name)}</span>
@@ -755,7 +752,7 @@ export default function Header() {
           ))}
           <Link
             href="/ueber-uns"
-            className="cat-nav-link shrink-0 whitespace-nowrap px-2 py-1 text-[13px] font-medium md:px-2.5 md:text-sm"
+            className="cat-nav-link shrink-0 whitespace-nowrap px-3 py-2 text-[15px] font-medium md:px-4 md:py-2.5 md:text-[16px] flex items-center"
             style={{ borderLeft: '1px solid var(--color-border)', marginLeft: '0.25rem', paddingLeft: '0.75rem' }}
           >
             <span className="md:hidden">Warum?</span><span className="hidden md:inline">Warum wir?</span>

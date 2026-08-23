@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+﻿import { NextRequest } from 'next/server';
 import prisma from '@/lib/db';
 import { requireAdmin } from '@/lib/auth';
 import { ApiResponse } from '@/lib/api-response';
@@ -22,17 +22,17 @@ export async function POST(request: NextRequest, { params }: Params) {
     const body = await request.json();
     const parsed = suspendSchema.safeParse(body);
     if (!parsed.success) {
-      return ApiResponse.validationError('Ungueltige Eingabe.');
+      return ApiResponse.validationError('Ungültige Eingabe.');
     }
 
     const target = await prisma.user.findUnique({ where: { id }, select: { role: true } });
     if (!target) return ApiResponse.notFound('Nutzer nicht gefunden.');
     if (target.role === 'ADMIN') {
-      return ApiResponse.forbidden('Admin-Konten koennen hier nicht gesperrt werden.');
+      return ApiResponse.forbidden('Admin-Konten können hier nicht gesperrt werden.');
     }
 
     if (parsed.data.suspend && !parsed.data.reason?.trim()) {
-      return ApiResponse.validationError('Bitte gib einen Grund fuer die Sperre an.');
+      return ApiResponse.validationError('Bitte gib einen Grund für die Sperre an.');
     }
 
     const updated = await prisma.user.update({

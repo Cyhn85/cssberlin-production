@@ -1,9 +1,20 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse, NextRequest } from 'next/server';
 import bcrypt from 'bcryptjs';
 import prisma from '@/lib/db';
+import { rateLimit, getClientIP } from '@/lib/rate-limit';
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
     try {
+        // AppSec: Rate Limiting to prevent Bot/DDoS account creation spam
+        const ip = getClientIP(req);
+        const rl = await rateLimit(ip, 'AUTH');
+        if (!rl.success) {
+            return NextResponse.json(
+                { message: 'Zu viele Anfragen. Bitte warte einen Moment.' },
+                { status: 429, headers: { 'Retry-After': '60' } }
+            );
+        }
+
         const { email, password, name } = await req.json();
 
         if (!email || !password || !name) {

@@ -60,20 +60,20 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
     const body = await request.json();
     const parsed = updateOrderSchema.safeParse(body);
-    if (!parsed.success) return ApiResponse.validationError('Ungueltige Versanddaten.');
+    if (!parsed.success) return ApiResponse.validationError('Ungültige Versanddaten.');
 
     if (order.sellerId !== session.user.id) {
-      return ApiResponse.forbidden('Nur der Verkaeufer kann Versandinformationen aktualisieren.');
+      return ApiResponse.forbidden('Nur der Verkäufer kann Versandinformationen aktualisieren.');
     }
 
     const { status, trackingCode, shippingCarrier } = parsed.data;
 
     if (status && status !== 'SHIPPED') {
-      return ApiResponse.forbidden('Bestellungen koennen hier nur als versendet markiert werden.');
+      return ApiResponse.forbidden('Bestellungen können hier nur als versendet markiert werden.');
     }
 
     if (!SELLER_EDITABLE_STATUSES.includes(order.status as (typeof SELLER_EDITABLE_STATUSES)[number])) {
-      return ApiResponse.error('Versandinformationen koennen nur fuer bezahlte oder bereits versendete Bestellungen aktualisiert werden.');
+      return ApiResponse.error('Versandinformationen können nur für bezahlte oder bereits versendete Bestellungen aktualisiert werden.');
     }
 
     const nextShippingCarrier = shippingCarrier?.trim() || order.shippingCarrier || '';

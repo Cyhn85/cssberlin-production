@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
@@ -152,95 +152,127 @@ export default function PublicProfilePage() {
   ].filter(Boolean) as string[];
 
   return (
-    <div className="min-h-screen pb-20 pt-6" style={{ background: 'var(--color-bg)' }}>
-      <div className="container max-w-5xl">
-        <div className="relative mb-8 overflow-hidden rounded-3xl p-6 md:p-10" style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-md)' }}>
-          <div className="absolute right-0 top-0 h-64 w-64 -translate-y-1/2 translate-x-1/3 rounded-full opacity-10" style={{ background: 'radial-gradient(circle, var(--color-primary-light) 0%, transparent 70%)' }} />
+    <div className="min-h-screen bg-[var(--color-bg)] pb-20">
+      {/* Hero Banner (21st.dev Style) */}
+      <div className="relative h-48 md:h-64 lg:h-72 w-full bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-bg-secondary)] overflow-hidden">
+        <div className="absolute inset-0 bg-black/10 mix-blend-overlay"></div>
+        {/* Soft decorative blur */}
+        <div className="absolute -bottom-24 -right-24 h-64 w-64 rounded-full bg-[var(--color-orange)] blur-[80px] opacity-20"></div>
+      </div>
 
-          <div className="relative z-10 flex flex-col items-start gap-8 md:flex-row md:items-center">
-            <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full text-4xl font-bold text-white shadow-lg md:h-32 md:w-32" style={{ background: 'linear-gradient(135deg, var(--color-primary-light), var(--color-primary))' }}>
-              {initials}
+      <div className="container mx-auto px-4 sm:px-6">
+        <div className="relative -mt-16 sm:-mt-20 flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b border-[var(--color-border)]">
+          <div className="flex flex-col md:flex-row gap-5 items-start md:items-end">
+            {/* Floating Avatar */}
+            <div className="relative rounded-full p-1.5 bg-[var(--color-bg)] shadow-sm">
+              <div
+                className="flex h-24 w-24 sm:h-32 sm:w-32 items-center justify-center rounded-full text-4xl sm:text-5xl font-extrabold text-white shadow-inner overflow-hidden"
+                style={{ background: 'var(--color-primary)' }}
+              >
+                {profile.avatar ? (
+                  <img src={profile.avatar} alt={profile.name || ''} className="h-full w-full object-cover" />
+                ) : (
+                  initials
+                )}
+              </div>
+              {profile.isVerified && (
+                <div className="absolute bottom-2 right-2 h-6 w-6 sm:h-8 sm:w-8 rounded-full bg-[var(--color-bg)] flex items-center justify-center shadow-sm">
+                  <CheckCircle2 className="text-green-500 h-5 w-5 sm:h-7 sm:w-7 fill-green-100" />
+                </div>
+              )}
             </div>
 
-            <div className="flex-1">
-              <div className="mb-3 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div className="min-w-0">
-                  <h1 className="flex items-center gap-2 truncate text-3xl font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text)' }}>
-                    {profile.name || 'Ohne Namen'}
-                  </h1>
-                  <p className="mb-1 truncate font-medium" style={{ color: 'var(--color-text-secondary)' }}>
-                    @{profile.username || profile.id.slice(0, 8)}
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-3">
-                  <button className="flex h-10 w-10 items-center justify-center rounded-full" style={{ border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
-                    <Share2 size={18} />
-                  </button>
-                  <button className="flex h-10 w-10 items-center justify-center rounded-full" style={{ border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
-                    <MoreHorizontal size={18} />
-                  </button>
-                  <button
-                    onClick={handleFollowToggle}
-                    disabled={followBusy}
-                    className="flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-bold"
-                    style={{
-                      background: profile.isFollowing ? 'var(--color-orange)' : 'transparent',
-                      color: profile.isFollowing ? '#fff' : 'var(--color-orange)',
-                      border: '2px solid var(--color-orange)',
-                    }}
-                  >
-                    <UserPlus size={16} /> {profile.isFollowing ? 'Abonniert' : 'Folgen'}
-                  </button>
-                  <button
-                    onClick={() => router.push(`/inbox?with=${profile.id}`)}
-                    className="flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-white"
-                    style={{ background: 'var(--color-primary)' }}
-                  >
-                    <MessageCircle size={16} /> Nachricht
-                  </button>
-                </div>
-              </div>
-
-              <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm" style={{ color: 'var(--color-text-muted)' }}>
-                <span className="flex items-center gap-1.5"><MapPin size={14} /> {profile.location || 'Deutschland'}</span>
-                <span className="flex items-center gap-1.5"><Clock size={14} /> Mitglied seit {new Date(profile.createdAt).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })}</span>
-                <span className="flex items-center gap-1.5">
-                  <Star size={14} style={{ fill: 'var(--color-warning)', color: 'var(--color-warning)' }} />
-                  <span className="ml-0.5 font-bold" style={{ color: 'var(--color-text)' }}>{profile.averageRating.toFixed(1)}</span> ({profile._count.receivedReviews})
-                </span>
-                <span className="font-medium"><span style={{ color: 'var(--color-text)' }}>{profile._count.followers}</span> Follower</span>
-              </div>
-
-              <p className="max-w-2xl text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                {profile.bio || 'Noch keine Bio hinterlegt.'}
+            {/* Profile Info */}
+            <div className="flex flex-col mt-2 md:mb-2">
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-[var(--color-text)] tracking-tight">
+                {profile.name || profile.username}
+              </h1>
+              <p className="text-sm font-medium text-[var(--color-text-muted)] mt-1">
+                @{profile.username || profile.id.slice(0, 8)}
               </p>
+              
+              <div className="flex flex-wrap items-center gap-4 mt-3 text-sm text-[var(--color-text-secondary)] font-medium">
+                <span className="flex items-center gap-1.5 bg-[var(--color-bg-secondary)] px-2.5 py-1 rounded-md"><MapPin size={14} className="text-[var(--color-primary)]" /> {profile.location || 'Berlin, Deutschland'}</span>
+                <span className="flex items-center gap-1.5 bg-[var(--color-bg-secondary)] px-2.5 py-1 rounded-md">
+                  <Star size={14} className="text-[var(--color-warning)] fill-[var(--color-warning)]" />
+                  <span className="font-bold text-[var(--color-text)]">{profile.averageRating.toFixed(1)}</span> ({profile._count.receivedReviews} Bewertungen)
+                </span>
+              </div>
             </div>
           </div>
 
-          <div className="mt-8 flex flex-wrap gap-6 border-t pt-6 md:gap-12" style={{ borderColor: 'var(--color-border)' }}>
-            <div>
-              <p className="mb-2 text-xs font-bold uppercase tracking-[0.05em]" style={{ color: 'var(--color-text-muted)' }}>Verifizierungen</p>
-              <div className="flex gap-3">
-                {verifications.length > 0 ? verifications.map((entry) => (
-                  <span key={entry} className="flex items-center gap-1 text-xs font-medium text-green-600">
-                    <CheckCircle2 size={14} /> {entry}
-                  </span>
-                )) : <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Noch keine sichtbaren Verifizierungen</span>}
-              </div>
-            </div>
+          {/* Action Buttons */}
+          <div className="flex items-center gap-3 md:mb-2 w-full md:w-auto">
+            <button
+              onClick={() => router.push(`/inbox?with=${profile.id}`)}
+              className="flex-1 md:flex-none flex items-center justify-center gap-2 rounded-full px-6 py-2.5 text-sm font-bold bg-[var(--color-bg-secondary)] text-[var(--color-text)] hover:bg-[var(--color-border)] transition-colors"
+            >
+              <MessageCircle size={16} /> Nachricht
+            </button>
+            <button
+              onClick={handleFollowToggle}
+              disabled={followBusy}
+              className="flex-1 md:flex-none flex items-center justify-center gap-2 rounded-full px-6 py-2.5 text-sm font-bold transition-all shadow-sm"
+              style={{
+                background: profile.isFollowing ? 'var(--color-bg-card)' : 'var(--color-orange)',
+                color: profile.isFollowing ? 'var(--color-orange)' : '#fff',
+                border: `1px solid ${profile.isFollowing ? 'var(--color-orange)' : 'transparent'}`,
+              }}
+            >
+              <UserPlus size={16} /> {profile.isFollowing ? 'Abonniert' : 'Folgen'}
+            </button>
+            <button className="hidden sm:flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-bg-secondary)] hover:bg-[var(--color-border)] transition-colors">
+              <Share2 size={16} className="text-[var(--color-text)]" />
+            </button>
+          </div>
+        </div>
 
-            <div>
-              <p className="mb-2 text-xs font-bold uppercase tracking-[0.05em]" style={{ color: 'var(--color-text-muted)' }}>Eco Impact</p>
-              <div className="flex gap-4">
-                <span className="flex items-center gap-1.5 text-xs font-semibold" style={{ color: 'var(--color-primary)' }}>
-                  <Leaf size={14} /> -{profile.ecoCO2Saved.toFixed(1)}kg CO2
-                </span>
-                <span className="flex items-center gap-1.5 text-xs font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
-                  {profile.itemsRecycled} Artikel weitergegeben
-                </span>
-              </div>
+        {/* Bio & Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 py-8">
+          <div className="md:col-span-2">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-3">Über {profile.username}</h3>
+            <p className="text-[15px] leading-relaxed text-[var(--color-text)]">
+              {profile.bio || 'Dieser Nutzer hat noch keine Biografie hinzugefügt. Entdecke stattdessen die coolen Second-Hand Schätze im Kleiderschrank!'}
+            </p>
+            
+            <div className="mt-6 flex flex-wrap gap-4">
+               <div className="flex items-center gap-2 rounded-xl border border-[var(--color-border)] p-3 bg-[var(--color-bg-card)] shadow-sm">
+                  <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
+                    <Leaf size={16} className="text-green-700" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase text-[var(--color-text-muted)]">Eco Impact</p>
+                    <p className="text-sm font-bold text-[var(--color-text)]">-{profile.ecoCO2Saved.toFixed(1)}kg CO₂ gespart</p>
+                  </div>
+               </div>
+               <div className="flex items-center gap-2 rounded-xl border border-[var(--color-border)] p-3 bg-[var(--color-bg-card)] shadow-sm">
+                  <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center">
+                    <CheckCircle2 size={16} className="text-orange-700" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase text-[var(--color-text-muted)]">Verkäufe</p>
+                    <p className="text-sm font-bold text-[var(--color-text)]">{profile.itemsRecycled} Artikel verkauft</p>
+                  </div>
+               </div>
             </div>
+          </div>
+          
+          <div className="rounded-2xl border border-[var(--color-border)] p-5 bg-[var(--color-bg-card)] shadow-sm">
+             <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-4">Profil-Info</h3>
+             <ul className="space-y-3 text-sm">
+               <li className="flex justify-between">
+                 <span className="text-[var(--color-text-secondary)]">Mitglied seit</span>
+                 <span className="font-semibold text-[var(--color-text)]">{new Date(profile.createdAt).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })}</span>
+               </li>
+               <li className="flex justify-between">
+                 <span className="text-[var(--color-text-secondary)]">Follower</span>
+                 <span className="font-semibold text-[var(--color-text)]">{profile._count.followers}</span>
+               </li>
+               <li className="flex justify-between">
+                 <span className="text-[var(--color-text-secondary)]">Folgt</span>
+                 <span className="font-semibold text-[var(--color-text)]">{profile._count.following}</span>
+               </li>
+             </ul>
           </div>
         </div>
 
@@ -293,7 +325,7 @@ export default function PublicProfilePage() {
                   </div>
                 </div>
                 <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                  {review.comment || 'Keine zusaetzliche Bewertung hinterlassen.'}
+                  {review.comment || 'Keine zusätzliche Bewertung hinterlassen.'}
                 </p>
               </div>
             )) : (

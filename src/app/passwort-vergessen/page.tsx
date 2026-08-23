@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
@@ -42,7 +42,7 @@ export default function PasswortVergessenPage() {
             Der Link gilt eine Stunde.
           </p>
           <Link href="/login" className="mt-4 inline-block font-medium text-[#2D6A4F] hover:underline">
-            Zurueck zur Anmeldung
+            Zurück zur Anmeldung
           </Link>
         </div>
       ) : (
@@ -77,7 +77,7 @@ export default function PasswortVergessenPage() {
             </button>
           </form>
           <Link href="/login" className="mt-6 text-sm text-[#2D6A4F] hover:underline">
-            Zurueck zur Anmeldung
+            Zurück zur Anmeldung
           </Link>
         </>
       )}

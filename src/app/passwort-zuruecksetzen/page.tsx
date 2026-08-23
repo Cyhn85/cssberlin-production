@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { Suspense, useState } from 'react';
 import Link from 'next/link';
@@ -14,7 +14,7 @@ function ResetForm() {
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (password !== repeat) {
-      setError('Die beiden Passwoerter stimmen nicht ueberein.');
+      setError('Die beiden Passwörter stimmen nicht überein.');
       return;
     }
     setState('saving');
@@ -27,7 +27,7 @@ function ResetForm() {
       });
       const data = await response.json();
       if (!response.ok || !data.success) {
-        setError(data.error || 'Passwort konnte nicht geaendert werden.');
+        setError(data.error || 'Passwort konnte nicht geändert werden.');
         setState('idle');
         return;
       }
@@ -42,7 +42,7 @@ function ResetForm() {
     return (
       <div className="rounded-xl border border-stone-200 p-6 dark:border-stone-700">
         <p className="text-stone-700 dark:text-stone-200">
-          Dieser Link ist unvollstaendig. Fordere bitte einen neuen an.
+          Dieser Link ist unvollständig. Fordere bitte einen neuen an.
         </p>
         <Link href="/passwort-vergessen" className="mt-4 inline-block font-medium text-[#2D6A4F] hover:underline">
           Neuen Link anfordern
@@ -55,7 +55,7 @@ function ResetForm() {
     return (
       <div className="rounded-xl border border-stone-200 p-6 dark:border-stone-700">
         <p className="text-stone-700 dark:text-stone-200">
-          Passwort geaendert. Du kannst dich jetzt anmelden.
+          Passwort geändert. Du kannst dich jetzt anmelden.
         </p>
         <Link href="/login" className="mt-4 inline-block font-medium text-[#2D6A4F] hover:underline">
           Zur Anmeldung
@@ -104,7 +104,7 @@ function ResetForm() {
   );
 }
 
-export default function PasswortZuruecksetzenPage() {
+export default function PasswortZurücksetzenPage() {
   return (
     <main className="mx-auto flex max-w-md flex-col px-4 py-16">
       <h1 className="text-2xl font-bold text-[#1B4332] dark:text-[#D8F3DC]">Neues Passwort setzen</h1>

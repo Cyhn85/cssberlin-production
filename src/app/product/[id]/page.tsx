@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -40,7 +40,7 @@ type ProductDetail = {
   likes: number;
   ecoCO2Saved: number;
   createdAt: string;
-  images: Array<{ id: string; url: string; orderIndex: number; angle?: string | null }>;
+  images: Array<{ id: string; url: string; thumbUrl?: string | null; mediumUrl?: string | null; orderIndex: number; angle?: string | null }>;
   category: {
     id: string;
     name: string;
@@ -208,20 +208,20 @@ export default function ProductDetailPage() {
         <div className="rounded-3xl border border-dashed p-10 text-center" style={{ borderColor: 'var(--color-border)' }}>
           <Info size={28} className="mx-auto mb-4" style={{ color: 'var(--color-primary)' }} />
           <h1 className="mb-2 text-2xl font-bold" style={{ color: 'var(--color-text)' }}>
-            Artikel nicht verfuegbar
+            Artikel nicht verfügbar
           </h1>
           <p className="mb-6 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
             {error || 'Dieser Artikel konnte nicht gefunden werden.'}
           </p>
           <Link href="/catalog" className="rounded-full px-6 py-3 font-bold text-white btn-mars-earth" style={{ background: 'var(--color-orange)' }}>
-            <span>Zurueck zum Katalog</span>
+            <span>Zurück zum Katalog</span>
           </Link>
         </div>
       </div>
     );
   }
 
-  const activeImageUrl = product.images[activeImage]?.url || product.images[0]?.url || '';
+  const activeImageUrl = product.images[activeImage]?.mediumUrl || product.images[activeImage]?.url || product.images[0]?.mediumUrl || product.images[0]?.url || '';
   const sellerName = product.seller.name || 'cssberlin seller';
   const isOwner = session?.user?.id === product.seller.id;
 
@@ -304,8 +304,6 @@ export default function ProductDetailPage() {
             ) : null}
 
             {product.images.length > 1 ? (
-              // Fester 4er-Raster: bei max. 9 Fotos (1 Hauptbild + 8 Vorschaubilder)
-              // ergibt das genau zwei volle Reihen ohne Lücke im Block.
               <div className="grid grid-cols-4 gap-3">
                 {product.images.map((image, index) => (
                   <button
@@ -317,7 +315,7 @@ export default function ProductDetailPage() {
                       background: 'var(--color-bg-secondary)',
                     }}
                   >
-                    <img src={image.url} alt={`${product.title} ${index + 1}`} className="h-full w-full object-cover" />
+                    <img src={image.thumbUrl ?? image.url} alt={`${product.title} ${index + 1}`} className="h-full w-full object-cover" />
                   </button>
                 ))}
               </div>
@@ -578,7 +576,7 @@ export default function ProductDetailPage() {
             </div>
           ) : (
             <div className="rounded-3xl border border-dashed p-10 text-center" style={{ borderColor: 'var(--color-border)' }}>
-              <p style={{ color: 'var(--color-text-secondary)' }}>Noch keine aehnlichen Artikel gefunden.</p>
+              <p style={{ color: 'var(--color-text-secondary)' }}>Noch keine ähnlichen Artikel gefunden.</p>
             </div>
           )}
         </div>

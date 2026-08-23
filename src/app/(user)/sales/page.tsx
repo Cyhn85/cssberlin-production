@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -28,7 +28,7 @@ type Sale = {
 function getSalesActionLabel(status: string) {
   if (status === 'PAID') return 'Versand vorbereiten';
   if (status === 'SHIPPED') return 'Tracking aktualisieren';
-  if (status === 'DISPUTED') return 'Streitfall pruefen';
+  if (status === 'DISPUTED') return 'Streitfall prüfen';
   return 'Details ansehen';
 }
 
@@ -49,7 +49,7 @@ export default function SalesPage() {
         const result = await response.json();
 
         if (!response.ok || !result.success) {
-          throw new Error(result.error || 'Verkaeufe konnten nicht geladen werden.');
+          throw new Error(result.error || 'Verkäufe konnten nicht geladen werden.');
         }
 
         if (!cancelled) {
@@ -57,7 +57,7 @@ export default function SalesPage() {
         }
       } catch (loadError: any) {
         if (!cancelled) {
-          setError(loadError.message || 'Verkaeufe konnten nicht geladen werden.');
+          setError(loadError.message || 'Verkäufe konnten nicht geladen werden.');
         }
       } finally {
         if (!cancelled) {
@@ -92,7 +92,7 @@ export default function SalesPage() {
         <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h1 className="text-3xl font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text)' }}>
-              Meine Verkaeufe
+              Meine Verkäufe
             </h1>
             <p className="mt-2 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
               Behalte Versand, Tracking und problematische Bestellungen in einem Seller-Board im Blick.
@@ -108,10 +108,10 @@ export default function SalesPage() {
 
         <div className="mb-8 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           {[
-            { label: 'Verkaeufe gesamt', value: summary.total, icon: <ClipboardList size={18} /> },
+            { label: 'Verkäufe gesamt', value: summary.total, icon: <ClipboardList size={18} /> },
             { label: 'Versand offen', value: summary.toShip, icon: <Truck size={18} /> },
             { label: 'Unterwegs', value: summary.inTransit, icon: <PackageCheck size={18} /> },
-            { label: 'Streitfaelle', value: summary.disputes, icon: <ShieldAlert size={18} /> },
+            { label: 'Streitfälle', value: summary.disputes, icon: <ShieldAlert size={18} /> },
             { label: 'Ausgezahlter Umsatz', value: formatPrice(summary.revenue), icon: <Euro size={18} /> },
           ].map((card) => (
             <div key={card.label} className="rounded-3xl border p-5" style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg-card)' }}>
@@ -127,7 +127,7 @@ export default function SalesPage() {
         {loading ? (
           <div className="rounded-3xl border border-dashed p-10 text-center" style={{ borderColor: 'var(--color-border)' }}>
             <Loader2 size={30} className="mx-auto mb-4 animate-spin" style={{ color: 'var(--color-primary)' }} />
-            <p style={{ color: 'var(--color-text-secondary)' }}>Verkaeufe werden geladen...</p>
+            <p style={{ color: 'var(--color-text-secondary)' }}>Verkäufe werden geladen...</p>
           </div>
         ) : error ? (
           <div className="rounded-3xl border border-red-200 bg-red-50 p-6 text-sm text-red-700">{error}</div>
@@ -155,7 +155,7 @@ export default function SalesPage() {
                       <div>
                         <p className="font-semibold" style={{ color: 'var(--color-text)' }}>{sale.product.title}</p>
                         <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                          Kaeufer: {sale.buyer.name || 'cssberlin member'}
+                          Käufer: {sale.buyer.name || 'cssberlin member'}
                           {sale.buyer.location ? ` - ${sale.buyer.location}` : ''}
                         </p>
                         <p className="mt-1 text-xs" style={{ color: 'var(--color-text-muted)' }}>
@@ -190,7 +190,7 @@ export default function SalesPage() {
         ) : (
           <div className="rounded-3xl border border-dashed p-12 text-center" style={{ borderColor: 'var(--color-border)' }}>
             <AlertTriangle size={28} className="mx-auto mb-4" style={{ color: 'var(--color-primary)' }} />
-            <h2 className="text-xl font-bold" style={{ color: 'var(--color-text)' }}>Noch keine Verkaeufe</h2>
+            <h2 className="text-xl font-bold" style={{ color: 'var(--color-text)' }}>Noch keine Verkäufe</h2>
             <p className="mx-auto mt-2 max-w-md text-sm" style={{ color: 'var(--color-text-secondary)' }}>
               Sobald ein Kunde einen Artikel kauft, erscheint der Auftrag hier inklusive Versandstatus und Tracking.
             </p>

@@ -40,6 +40,14 @@ export const RATE_LIMIT_TIERS = {
   UPLOAD: { maxRequests: 10, windowMs: 60 * 1000 },     // 10/min
   AI: { maxRequests: 10, windowMs: 60 * 60 * 1000 },    // 10/hour
   OFFER: { maxRequests: 25, windowMs: 24 * 60 * 60 * 1000 }, // 25/day (Vinted rule)
+
+  // Abuse ceilings, not throttles. Crossing one of these does not slow a user
+  // down - it suspends the account (see lib/abuse-monitor.ts). They sit far
+  // above any human rhythm on purpose: the cost of a false positive is a
+  // locked-out customer, the cost of a high ceiling is a spammer getting a few
+  // more messages out before the door shuts.
+  ABUSE_MESSAGE: { maxRequests: 120, windowMs: 60 * 60 * 1000 }, // 120/hour
+  ABUSE_OFFER: { maxRequests: 60, windowMs: 60 * 60 * 1000 },    // 60/hour
 } as const;
 
 export type RateLimitTier = keyof typeof RATE_LIMIT_TIERS;

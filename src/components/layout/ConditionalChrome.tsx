@@ -7,12 +7,13 @@ import Footer from '@/components/layout/Footer';
 
 // Internal tool - own layout (admin/layout.tsx), the marketing header/footer
 // would look broken floating around a dashboard.
-const NO_CHROME_PREFIXES = ['/admin'];
+// Also, Checkout and Auth flows should be immersive without global navigation.
+const NO_CHROME_PREFIXES = ['/admin', '/login', '/register', '/checkout'];
 
 // Focused single-task flows - a Footer full of marketing/legal links is pure
 // distraction here, same reasoning most checkout/auth flows use. Header stays
-// so the user can still navigate away.
-const NO_FOOTER_PREFIXES = ['/checkout', '/login', '/register', '/upload'];
+// so the user can still navigate away. (Note: Auth & Checkout now have no chrome at all)
+const NO_FOOTER_PREFIXES = ['/upload'];
 
 // Header `position: fixed`. Icerigin ustten ne kadar itilecegi eskiden SABIT
 // 7.5rem (120px) yazilmisti — ama header'in gercek yuksekligi 133px'ti, cunku
