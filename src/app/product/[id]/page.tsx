@@ -25,6 +25,15 @@ import { PRODUCT_ANGLES, PRODUCT_ANGLE_LABELS, hasFullAngleSet, type ProductAngl
 import { useFavorites } from '@/store/useFavorites';
 import { useCart } from '@/store/useCart';
 import { Copy, Mail, Share, ShoppingCart } from 'lucide-react';
+import { priceDisclosure } from '@/config/business-profile';
+
+const DETAIL_TABS = [
+  { id: 'description', label: 'Beschreibung' },
+  { id: 'details', label: 'Details' },
+  { id: 'shipping', label: 'Versand & Rückgabe' },
+] as const;
+
+type DetailTabId = (typeof DETAIL_TABS)[number]['id'];
 
 type ProductDetail = {
   id: string;
@@ -86,6 +95,7 @@ export default function ProductDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeImage, setActiveImage] = useState(0);
+  const [detailTab, setDetailTab] = useState<DetailTabId>('description');
   const [isLiked, setIsLiked] = useState(false);
   const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
   const [favoriteBusy, setFavoriteBusy] = useState(false);
@@ -321,13 +331,93 @@ export default function ProductDetailPage() {
               </div>
             ) : null}
 
-            <div className="hidden border-t pt-8 lg:block" style={{ borderColor: 'var(--color-border)' }}>
-              <h2 className="mb-4 text-xl font-bold" style={{ color: 'var(--color-text)' }}>
-                Artikelbeschreibung
-              </h2>
-              <p className="whitespace-pre-wrap leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                {product.description || 'Keine Beschreibung vorhanden.'}
-              </p>
+            {/* Was `hidden lg:block`, so a phone visitor saw no description at
+                all - on a second-hand item the description IS the product. Now
+                it is a tabbed panel that renders at every width, and the facts
+                a buyer actually checks (size, condition, brand) get their own
+                pane instead of being buried in prose. */}
+            <div className="border-t pt-6" style={{ borderColor: 'var(--color-border)' }}>
+              <div
+                className="mb-5 flex items-center gap-6 border-b"
+                style={{ borderColor: 'var(--color-border)' }}
+                role="tablist"
+              >
+                {DETAIL_TABS.map((tab) => (
+                  <button
+                    key={tab.id}
+                    role="tab"
+                    aria-selected={detailTab === tab.id}
+                    onClick={() => setDetailTab(tab.id)}
+                    className="relative min-h-[44px] text-sm font-bold"
+                    style={{
+                      color: detailTab === tab.id ? 'var(--color-text)' : 'var(--color-text-muted)',
+                    }}
+                  >
+                    {tab.label}
+                    {detailTab === tab.id ? (
+                      <span
+                        className="absolute -bottom-px left-0 right-0 h-0.5"
+                        style={{ background: 'var(--color-primary)' }}
+                      />
+                    ) : null}
+                  </button>
+                ))}
+              </div>
+
+              {detailTab === 'description' ? (
+                <p className="whitespace-pre-wrap leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+                  {product.description || 'Keine Beschreibung vorhanden.'}
+                </p>
+              ) : null}
+
+              {detailTab === 'details' ? (
+                <dl className="grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2">
+                  {[
+                    ['Marke', product.brand],
+                    ['Größe', product.size],
+                    ['Zustand', getConditionLabel(product.condition)],
+                    ['Kategorie', product.category?.name],
+                  ]
+                    .filter(([, value]) => Boolean(value))
+                    .map(([label, value]) => (
+                      <div
+                        key={label as string}
+                        className="flex justify-between border-b pb-2 text-sm"
+                        style={{ borderColor: 'var(--color-border)' }}
+                      >
+                        <dt style={{ color: 'var(--color-text-secondary)' }}>{label}</dt>
+                        <dd className="font-semibold" style={{ color: 'var(--color-text)' }}>
+                          {value}
+                        </dd>
+                      </div>
+                    ))}
+                </dl>
+              ) : null}
+
+              {detailTab === 'shipping' ? (
+                <div className="space-y-3 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                  <p>
+                    Versandkosten für diesen Artikel:{' '}
+                    <span className="font-semibold" style={{ color: 'var(--color-text)' }}>
+                      {formatPrice(product.shippingCost)}
+                    </span>
+                  </p>
+                  <p>
+                    Jeder Kauf ist über den Käuferschutz abgesichert: Der Betrag wird erst an den
+                    Verkäufer ausgezahlt, wenn die Sendung bei dir angekommen ist.
+                  </p>
+                  <p>
+                    Zu deinem Widerrufsrecht und den vollständigen Bedingungen:{' '}
+                    <Link href="/widerruf" className="underline underline-offset-2">
+                      Widerruf
+                    </Link>{' '}
+                    ·{' '}
+                    <Link href="/agb" className="underline underline-offset-2">
+                      AGB
+                    </Link>
+                  </p>
+                </div>
+              ) : null}
             </div>
           </div>
 
@@ -388,6 +478,24 @@ export default function ProductDetailPage() {
                   </span>
                 ) : null}
               </div>
+
+              {/* PAngV: the VAT statement and the shipping-cost reference have
+                  to sit on the same screen as the price. The link is the
+                  "reachable without effort" half of that requirement - AGB is
+                  where our shipping terms actually live. */}
+              <p className="mt-2 text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                {priceDisclosure.isKleinunternehmer ? (
+                  priceDisclosure.kleinunternehmerNotice
+                ) : (
+                  <>
+                    {priceDisclosure.long}{' '}
+                    <Link href="/agb" className="underline underline-offset-2">
+                      Versandkosten
+                    </Link>
+                  </>
+                )}
+              </p>
+
               <div className="mt-3 flex items-center gap-2">
                 <div className="eco-badge">
                   <Leaf size={14} />

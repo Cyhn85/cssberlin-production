@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Loader2, PackageSearch, RefreshCcw } from 'lucide-react';
 import { formatPrice, orderStatusToLabel } from '@/lib/utils/condition-map';
+import TransactionsTabs from '@/components/order/TransactionsTabs';
 
 type Purchase = {
   id: string;
@@ -58,11 +59,15 @@ export default function PurchasesPage() {
   return (
     <div className="min-h-screen pb-20 pt-6" style={{ background: 'var(--color-bg)' }}>
       <div className="container max-w-5xl">
+        <h1 className="mb-1 text-3xl font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text)' }}>
+          Transaktionen
+        </h1>
+        <TransactionsTabs active="/purchases" />
         <div className="mb-8 flex items-end justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text)' }}>
+            <h2 className="text-xl font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text)' }}>
               Meine Käufe
-            </h1>
+            </h2>
             <p className="mt-2 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
               Alle Bestellungen aus deinem Kaufkonto auf einen Blick.
             </p>

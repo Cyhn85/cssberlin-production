@@ -113,6 +113,15 @@ model Product {
   status        ProductStatus @default(ACTIVE)
   shippingCost  Float         @default(0.0) // If seller sets fixed shipping
 
+  // Checkout reservation. Stock is always 1 here, so two buyers reaching
+  // checkout in the same second would both get a payment session and both
+  // could pay. Claiming the row flips status to RESERVED; these two columns
+  // say until when and for whom, which is what makes the claim releasable.
+  // Without an expiry, the first abandoned checkout locks the item forever -
+  // trading oversell for unsellable. Released by /api/cron/cleanup.
+  reservedUntil DateTime?
+  reservedById  String?
+
   // Moderation (Admin panel)
   moderationReason String?   @db.Text
   moderatedAt      DateTime?

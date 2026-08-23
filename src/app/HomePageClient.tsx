@@ -162,7 +162,15 @@ export default function HomePageClient() {
           <p className="mx-auto mb-8 max-w-lg text-lg text-white/80">
             Lade Fotos hoch, beschreibe deinen Artikel und dein Inserat ist in wenigen Minuten live.
           </p>
-          <Link href="/upload" className="rounded-full bg-white px-8 py-4 text-lg font-bold" style={{ color: '#E8651A' }}>
+          {/* Not the `glow` Button variant: that variant paints
+              bg-background, which would turn the page's single conversion CTA
+              into a pale ghost on a coloured band. It keeps its solid fill and
+              takes only the halo, from the same token the variant uses. */}
+          <Link
+            href="/upload"
+            className="inline-flex min-h-[44px] items-center rounded-full bg-white px-8 py-4 text-lg font-bold transition-shadow hover:shadow-[0_0_24px_var(--color-orange-glow)]"
+            style={{ color: 'var(--color-orange-dark)' }}
+          >
             Jetzt verkaufen
           </Link>
         </div>

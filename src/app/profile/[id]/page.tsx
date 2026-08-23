@@ -4,13 +4,16 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
 import {
   CheckCircle2,
   Clock,
   Leaf,
+  MailCheck,
   MapPin,
   MessageCircle,
   MoreHorizontal,
+  PhoneCall,
   Share2,
   Star,
   UserPlus,
@@ -67,7 +70,7 @@ export default function PublicProfilePage() {
   const router = useRouter();
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [reviews, setReviews] = useState<ReviewItem[]>([]);
-  const [activeTab, setActiveTab] = useState<'wardrobe' | 'reviews'>('wardrobe');
+  const [activeTab, setActiveTab] = useState<'wardrobe' | 'reviews' | 'about'>('wardrobe');
   const [loading, setLoading] = useState(true);
   const [followBusy, setFollowBusy] = useState(false);
 
@@ -147,9 +150,9 @@ export default function PublicProfilePage() {
 
   const initials = (profile.name || profile.username || 'U').charAt(0).toUpperCase();
   const verifications = [
-    profile.isVerified ? 'Email' : null,
-    profile.phoneVerified ? 'Telefon' : null,
-  ].filter(Boolean) as string[];
+    profile.isVerified ? { label: 'E-Mail', icon: MailCheck } : null,
+    profile.phoneVerified ? { label: 'Telefon', icon: PhoneCall } : null,
+  ].filter(Boolean) as Array<{ label: string; icon: typeof MailCheck }>;
 
   return (
     <div className="min-h-screen bg-[var(--color-bg)] pb-20">
@@ -198,6 +201,25 @@ export default function PublicProfilePage() {
                   <span className="font-bold text-[var(--color-text)]">{profile.averageRating.toFixed(1)}</span> ({profile._count.receivedReviews} Bewertungen)
                 </span>
               </div>
+
+              {/* `verifications` was computed and then never rendered - the one
+                  trust signal a second-hand buyer actually looks for was sitting
+                  in a dead variable. Only confirmed checks are listed; an
+                  unverified account simply shows fewer badges rather than a
+                  reassuring grey placeholder. */}
+              {verifications.length > 0 ? (
+                <ul className="mt-3 flex flex-wrap gap-2">
+                  {verifications.map((item) => (
+                    <li
+                      key={item.label}
+                      className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
+                      style={{ background: 'var(--color-primary-50)', color: 'var(--color-primary-dark)' }}
+                    >
+                      <item.icon size={13} /> {item.label} bestätigt
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
             </div>
           </div>
 
@@ -209,70 +231,20 @@ export default function PublicProfilePage() {
             >
               <MessageCircle size={16} /> Nachricht
             </button>
-            <button
+            {/* The one CTA on this page, so it gets the `glow` variant. It also
+                retires a contrast failure: white on --color-orange measures
+                3.3:1, under the 4.5:1 AA floor for text this size. */}
+            <Button
+              variant="glow"
               onClick={handleFollowToggle}
               disabled={followBusy}
-              className="flex-1 md:flex-none flex items-center justify-center gap-2 rounded-full px-6 py-2.5 text-sm font-bold transition-all shadow-sm"
-              style={{
-                background: profile.isFollowing ? 'var(--color-bg-card)' : 'var(--color-orange)',
-                color: profile.isFollowing ? 'var(--color-orange)' : '#fff',
-                border: `1px solid ${profile.isFollowing ? 'var(--color-orange)' : 'transparent'}`,
-              }}
+              className="flex-1 rounded-full px-6 md:flex-none"
             >
               <UserPlus size={16} /> {profile.isFollowing ? 'Abonniert' : 'Folgen'}
-            </button>
+            </Button>
             <button className="hidden sm:flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-bg-secondary)] hover:bg-[var(--color-border)] transition-colors">
               <Share2 size={16} className="text-[var(--color-text)]" />
             </button>
-          </div>
-        </div>
-
-        {/* Bio & Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 py-8">
-          <div className="md:col-span-2">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-3">Über {profile.username}</h3>
-            <p className="text-[15px] leading-relaxed text-[var(--color-text)]">
-              {profile.bio || 'Dieser Nutzer hat noch keine Biografie hinzugefügt. Entdecke stattdessen die coolen Second-Hand Schätze im Kleiderschrank!'}
-            </p>
-            
-            <div className="mt-6 flex flex-wrap gap-4">
-               <div className="flex items-center gap-2 rounded-xl border border-[var(--color-border)] p-3 bg-[var(--color-bg-card)] shadow-sm">
-                  <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
-                    <Leaf size={16} className="text-green-700" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold uppercase text-[var(--color-text-muted)]">Eco Impact</p>
-                    <p className="text-sm font-bold text-[var(--color-text)]">-{profile.ecoCO2Saved.toFixed(1)}kg CO₂ gespart</p>
-                  </div>
-               </div>
-               <div className="flex items-center gap-2 rounded-xl border border-[var(--color-border)] p-3 bg-[var(--color-bg-card)] shadow-sm">
-                  <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center">
-                    <CheckCircle2 size={16} className="text-orange-700" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold uppercase text-[var(--color-text-muted)]">Verkäufe</p>
-                    <p className="text-sm font-bold text-[var(--color-text)]">{profile.itemsRecycled} Artikel verkauft</p>
-                  </div>
-               </div>
-            </div>
-          </div>
-          
-          <div className="rounded-2xl border border-[var(--color-border)] p-5 bg-[var(--color-bg-card)] shadow-sm">
-             <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-4">Profil-Info</h3>
-             <ul className="space-y-3 text-sm">
-               <li className="flex justify-between">
-                 <span className="text-[var(--color-text-secondary)]">Mitglied seit</span>
-                 <span className="font-semibold text-[var(--color-text)]">{new Date(profile.createdAt).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })}</span>
-               </li>
-               <li className="flex justify-between">
-                 <span className="text-[var(--color-text-secondary)]">Follower</span>
-                 <span className="font-semibold text-[var(--color-text)]">{profile._count.followers}</span>
-               </li>
-               <li className="flex justify-between">
-                 <span className="text-[var(--color-text-secondary)]">Folgt</span>
-                 <span className="font-semibold text-[var(--color-text)]">{profile._count.following}</span>
-               </li>
-             </ul>
           </div>
         </div>
 
@@ -293,7 +265,73 @@ export default function PublicProfilePage() {
             Bewertungen ({reviews.length})
             {activeTab === 'reviews' ? <motion.div layoutId="tab-indicator" className="absolute bottom-0 left-0 right-0 h-0.5" style={{ background: 'var(--color-primary)' }} /> : null}
           </button>
+          <button
+            onClick={() => setActiveTab('about')}
+            className="relative pb-4 text-base font-bold"
+            style={{ color: activeTab === 'about' ? 'var(--color-text)' : 'var(--color-text-muted)' }}
+          >
+            Über mich
+            {activeTab === 'about' ? <motion.div layoutId="tab-indicator" className="absolute bottom-0 left-0 right-0 h-0.5" style={{ background: 'var(--color-primary)' }} /> : null}
+          </button>
         </div>
+
+        {/* The bio, the eco/sales cards and the profile facts used to sit above
+            the tab bar, permanently expanded, pushing the actual wardrobe below
+            the fold. They are reference material, not the reason someone opens
+            a seller page, so they live behind their own tab now. */}
+        {activeTab === 'about' ? (
+          <div>
+          {/* Bio & Stats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 py-8">
+            <div className="md:col-span-2">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-3">Über {profile.username}</h3>
+              <p className="text-[15px] leading-relaxed text-[var(--color-text)]">
+                {profile.bio || 'Dieser Nutzer hat noch keine Biografie hinzugefügt. Entdecke stattdessen die coolen Second-Hand Schätze im Kleiderschrank!'}
+              </p>
+            
+              <div className="mt-6 flex flex-wrap gap-4">
+                 <div className="flex items-center gap-2 rounded-xl border border-[var(--color-border)] p-3 bg-[var(--color-bg-card)] shadow-sm">
+                    <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
+                      <Leaf size={16} className="text-green-700" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold uppercase text-[var(--color-text-muted)]">Eco Impact</p>
+                      <p className="text-sm font-bold text-[var(--color-text)]">-{profile.ecoCO2Saved.toFixed(1)}kg CO₂ gespart</p>
+                    </div>
+                 </div>
+                 <div className="flex items-center gap-2 rounded-xl border border-[var(--color-border)] p-3 bg-[var(--color-bg-card)] shadow-sm">
+                    <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center">
+                      <CheckCircle2 size={16} className="text-orange-700" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold uppercase text-[var(--color-text-muted)]">Verkäufe</p>
+                      <p className="text-sm font-bold text-[var(--color-text)]">{profile.itemsRecycled} Artikel verkauft</p>
+                    </div>
+                 </div>
+              </div>
+            </div>
+          
+            <div className="rounded-2xl border border-[var(--color-border)] p-5 bg-[var(--color-bg-card)] shadow-sm">
+               <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-4">Profil-Info</h3>
+               <ul className="space-y-3 text-sm">
+                 <li className="flex justify-between">
+                   <span className="text-[var(--color-text-secondary)]">Mitglied seit</span>
+                   <span className="font-semibold text-[var(--color-text)]">{new Date(profile.createdAt).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })}</span>
+                 </li>
+                 <li className="flex justify-between">
+                   <span className="text-[var(--color-text-secondary)]">Follower</span>
+                   <span className="font-semibold text-[var(--color-text)]">{profile._count.followers}</span>
+                 </li>
+                 <li className="flex justify-between">
+                   <span className="text-[var(--color-text-secondary)]">Folgt</span>
+                   <span className="font-semibold text-[var(--color-text)]">{profile._count.following}</span>
+                 </li>
+               </ul>
+            </div>
+          </div>
+          </div>
+        ) : null}
+
 
         {activeTab === 'wardrobe' ? (
           profile.products.length > 0 ? (

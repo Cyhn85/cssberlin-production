@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { rm } from 'fs/promises';
 import path from 'path';
 import prisma from '@/lib/db';
+import { releaseExpiredReservations } from '@/lib/reservations';
 
 import { timingSafeEqual } from 'crypto';
 
@@ -48,6 +49,10 @@ export async function GET(request: Request) {
 
     const dryRun = new URL(request.url).searchParams.get('dryRun') === '1';
 
+    // Belt to the read-path braces: if traffic is quiet enough that nobody
+    // loads the catalogue, nothing else releases a stale reservation.
+    const releasedReservations = dryRun ? 0 : await releaseExpiredReservations();
+
     const thresholdDate = new Date();
     thresholdDate.setDate(thresholdDate.getDate() - DAYS_TO_KEEP);
 
@@ -64,7 +69,10 @@ export async function GET(request: Request) {
     });
 
     if (obsoleteProducts.length === 0) {
-      return NextResponse.json({ message: 'No obsolete products to clean up.' });
+      return NextResponse.json({
+        message: 'No obsolete products to clean up.',
+        releasedReservations,
+      });
     }
 
     let deletedImagesCount = 0;
@@ -102,6 +110,7 @@ export async function GET(request: Request) {
       productsDeleted: deletedProductsCount,
       imagesDeleted: deletedImagesCount,
       retainedForBookkeeping,
+      releasedReservations,
     });
   } catch (error) {
     console.error('CRON Cleanup Error:', error);

@@ -1,5 +1,6 @@
 ﻿import { NextRequest } from 'next/server';
 import prisma from '@/lib/db';
+import { Prisma } from '@/generated/prisma';
 import { requireAuth } from '@/lib/auth';
 import { ApiResponse } from '@/lib/api-response';
 import { publishOrderLifecycleEvent } from '@/lib/order-events';
@@ -8,6 +9,76 @@ import { resolveShippingFee } from '@/config/shipping-policy';
 const BUYER_PROTECTION_RATE = 0.05;
 const BUYER_PROTECTION_FIXED = 0.99;
 const FINALIZED_ORDER_STATUSES = ['PAID', 'SHIPPED', 'DELIVERED', 'COMPLETED'] as const;
+
+/**
+ * How long a checkout may hold an item.
+ *
+ * Stock is always 1 on a second-hand marketplace, so without a claim two
+ * buyers who press "buy" in the same second both receive a Stripe session and
+ * both can pay - we then owe one of them a refund for an item that never
+ * existed twice. Claiming flips the row to RESERVED.
+ *
+ * The window has to expire, or the first abandoned checkout locks the item for
+ * good. 30 minutes is also Stripe's own minimum for `expires_at`, so the
+ * payment page and our claim die together instead of one outliving the other.
+ */
+const RESERVATION_MINUTES = 30;
+
+/**
+ * Claims the item for this buyer, atomically.
+ *
+ * The guard lives in the WHERE clause on purpose. Reading the row first and
+ * updating it afterwards is not a lock: under Postgres' default READ COMMITTED
+ * both requests can read ACTIVE before either writes. A conditional UPDATE is
+ * settled by the database - exactly one of the two gets count === 1.
+ *
+ * Three shapes may be claimed: a free item, a reservation that has run out,
+ * and this buyer's own reservation (so returning to your own checkout is not
+ * blocked by yourself).
+ */
+async function claimProduct(
+  tx: Prisma.TransactionClient,
+  productId: string,
+  buyerId: string,
+  until: Date
+) {
+  const now = new Date();
+
+  const blockingOrder = await tx.order.findFirst({
+    where: { productId, status: { in: [...FINALIZED_ORDER_STATUSES] } },
+    select: { id: true },
+  });
+  if (blockingOrder) throw new Error('ORDER_EXISTS');
+
+  const claimed = await tx.product.updateMany({
+    where: {
+      id: productId,
+      OR: [
+        { status: 'ACTIVE' },
+        { status: 'RESERVED', reservedUntil: { lte: now } },
+        { status: 'RESERVED', reservedById: buyerId },
+      ],
+    },
+    data: { status: 'RESERVED', reservedUntil: until, reservedById: buyerId },
+  });
+
+  if (claimed.count === 0) throw new Error('PRODUCT_UNAVAILABLE');
+}
+
+/**
+ * Gives the item back when the payment page could not be created. Scoped to
+ * our own claim so a slow failure here cannot free someone else's reservation.
+ */
+async function releaseClaim(productId: string, buyerId: string) {
+  try {
+    await prisma.product.updateMany({
+      where: { id: productId, status: 'RESERVED', reservedById: buyerId },
+      data: { status: 'ACTIVE', reservedUntil: null, reservedById: null },
+    });
+  } catch (error) {
+    console.error('Failed to release checkout reservation:', error);
+  }
+}
 
 function normalizeShippingCarrier(value: unknown) {
   const normalized = typeof value === 'string' ? value.trim().toUpperCase() : '';
@@ -125,29 +196,12 @@ export async function POST(request: NextRequest) {
       shippingMethod: resolvedShippingMethod,
     });
 
+    const reservedUntil = new Date(Date.now() + RESERVATION_MINUTES * 60 * 1000);
+
     if (!process.env.STRIPE_SECRET_KEY) {
       try {
         const order = await prisma.$transaction(async (tx) => {
-          const freshProduct = await tx.product.findUnique({
-            where: { id: productId },
-            select: { status: true },
-          });
-
-          if (!freshProduct || freshProduct.status !== 'ACTIVE') {
-            throw new Error('PRODUCT_UNAVAILABLE');
-          }
-
-          const blockingOrder = await tx.order.findFirst({
-            where: {
-              productId,
-              status: { in: [...FINALIZED_ORDER_STATUSES] },
-            },
-            select: { id: true },
-          });
-
-          if (blockingOrder) {
-            throw new Error('ORDER_EXISTS');
-          }
+          await claimProduct(tx, productId, session.user.id, reservedUntil);
 
           const createdOrder = await tx.order.create({
             data: {
@@ -169,9 +223,12 @@ export async function POST(request: NextRequest) {
             },
           });
 
+          // The order now owns the item, so the timed window must go - a
+          // leftover reservedUntil would let the cron sweep hand a paid item
+          // back to the catalogue.
           await tx.product.update({
             where: { id: productId },
-            data: { status: 'RESERVED' },
+            data: { status: 'RESERVED', reservedUntil: null, reservedById: null },
           });
 
           return createdOrder;
@@ -196,57 +253,82 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // THE oversell hole: this branch used to create a Stripe session without
+    // touching the product at all. The dev branch below-the-fold had a
+    // transaction, the branch that actually takes money had none, so two
+    // buyers in the same second each got a payment page for the same single
+    // item. Claim first, and only then ask Stripe for a page.
+    await prisma.$transaction((tx) =>
+      claimProduct(tx, productId, session.user.id, reservedUntil)
+    );
+
     const stripe = (await import('stripe')).default;
     const stripeClient = new stripe(process.env.STRIPE_SECRET_KEY);
 
-    const checkoutSession = await stripeClient.checkout.sessions.create({
-      mode: 'payment',
-      payment_method_types: ['card', 'sepa_debit', 'klarna', 'giropay'],
-      client_reference_id: `${product.id}:${session.user.id}`,
-      payment_intent_data: {
-        metadata,
-      },
-      line_items: [
-        {
-          price_data: {
-            currency: 'eur',
-            product_data: {
-              name: product.title,
-              images: product.images[0] ? [product.images[0].url] : [],
-              description: `Verkäufer: ${product.seller.name}`,
+    let checkoutSession;
+    try {
+      checkoutSession = await stripeClient.checkout.sessions.create({
+        mode: 'payment',
+        payment_method_types: ['card', 'sepa_debit', 'klarna', 'giropay'],
+        client_reference_id: `${product.id}:${session.user.id}`,
+        payment_intent_data: {
+          metadata,
+        },
+        line_items: [
+          {
+            price_data: {
+              currency: 'eur',
+              product_data: {
+                name: product.title,
+                images: product.images[0] ? [product.images[0].url] : [],
+                description: `Verkäufer: ${product.seller.name}`,
+              },
+              unit_amount: Math.round(itemPrice * 100),
             },
-            unit_amount: Math.round(itemPrice * 100),
+            quantity: 1,
           },
-          quantity: 1,
-        },
-        {
-          price_data: {
-            currency: 'eur',
-            product_data: { name: `Versand (${resolvedShippingMethod})` },
-            unit_amount: Math.round(shippingFee * 100),
+          {
+            price_data: {
+              currency: 'eur',
+              product_data: { name: `Versand (${resolvedShippingMethod})` },
+              unit_amount: Math.round(shippingFee * 100),
+            },
+            quantity: 1,
           },
-          quantity: 1,
-        },
-        {
-          price_data: {
-            currency: 'eur',
-            product_data: { name: 'Käuferschutz' },
-            unit_amount: Math.round(protectionFee * 100),
+          {
+            price_data: {
+              currency: 'eur',
+              product_data: { name: 'Käuferschutz' },
+              unit_amount: Math.round(protectionFee * 100),
+            },
+            quantity: 1,
           },
-          quantity: 1,
-        },
-      ],
-      metadata,
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/checkout/${productId}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/product/${productId}`,
-    });
+        ],
+        metadata,
+        // Tie Stripe's own expiry to our reservation so the payment page and
+        // the claim die at the same moment. Left at the default 24h, a buyer
+        // could pay through a stale page long after the item went back on sale.
+        expires_at: Math.floor(reservedUntil.getTime() / 1000),
+        success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/checkout/${productId}/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/product/${productId}`,
+      });
+    } catch (stripeError) {
+      // No payment page means nobody can pay for this claim. Holding it for
+      // 30 minutes would take a sellable item off the market for nothing.
+      await releaseClaim(productId, session.user.id);
+      throw stripeError;
+    }
 
     return ApiResponse.success({
       sessionId: checkoutSession.id,
       url: checkoutSession.url,
+      reservedUntil: reservedUntil.toISOString(),
     });
   } catch (error: any) {
     if (error.name === 'AuthError') return ApiResponse.unauthorized();
+    if (error.message === 'PRODUCT_UNAVAILABLE' || error.message === 'ORDER_EXISTS') {
+      return ApiResponse.error('Dieser Artikel wird gerade von jemand anderem gekauft.', 409);
+    }
     console.error('POST /api/checkout/create-session error:', error);
     return ApiResponse.serverError();
   }

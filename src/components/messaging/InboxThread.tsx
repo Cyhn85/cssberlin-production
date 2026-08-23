@@ -46,7 +46,7 @@ type OfferContext = {
     title: string;
     price: number;
     status: string;
-    images: Array<{ url: string }>;
+    images: Array<{ url: string; thumbUrl?: string | null }>;
   };
   orders: OfferOrder[];
 };
@@ -589,7 +589,20 @@ export default function InboxThread({ selfId, apiBase, title }: { selfId: string
                         style={!isOwn ? { border: '1px solid var(--color-border)', color: 'var(--color-text)' } : undefined}
                       >
                         {message.offer ? (
-                          <div className="mb-3 rounded-xl bg-black/5 p-3 text-xs">
+                          /* Always a light card, never the bubble's own colour.
+                             Inside an own-message bubble the surface is
+                             --color-primary, and a struck-through list price in
+                             muted grey on that green is unreadable. The offer is
+                             a document inside the conversation, so it gets its
+                             own paper. */
+                          <div
+                            className="mb-3 rounded-xl border p-3 text-xs"
+                            style={{
+                              background: 'var(--color-bg-card)',
+                              borderColor: 'var(--color-border)',
+                              color: 'var(--color-text)',
+                            }}
+                          >
                             <div className="mb-2 flex flex-wrap gap-2">
                               <span className={`rounded-full px-2 py-1 font-bold ${getOfferBadge(message.offer.status).tone}`}>
                                 {getOfferBadge(message.offer.status).label}
@@ -598,12 +611,48 @@ export default function InboxThread({ selfId, apiBase, title }: { selfId: string
                                 {getAvailabilityBadge(message.offer.product.status).label}
                               </span>
                             </div>
-                            <p className="font-bold">Angebot: {formatPrice(message.offer.offeredPrice)}</p>
-                            <p className="mt-1">{message.offer.product.title}</p>
-                            <p className="mt-2 opacity-80">{messageOfferSummary?.text}</p>
+
+                            <div className="flex items-start gap-3">
+                              <Link
+                                href={`/product/${message.offer.product.id}`}
+                                className="h-14 w-14 shrink-0 overflow-hidden rounded-lg"
+                                style={{ background: 'var(--color-bg-secondary)' }}
+                              >
+                                {message.offer.product.images?.[0] ? (
+                                  <img
+                                    src={message.offer.product.images[0].thumbUrl || message.offer.product.images[0].url}
+                                    alt={message.offer.product.title}
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : null}
+                              </Link>
+
+                              <div className="min-w-0">
+                                <p className="line-clamp-2 font-semibold" style={{ color: 'var(--color-text)' }}>
+                                  {message.offer.product.title}
+                                </p>
+                                <div className="mt-1 flex items-baseline gap-2">
+                                  <span
+                                    className="text-lg font-bold"
+                                    style={{ color: 'var(--color-primary)', fontFamily: 'var(--font-display)' }}
+                                  >
+                                    {formatPrice(message.offer.offeredPrice)}
+                                  </span>
+                                  {message.offer.product.price > message.offer.offeredPrice ? (
+                                    <span className="line-through" style={{ color: 'var(--color-text-muted)' }}>
+                                      {formatPrice(message.offer.product.price)}
+                                    </span>
+                                  ) : null}
+                                </div>
+                              </div>
+                            </div>
+
+                            <p className="mt-2" style={{ color: 'var(--color-text-secondary)' }}>
+                              {messageOfferSummary?.text}
+                            </p>
 
                             {canActOnOffer ? (
-                              <div className="mt-3 space-y-2 border-t border-black/10 pt-3">
+                              <div className="mt-3 space-y-2 border-t pt-3" style={{ borderColor: 'var(--color-border)' }}>
                                 {expandedCounterOfferId === message.offer.id ? (
                                   <div className="flex items-center gap-2">
                                     <input
@@ -614,13 +663,13 @@ export default function InboxThread({ selfId, apiBase, title }: { selfId: string
                                       onChange={(event) =>
                                         setCounterDrafts((current) => ({ ...current, [message.offer!.id]: event.target.value }))
                                       }
-                                      className="w-24 rounded-lg border px-2 py-1.5 text-xs text-gray-800"
+                                      className="min-h-[44px] w-24 rounded-lg border px-2 text-xs text-gray-800"
                                       style={{ borderColor: 'var(--color-border)' }}
                                     />
                                     <button
                                       onClick={() => submitInlineOfferAction(message.offer!, 'counter')}
                                       disabled={offerActionBusyId === message.offer.id}
-                                      className="rounded-full px-3 py-1.5 text-[11px] font-bold text-white"
+                                      className="inline-flex min-h-[44px] items-center rounded-full px-4 text-xs font-bold text-white"
                                       style={{ background: 'var(--color-primary)' }}
                                     >
                                       Senden
@@ -631,7 +680,7 @@ export default function InboxThread({ selfId, apiBase, title }: { selfId: string
                                     <button
                                       onClick={() => submitInlineOfferAction(message.offer!, 'accept')}
                                       disabled={offerActionBusyId === message.offer.id}
-                                      className="rounded-full px-3 py-1.5 text-[11px] font-bold text-white disabled:opacity-60"
+                                      className="inline-flex min-h-[44px] items-center rounded-full px-4 text-xs font-bold text-white disabled:opacity-60"
                                       style={{ background: 'var(--color-primary)' }}
                                     >
                                       Annehmen
@@ -639,15 +688,15 @@ export default function InboxThread({ selfId, apiBase, title }: { selfId: string
                                     <button
                                       onClick={() => setExpandedCounterOfferId(message.offer!.id)}
                                       disabled={offerActionBusyId === message.offer.id}
-                                      className="rounded-full border px-3 py-1.5 text-[11px] font-bold disabled:opacity-60"
-                                      style={{ borderColor: 'var(--color-orange)', color: isOwn ? '#fff' : 'var(--color-orange)' }}
+                                      className="inline-flex min-h-[44px] items-center rounded-full border px-4 text-xs font-bold disabled:opacity-60"
+                                      style={{ borderColor: 'var(--color-orange)', color: 'var(--color-orange-dark)' }}
                                     >
                                       Gegenangebot
                                     </button>
                                     <button
                                       onClick={() => submitInlineOfferAction(message.offer!, 'reject')}
                                       disabled={offerActionBusyId === message.offer.id}
-                                      className="rounded-full px-3 py-1.5 text-[11px] font-bold text-rose-600 disabled:opacity-60"
+                                      className="inline-flex min-h-[44px] items-center rounded-full px-4 text-xs font-bold text-rose-700 disabled:opacity-60"
                                       style={{ background: 'rgba(225,29,72,0.1)' }}
                                     >
                                       Ablehnen

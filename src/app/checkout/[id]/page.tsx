@@ -21,6 +21,7 @@ import {
   amountToFreeShipping,
   FREE_SHIPPING_THRESHOLD_EUR,
 } from '@/config/shipping-policy';
+import { priceDisclosure } from '@/config/business-profile';
 
 const BUYER_PROTECTION_RATE = 0.05;
 const BUYER_PROTECTION_FIXED = 0.99;
@@ -478,12 +479,20 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              <div className="mb-6 mt-6 flex items-end justify-between">
+              <div className="mb-1 mt-6 flex items-end justify-between">
                 <span className="font-bold">Gesamtbetrag</span>
                 <span className="text-3xl font-bold" style={{ color: 'var(--color-text)', fontFamily: 'var(--font-display)' }}>
                   {formatPrice(totalCost)}
                 </span>
               </div>
+              {/* PAngV: the total is the last price the buyer sees before
+                  paying, so the VAT statement belongs here too. Shipping is
+                  already itemised above, hence the short form. */}
+              <p className="mb-6 text-right text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                {priceDisclosure.isKleinunternehmer
+                  ? priceDisclosure.kleinunternehmerNotice
+                  : 'inkl. gesetzlicher MwSt.'}
+              </p>
 
               {/* HUKUKİ ONAYLAR (GDPR & Tüketici Hakları) */}
               <div className="mb-6 space-y-3 rounded-xl bg-gray-50 p-4 border border-gray-200">
@@ -518,7 +527,7 @@ export default function CheckoutPage() {
                   handleCheckout();
                 }}
                 disabled={submitting || isUnavailable}
-                className="btn-mars-earth w-full rounded-2xl py-4 text-lg font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                className="btn-mars-earth w-full rounded-2xl py-4 text-lg font-bold text-white transition-shadow hover:shadow-[0_0_28px_var(--color-orange-glow)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:shadow-none"
                 style={{ background: 'var(--color-orange)' }}
               >
                 {submitting ? (

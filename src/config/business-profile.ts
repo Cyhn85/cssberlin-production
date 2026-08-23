@@ -25,6 +25,38 @@ export const businessAddressLines = [
   businessProfile.country,
 ] as const;
 
+/**
+ * Price-disclosure wording required by the PAngV (Preisangabenverordnung).
+ *
+ * German law: wherever a price is shown to a consumer, the same screen has to
+ * say whether VAT is included and that shipping comes on top. Missing it is a
+ * standard Abmahnung (formal warning + costs), and the site showed no such
+ * notice anywhere at all.
+ *
+ * Which sentence applies depends on the tax status, so it lives here next to
+ * `vatId` rather than being typed into each page - one place to change if the
+ * business ever moves onto the small-business scheme (§19 UStG).
+ *
+ * `isKleinunternehmer` is false because businessProfile.vatId is a real VAT ID
+ * and businessControlRules.publishVatId is true: a §19 business does not show
+ * VAT and would use the second sentence instead.
+ */
+export const priceDisclosure = {
+  isKleinunternehmer: false,
+  /** Short form, next to a price in a listing grid. */
+  short: 'inkl. MwSt. zzgl. Versand',
+  /** Long form for the product page, where the shipping link sits beside it. */
+  long: 'Alle Preise inkl. gesetzlicher MwSt., zzgl.',
+  /** Used instead of the above if the business ever switches to §19 UStG. */
+  kleinunternehmerNotice:
+    'Kein Ausweis der Umsatzsteuer gemäß § 19 UStG (Kleinunternehmerregelung).',
+} as const;
+
+/** The sentence to render next to a price in a compact spot (cards, lists). */
+export const shortPriceNotice = priceDisclosure.isKleinunternehmer
+  ? priceDisclosure.kleinunternehmerNotice
+  : priceDisclosure.short;
+
 export const businessControlRules = {
   publishVatId: true,
   publishTaxNumber: false,

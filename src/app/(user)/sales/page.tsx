@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { AlertTriangle, ArrowRight, ClipboardList, Euro, Loader2, PackageCheck, ShieldAlert, Truck } from 'lucide-react';
 import { formatPrice, formatRelativeTime, orderStatusToLabel } from '@/lib/utils/condition-map';
+import TransactionsTabs from '@/components/order/TransactionsTabs';
 
 type Sale = {
   id: string;
@@ -89,11 +90,15 @@ export default function SalesPage() {
   return (
     <div className="min-h-screen pb-20 pt-6" style={{ background: 'var(--color-bg)' }}>
       <div className="container max-w-6xl">
+        <h1 className="mb-1 text-3xl font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text)' }}>
+          Transaktionen
+        </h1>
+        <TransactionsTabs active="/sales" />
         <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h1 className="text-3xl font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text)' }}>
+            <h2 className="text-xl font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text)' }}>
               Meine Verkäufe
-            </h1>
+            </h2>
             <p className="mt-2 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
               Behalte Versand, Tracking und problematische Bestellungen in einem Seller-Board im Blick.
             </p>

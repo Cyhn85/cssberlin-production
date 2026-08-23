@@ -1,5 +1,6 @@
 ﻿import { NextRequest } from 'next/server';
 import { Prisma } from '@/generated/prisma';
+import { sweepExpiredReservations } from '@/lib/reservations';
 import prisma from '@/lib/db';
 import { getOptionalSession, requireAuth } from '@/lib/auth';
 import { ApiResponse } from '@/lib/api-response';
@@ -42,6 +43,11 @@ export async function GET(request: NextRequest) {
         console.warn('GET /api/products optional session unavailable, continuing publicly:', sessionError);
       }
     }
+
+    // Hand back anything whose checkout reservation ran out before we filter
+    // on ACTIVE, otherwise an abandoned checkout keeps a sellable item hidden.
+    // Throttled to once a minute per process; does not block this response.
+    sweepExpiredReservations();
 
     const where: Prisma.ProductWhereInput = {};
 

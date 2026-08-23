@@ -5,6 +5,7 @@ import { Heart, Leaf, ShoppingCart, Check } from 'lucide-react';
 import { formatPrice, getConditionLabel } from '@/lib/utils/condition-map';
 import { useCart } from '@/store/useCart';
 import { useFavorites } from '@/store/useFavorites';
+import { shortPriceNotice } from '@/config/business-profile';
 
 type CardImage = {
   url: string;
@@ -177,6 +178,12 @@ export default function ProductCard({
               </span>
             ) : null}
           </div>
+
+          {/* PAngV: a price shown to a consumer must say on the same screen
+              whether VAT is included and that shipping is extra. */}
+          <span className="mt-0.5 block text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
+            {shortPriceNotice}
+          </span>
         </Link>
 
         <button

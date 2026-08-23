@@ -105,10 +105,15 @@ async function finalizeCheckoutSession(session: any) {
       },
     });
 
-    if (currentProduct.status === 'ACTIVE') {
+    // Payment landed, so the item belongs to this order now. The timed
+    // checkout window must be cleared in BOTH cases: leaving a reservedUntil
+    // behind would let the sweep in lib/reservations hand a paid item back to
+    // the catalogue once that timestamp passes. RESERVED here is checkout's
+    // own claim, so it is expected - it just stops being time-limited.
+    if (currentProduct.status === 'ACTIVE' || currentProduct.status === 'RESERVED') {
       await tx.product.update({
         where: { id: metadata.productId },
-        data: { status: 'RESERVED' },
+        data: { status: 'RESERVED', reservedUntil: null, reservedById: null },
       });
     }
 

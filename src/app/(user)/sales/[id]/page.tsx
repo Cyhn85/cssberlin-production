@@ -17,10 +17,10 @@ import {
   formatPrice,
   formatRelativeTime,
   getConditionLabel,
-  getOrderTimeline,
   orderStatusToLabel,
 } from '@/lib/utils/condition-map';
 import { getPusherClient } from '@/lib/pusher-client';
+import OrderTimeline from '@/components/order/OrderTimeline';
 import { CHANNELS, EVENTS, type OrderStatusEvent } from '@/lib/realtime';
 
 type Viewer = {
@@ -263,7 +263,6 @@ export default function SaleDetailPage() {
 
   const heroImage = order.product.images[0]?.url || '';
   const statusLabel = orderStatusToLabel[order.status] || order.status;
-  const timeline = getOrderTimeline(order.status);
 
   return (
     <div className="min-h-screen pb-20 pt-6" style={{ background: 'var(--color-bg)' }}>
@@ -333,19 +332,20 @@ export default function SaleDetailPage() {
               <h2 className="mb-4 text-lg font-bold" style={{ color: 'var(--color-text)' }}>
                 Verkaufsverlauf
               </h2>
-              <div className="space-y-4">
-                {timeline.map((step) => (
-                  <div key={step.key} className="flex items-start gap-4">
-                    <div className={`mt-0.5 flex h-8 w-8 items-center justify-center rounded-full ${step.completed ? 'bg-emerald-100 text-emerald-700' : step.active ? 'bg-[var(--color-primary-50)] text-[var(--color-primary)]' : 'bg-slate-100 text-slate-400'}`}>
-                      <CheckCircle2 size={16} />
-                    </div>
-                    <div>
-                      <p className="font-semibold" style={{ color: 'var(--color-text)' }}>{step.label}</p>
-                      <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{step.description}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <OrderTimeline
+                status={order.status}
+                createdAt={order.createdAt}
+                activeDetail={
+                  order.trackingCode ? (
+                    <span
+                      className="inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold"
+                      style={{ background: 'var(--color-bg-secondary)', color: 'var(--color-text)' }}
+                    >
+                      {order.shippingCarrier || 'Versand'}: {order.trackingCode}
+                    </span>
+                  ) : null
+                }
+              />
               {order.status === 'DISPUTED' ? (
                 <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
                   Ein Streitfall ist offen. Halte Tracking, Nachrichten und Zustandsnachweise jetzt besonders sauber dokumentiert.

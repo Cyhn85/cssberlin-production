@@ -18,7 +18,7 @@ const messageOfferSelect = {
       title: true,
       price: true,
       status: true,
-      images: { take: 1, select: { url: true }, orderBy: { orderIndex: 'asc' } },
+      images: { take: 1, select: { url: true, thumbUrl: true }, orderBy: { orderIndex: 'asc' } },
     },
   },
   orders: {
