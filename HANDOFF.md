@@ -22,47 +22,58 @@
   `src/middleware.ts` SİLİNMELİ (aşağıya bak) — Next 16 aynı anda middleware ve
   proxy dosyası olmasını reddediyor.
 
-## BU TURDA YAPILANLAR (Claude Code)
-1. `prisma/migrations/20240819000000_init/migration.sql` UTF-16 idi → UTF-8.
-   Bu haliyle `prisma migrate deploy` sessizce bozuk SQL okuyordu.
-2. Yeni migration: `20260823120000_product_image_variants`
-   (`ProductImage.thumbUrl` + `mediumUrl`). Şema ve 6 API rotası bu kolonları
-   kullanıyordu ama migration YOKTU → deploy anında checkout/favoriler/
-   teklifler/siparişler 500 verecekti.
-3. `ops/run-db-setup.sh` artık baseline yapıyor: canlı DB `db push` ile
-   kurulduğu için `_prisma_migrations` boş; `migrate resolve --applied` ile
-   init işaretlenip sonrasında `migrate deploy` sorunsuz çalışıyor.
-4. `ProductCard`: ürün başlığı geri geldi (kaybolmuştu), kart gerçek `<a>`
-   oldu (SEO + klavye + yeni sekmede aç), favori butonu çalışıyor,
-   sepete ekle geri geldi, `aria-label` Almanca, oran 4:5'e döndü.
-5. `useFavorites` modül-store'a çevrildi (useCart ile aynı kanıtlanmış desen) +
-   giriş yapmış kullanıcıda `/api/favorites`'e senkron. Header'da favori rozeti
-   artık gerçekten çiziliyor.
-6. Header'daki **sahte kategori listesi silindi** ("Elektronik" kapsamda bile yok).
-7. NextAuth `jwt` callback artık `role`/`isSuspended`'ı 60 sn'de bir DB'den
-   tazeliyor. Öncesinde ban, oturumu açık kullanıcıyı 30 güne kadar etkilemiyordu.
-8. Şifreli girişe brute-force limiti eklendi (IP+e-posta, AUTH tier).
-   Öncesinde tek sınırsız kapı buydu.
-9. `abuse-monitor` gerçekten bağlandı (mesaj + teklif) ve sayaç Redis'e taşındı;
-   in-memory Map konteyner yeniden başlayınca sıfırlanıyordu.
-10. `src/app/cart/page.tsx` yazıldı — header'ın sepet ikonu 404 veriyordu.
-11. Checkout'taki **sahte kampanya bandı silindi** (Türkçe, her zaman görünen
-    "yarın 23:59'a kadar kargo bedava" — UWG açısından yanıltıcı reklam).
-    "Elden Ücretsiz Teslim" → "Kostenlose Selbstabholung".
-12. Almanca umlaut/gramer taraması: 48 dosya, ~120 kelime (Verkaeufe→Verkäufe,
-    moeglich→möglich, gemaess→gemäß …). URL slug'ları (`/ueber-uns`,
-    `passwort-zuruecksetzen`) bilinçli olarak ASCII bırakıldı.
-13. Renk kuralı: login logosu ve `glow` varyantındaki sabit hex'ler token'a
-    bağlandı; `--color-primary-glow` eklendi (dark mode karşılığıyla).
-14. Ana sayfa ızgarası katalogla aynı kırılıma alındı (`md:grid-cols-4`).
+## BU TURDA YAPILANLAR (Claude Code — 2026-08-23, 2. tur)
+1. **Oversell kilidi (risk A2) KAPANDI.** `create-session`'ın dev dalında
+   transaction vardı ama **parayı alan Stripe dalında hiç kilit yoktu** — iki
+   alıcı aynı saniyede iki ödeme sayfası alıyordu. Kilit artık `updateMany`'nin
+   WHERE'inde (koşullu UPDATE atomik; oku-sonra-yaz READ COMMITTED altında kilit
+   değil). `Product.reservedUntil` + `reservedById` eklendi: rezervasyonun
+   süresi ve sahibi olmadan ilk yarım kalan ödeme ürünü kalıcı kilitlerdi.
+   Stripe `expires_at` aynı ana sabitlendi. Süresi dolanlar hem gecelik cron'da
+   hem katalog okuma yolunda (dakikada bir, bloklamadan) serbest bırakılıyor —
+   30 dk'lık rezervasyonu gecelik cron'a bırakmak ürünü sabaha kadar gizlerdi.
+2. **PAngV / MwSt (risk A3) KAPANDI.** `business-profile.ts` → `priceDisclosure`
+   tek kaynak (§19 Kleinunternehmer dalıyla). Ürün kartı, ürün detayı (AGB kargo
+   linkiyle) ve checkout toplamında görünüyor.
+3. **`reservedById` sızıntısı yakalandı ve kapatıldı.** Deploy sonrası canlı API
+   ölçümünde anonim çağrıya dönüyordu — hangi kullanıcının neyi almakta olduğunu
+   yayınlıyordu. Sebep: ürün sorguları `include` kullanıyor, şemaya eklenen her
+   kolon ertesi gün public JSON'da. Çağrı yerlerini tek tek düzeltmek bir
+   sonraki kolonu yine açıkta bırakırdı → Prisma client'ta global `omit`
+   (`omitApi` preview). Aynı tuzağa 3072'lik görsel embedding'i de düşmüştü.
+4. Sipariş **zaman tüneli**: `components/order/OrderTimeline.tsx`, purchases ve
+   sales detayında ortak. Bağlantı çizgisi her satırın kendi içinde çiziliyor —
+   tek parça rail sabit satır yüksekliği isterdi (sihirli sayı yasağı).
+5. **Satıcı profili**: 3. sekme (Über mich) + `verifications` rozetleri artık
+   çiziliyor (hesaplanıp atılıyordu). "Folgen" `variant="glow"` — beyaz yazı
+   turuncu üzerinde 3.3:1 ölçülüyordu, AA sınırı 4.5:1.
+6. **Pazarlık kartları** (InboxThread): ürün küçük resmi, büyük teklif fiyatı,
+   üstü çizili liste fiyatı; widget kendi açık zeminini kullanıyor (kendi
+   baloncuğun yeşil, üstü çizili gri fiyat orada okunmuyordu). Butonlar 44px.
+7. **Ürün detayı sekmeli** (Beschreibung / Details / Versand & Rückgabe).
+   Açıklama `hidden lg:block` idi — telefonda ürün açıklaması hiç görünmüyordu.
+8. **Transaktionen kabuğu**: purchases + sales ortak sekme çubuğu.
+9. `button.tsx` artık ölü kod değil. `glow` varyantının gradyanı `-z-10`'da
+   opak zeminin arkasındaydı, hiç görünmüyordu — düzeltildi. Ana sayfa ve
+   checkout CTA'larına varyant DEĞİL sadece halka verildi; varyantın tabanı
+   `bg-background`, iki dönüşüm butonunu soluklaştırırdı.
+10. **Sunucu diski %100 doluydu** (163 MB boş) — build bu yüzden ENOSPC ile
+    düştü. `docker builder prune` + dangling imaj temizliği ile %84'e indi.
+    Volume'lara dokunulmadı. Bu tekrar edecek; disk izlenmeli.
 
-## DEPLOY ÖNCESİ ZORUNLU (bu sefer sadece `src` yetmez)
-- `src/middleware.ts` SİL. Aynı işi `src/proxy.ts` zaten daha eksiksiz yapıyor
-  (güvenlik başlıkları + korumalı API listesi dahil). İkisi bir arada
-  `next build`'i kırıyor.
-- Senkronlanacaklar: `src`, `prisma`, `ops`, `package.json`, `package-lock.json`.
-- Sunucuda `db-setup` servisi ÇALIŞTIRILMALI (`RUN_DB_SEED=0` ile) — yeni
-  migration onunla uygulanıyor.
+## DEPLOY GERÇEKLERİ (kanıtlanmış)
+- Aktif compose: **`docker-compose.yml`** (düz). Konteyner etiketiyle doğrulandı:
+  `com.docker.compose.project.config_files=/opt/cssberlin-v2/docker-compose.yml`.
+  Dosya başındaki yanıltıcı "cloudflare olanı kullanın" yorumu silindi.
+- Şema değişince `src` yetmez: **`prisma/` de senkronlanmalı**, yoksa Docker
+  imajındaki Prisma client eski şemadan üretilir.
+- Canlı DB'nin `_prisma_migrations` tablosu **yok** (db push ile kurulmuş).
+  `migrate deploy` bu durumda reddeder; ayrıca `db-setup` seed script'ini de
+  tetikler. Bu turda kolonlar doğrudan `ALTER TABLE ... IF NOT EXISTS` ile
+  eklendi. `ops/run-db-setup.sh` baseline yapacak şekilde hazır ama
+  ÇALIŞTIRILMADI — çalıştırılacaksa `RUN_DB_SEED=0` zorunlu.
+- SSH build'i **arka plana alma**: oturum kopunca build ölür. Sunucuda
+  `setsid nohup ... > /tmp/cssb_build.log` ile başlat, log'u poll et.
 
 ## YAYIN ÖNCESİ ZORUNLU ADIMLAR (HER ÜRÜN İÇİN — BYPASS YOKTUR)
 Publish fonksiyonu bu kontrolleri ENFORCE eder — skip_checks kaldırıldı.
