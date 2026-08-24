@@ -107,6 +107,62 @@ fbref cron'ları 03:00'te yoğun.
 `/var/log` 1.5 GB'ı büyük ölçüde fbref). Otomatik temizlik bunu geciktirir ama
 çözmez; kalıcı çözüm disk büyütmek veya projeleri ayırmak.
 
+## SUNUCU KARARI — Contabo'ya TAŞINILMADI (2026-08-24)
+
+Taşınma önerisinin öncülü "disk yetersiz" idi. Ölçüm öncülü çürüttü: disk
+yetersiz değildi, **uygulamayla ilgisi olmayan yükle doluydu.**
+
+Sunucu: `ubuntu-4gb-nbg1-1`, 2 vCPU / 3.8 GB RAM / 38 GB, Hetzner CX22 (~4€).
+
+Bulunan ve temizlenen (hiçbiri siteyle ilgili değil):
+- `/var/lib/snapd/cache` **4.0 GB** — asıl suçlu. Silinen snap dosyaları buraya
+  hardlink'le bağlı olduğu için `snap remove` sonrası `df` hiç kıpırdamıyordu.
+- Ekransız sunucuda **iki sürüm GNOME masaüstü + Mesa + Chromium** (gnome-46
+  3.1G, gnome-42 2.7G, mesa 2.3G, chromium 846M). Chromium'a hiçbir şey
+  dokunmuyordu (süreç yok, /opt'ta referans yok); kaldırılınca GNOME/Mesa
+  yığını sahipsiz kaldı ve gitti.
+- 8 devre dışı snap revizyonu. `snap set system refresh.retain=2` ile bir daha
+  birikmeyecek.
+- journald sınırsızdı → `SystemMaxUse=200M` kalıcı yapıldı.
+- Docker build cache (bugünkü derlemelerden 5.4 GB'a çıkmıştı).
+
+**Sonuç: %84 → %64, 5.8 GB → 14 GB boş. ~8.2 GB geri kazanıldı.**
+
+Karar: **Hetzner'de kalınır.** Contabo hakkındaki overselling/CPU-steal/düşük
+IOPS uyarısı doğru ve tam bizim profilimizi (Prisma sorguları, Next.js SSR,
+`next build`) vurur. Gerçekten büyümek gerekirse Hetzner konsolundan **yerinde**
+CX22→CX32 yapılır: IP değişmez, taşınma/DNS/veri aktarımı yok, tek yeniden
+başlatma. GPU gereksiz — yığın tamamen CPU/RAM.
+
+**Dokunulmayanlar (bilinçli):** 14 kullanılmayan Docker volume var ama
+içlerinde `tatanga-postgres-data`, `activepieces_postgres_data`, `sqldata` gibi
+**veritabanı** volume'leri bulunuyor — sahibine sorulmadan silinmez.
+`/root/videocu_v1` (1.6 GB) de öyle.
+
+**Rapor:** `cssberlin-backend.service` 1 Temmuz'dan beri failed durumda. Eski
+mimariden kalma (`/var/www/cssberlin/backend`, FastAPI:8000); site artık
+Docker/Next.js. Benim değişikliklerimle ilgisi yok, kararı senin.
+
+## İZLEME — disk alarmı
+
+`ops/disk-alert.sh`, her sabah 06:00. Disk %85'i geçerse Telegram'a en büyük
+tüketicilerle birlikte bildirim düşer. TATANGA rölesinin `.env`'indeki bot
+bilgilerini okur; sır koda girmez. Test edildi: eşik 50'de bildirim **gitti**,
+eşik 85'te sessiz kaldı.
+
+**Bu turda yakalanan iki sinsi hata (ikisi de "ara ara çalışıyor" cinsinden):**
+1. `/opt/tatanga-relay/.env` Windows satır sonuyla yazılmış — her değerin
+   sonunda `` var. Token 47 karakter okunuyor, gerçekte 46. Sonu `` olan
+   token bozuk URL üretiyor ve curl isteği hiç göndermiyor (`http=000`, ağ
+   sorunu gibi görünüyor ama değil). Tüm ops betikleri artık CR temizliyor.
+   **Not:** `relay.py` aynı dosyayı okuyor — onun Telegram bildirimleri de
+   sessizce bozuk olabilir, kontrol edilmeli.
+2. `set -o pipefail` + `grep -q`: `grep -q` eşleşmeyi bulunca boruyu kapatıyor,
+   `docker exec` SIGPIPE ile 141 dönüyor, pipefail bunu başarısızlık sayıyor —
+   **desen eşleşmiş olsa bile.** Yarış koşulu olduğu için yedek doğrulaması bir
+   çalışıp bir düşüyordu. Boru kaldırıldı, çıktı değişkene alınıyor. Üst üste
+   3 çalıştırmada da geçtiği doğrulandı.
+
 ## DEPLOY GERÇEKLERİ (kanıtlanmış)
 - Aktif compose: **`docker-compose.yml`** (düz). Konteyner etiketiyle doğrulandı:
   `com.docker.compose.project.config_files=/opt/cssberlin-v2/docker-compose.yml`.

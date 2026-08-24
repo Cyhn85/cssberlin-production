@@ -46,8 +46,19 @@ fail() {
 [ -f "$ENV_FILE" ] || fail "env file not found: $ENV_FILE"
 [ -f "$COMPOSE_FILE" ] || fail "compose file not found: $COMPOSE_FILE"
 
-POSTGRES_USER="$(grep -E '^POSTGRES_USER=' "$ENV_FILE" | head -1 | cut -d= -f2- | tr -d '"'"'"'')"
-POSTGRES_DB="$(grep -E '^POSTGRES_DB=' "$ENV_FILE" | head -1 | cut -d= -f2- | tr -d '"'"'"'')"
+# Read one value out of an env file. Carriage returns are stripped, not only
+# surrounding quotes: an env file written from Windows leaves a trailing CR on
+# every value, and a database name ending in CR simply does not exist.
+read_env() {
+  local value
+  value=$(grep -E "^$1=" "$2" | head -1 | cut -d= -f2- | tr -d '\r\n')
+  value=${value%\"}
+  value=${value#\"}
+  printf '%s' "$value"
+}
+
+POSTGRES_USER=$(read_env POSTGRES_USER "$ENV_FILE")
+POSTGRES_DB=$(read_env POSTGRES_DB "$ENV_FILE")
 POSTGRES_USER="${POSTGRES_USER:-cssberlin}"
 POSTGRES_DB="${POSTGRES_DB:-cssberlin}"
 
@@ -83,16 +94,24 @@ fi
 # find magic string in file header" - a custom-format archive needs seekable
 # input and docker's multiplexed stdin is not one. Measured the hard way: a
 # perfectly good 2.9 MB dump was rejected by that version of this check.
-verify_toc() {
-  docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" exec -T postgres \
-    sh -c 'cat > /tmp/verify.dump && pg_restore --list /tmp/verify.dump; rc=$?; rm -f /tmp/verify.dump; exit $rc' \
-    < "$DUMP_FILE" 2>/dev/null
-}
+#
+# The listing is captured into a variable rather than piped into `grep -q`.
+# Under `set -o pipefail` that pipeline lies: grep -q exits the moment it finds
+# a match, the reader end of the pipe closes, docker exec dies of SIGPIPE with
+# 141, and pipefail reports the whole pipeline as failed even though the match
+# succeeded. It fails only when grep wins the race, so it looks intermittent -
+# this dump passed once and failed the next run with identical content.
+toc="$(docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" exec -T postgres \
+  sh -c 'cat > /tmp/verify.dump && pg_restore --list /tmp/verify.dump; rc=$?; rm -f /tmp/verify.dump; exit $rc' \
+  < "$DUMP_FILE" 2>/dev/null)"
 
-if ! verify_toc | grep -q 'TABLE DATA public Product'; then
-  rm -f "$DUMP_FILE"
-  fail "dump does not list the Product table - archive is unusable"
-fi
+case "$toc" in
+  *"TABLE DATA public Product"*) ;;
+  *)
+    rm -f "$DUMP_FILE"
+    fail "dump does not list the Product table data - archive is unusable"
+    ;;
+esac
 
 log "dump OK: $DUMP_FILE ($(numfmt --to=iec "$size" 2>/dev/null || echo "${size}B"))"
 
