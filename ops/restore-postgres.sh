@@ -10,7 +10,11 @@ BACKUP_FILE="$1"
 FORCE_FLAG="${2:-}"
 PROJECT_DIR="${PROJECT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 ENV_FILE="${ENV_FILE:-$PROJECT_DIR/.env.production}"
-COMPOSE_FILE="${COMPOSE_FILE:-$PROJECT_DIR/docker-compose.cloudflare.yml}"
+# The live stack. Confirmed from the running container's own label:
+#   com.docker.compose.project.config_files=/opt/cssberlin-v2/docker-compose.yml
+# This used to default to docker-compose.cloudflare.yml, which nothing runs -
+# that is why the only backup on the server was a zero-byte file.
+COMPOSE_FILE="${COMPOSE_FILE:-$PROJECT_DIR/docker-compose.yml}"
 
 if [[ "$FORCE_FLAG" != "--force" ]]; then
   echo "Refusing to restore without --force." >&2

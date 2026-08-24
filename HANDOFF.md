@@ -61,6 +61,52 @@
     düştü. `docker builder prune` + dangling imaj temizliği ile %84'e indi.
     Volume'lara dokunulmadı. Bu tekrar edecek; disk izlenmeli.
 
+## ALTYAPI — disk ve yedek (2026-08-24)
+
+**Yedek artık gerçekten var ve geri yüklendiği KANITLANDI.**
+- Öncesinde tek yedek dosyası **0 bayttı** (12 Ağustos'tan). `backup-postgres.sh`
+  varsayılan olarak canlı olmayan `docker-compose.cloudflare.yml`'ye `exec`
+  ediyordu; hiçbir kontrol olmadığı için 11 gün yedek var sanıldı. Aynı yanlış
+  varsayılan 6 ops betiğinde vardı, hepsi düzeltildi.
+- `ops/backup-offsite.sh`: pg_dump + boyut kontrolü + `pg_restore --list` ile
+  içerik kontrolü. Ölçüm: **2.8 MB, doğrulandı.**
+- **Restore tatbikatı yapıldı:** ayrı `cssberlin_restore_test` veritabanına geri
+  yüklendi, `Product/User/Order` = **153/8/0**, canlıyla birebir aynı. Test DB
+  silindi. Canlı veritabanına dokunulmadı.
+- Kapsam veritabanı **ve** `uploads/`. Görseller Uploadthing'de DEĞİL, sunucunun
+  diskinde (107 MB, `cssberlin.de/uploads/...` oradan servis ediliyor).
+- **Şu an LOCAL ONLY** — rclone kurulu değil, yani off-site yedek YOK. Script
+  bunu her çalıştığında log'a açıkça yazıyor. Google Drive'ı devreye almak için
+  `ops/restore-offsite.md` → tek eksik adım rclone OAuth (hesap sahibi yapacak).
+
+**Bozuk cron onarıldı.** `/opt/cssberlin-v2/cron-cleanup.sh` içindeki curl satırı
+escape bozukluğuyla yazılmıştı (secret yok, URL kapanmamış, `-s` hatayı gizliyor).
+`/var/log/cssberlin-cleanup.log` hiç oluşmamıştı → kurulduğundan beri tek kez bile
+çalışmamış. `ops/cron-cleanup.sh` ile değiştirildi, test edildi:
+`OK 200: {"message":"No obsolete products...","releasedReservations":0}`.
+
+**Disk kendi kendini temizliyor.**
+- `.dockerignore`'a `uploads` eklendi. Build context: **225.91 MB → 54.67 kB**
+  (ölçüldü). ENOSPC'nin kök nedeni buydu — Next.js standalone trace'i 107 MB
+  ürün fotoğrafını imaja kopyalamaya çalışıyordu.
+- `ops/post-deploy-cleanup.sh` her deploy sonunda çalışır (build cache + dangling
+  imaj, gerekirse journald). Test: **%87 → %84.**
+- **`docker system prune -af` KULLANILMIYOR:** sunucu paylaşımlı (Buchhalter +
+  fbref-predictions) ve `-a` bir önceki cssberlin imajını, yani rollback
+  yolumuzu da siler. Volume prune da yok — Postgres verisi volume'da.
+
+**Cron (root):**
+```
+15 4 * * * /opt/cssberlin-v2/ops/cron-cleanup.sh   >> /var/log/cssberlin-cleanup.log 2>&1
+30 4 * * * /opt/cssberlin-v2/ops/backup-offsite.sh >> /var/log/cssberlin-backup.log  2>&1
+```
+`logrotate.d/cssberlin` ile bu log'lar haftalık döner. Saat 04:xx seçildi çünkü
+fbref cron'ları 03:00'te yoğun.
+
+**Açık risk:** disk 38 GB ve üç proje paylaşıyor (`/var/lib/docker` 15 GB,
+`/var/log` 1.5 GB'ı büyük ölçüde fbref). Otomatik temizlik bunu geciktirir ama
+çözmez; kalıcı çözüm disk büyütmek veya projeleri ayırmak.
+
 ## DEPLOY GERÇEKLERİ (kanıtlanmış)
 - Aktif compose: **`docker-compose.yml`** (düz). Konteyner etiketiyle doğrulandı:
   `com.docker.compose.project.config_files=/opt/cssberlin-v2/docker-compose.yml`.

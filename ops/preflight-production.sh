@@ -3,7 +3,9 @@ set -euo pipefail
 
 PROJECT_DIR="${PROJECT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 ENV_FILE="${ENV_FILE:-$PROJECT_DIR/.env.production}"
-COMPOSE_FILE="${COMPOSE_FILE:-$PROJECT_DIR/docker-compose.cloudflare.yml}"
+# The live stack (see docker-compose.yml header). Was pointing at
+# docker-compose.cloudflare.yml, which nothing runs.
+COMPOSE_FILE="${COMPOSE_FILE:-$PROJECT_DIR/docker-compose.yml}"
 STRICT_LAUNCH_MODE="${STRICT_LAUNCH_MODE:-1}"
 EXPECTED_CANONICAL_URL="${EXPECTED_CANONICAL_URL:-https://cssberlin.de}"
 

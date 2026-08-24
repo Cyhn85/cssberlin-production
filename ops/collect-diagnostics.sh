@@ -3,7 +3,9 @@ set -euo pipefail
 
 PROJECT_DIR="${PROJECT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 ENV_FILE="${ENV_FILE:-$PROJECT_DIR/.env.production}"
-COMPOSE_FILE="${COMPOSE_FILE:-$PROJECT_DIR/docker-compose.cloudflare.yml}"
+# The live stack (see docker-compose.yml header). Was pointing at
+# docker-compose.cloudflare.yml, which nothing runs.
+COMPOSE_FILE="${COMPOSE_FILE:-$PROJECT_DIR/docker-compose.yml}"
 OUTPUT_DIR="${OUTPUT_DIR:-$PROJECT_DIR/logs}"
 TIMESTAMP="$(date +%Y-%m-%d_%H-%M-%S)"
 OUTPUT_FILE="$OUTPUT_DIR/production-diagnostics-$TIMESTAMP.txt"

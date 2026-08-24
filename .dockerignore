@@ -19,3 +19,18 @@ standalone-start.out.log
 .claude
 nginx
 .dockerignore
+
+# Product photos live on this disk (uploads/ = 107 MB). Without this line they
+# enter the build context AND Next.js traces them into .next/standalone - the
+# ENOSPC that killed a deploy showed exactly that:
+#   copyfile '/app/uploads/products/<id>/0.jpg' -> '/app/.next/standalone/...'
+# They are runtime data mounted as a volume, never part of the image.
+uploads
+test_uploads
+
+# Scratch, archives and deploy tarballs that happen to sit in the repo root.
+scratch
+*.tgz
+*.tar.gz
+out*.txt
+play_out.txt
