@@ -461,8 +461,13 @@ export default function Header() {
               <motion.button
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
+                /* Brand green, not orange. Two reasons and they point the same
+                   way: this is the "take a second-hand step and nature turns
+                   green" action, and white on --color-orange measures 3.3:1,
+                   under the 4.5:1 AA floor for text this size. Green with white
+                   is 6.4:1. */
                 className="btn-mars-earth hidden items-center text-white sm:flex h-11"
-                style={{ background: 'var(--color-orange)', padding: '0 1.2rem', gap: '0.4rem' }}
+                style={{ background: 'var(--color-primary)', padding: '0 1.2rem', gap: '0.4rem' }}
               >
                 <Plus size={18} /> <span>Verkaufen</span>
               </motion.button>
@@ -715,7 +720,10 @@ export default function Header() {
 
                 <div className="mt-auto px-4 pb-4">
                   <Link href="/upload" onClick={() => setIsMobileMenuOpen(false)}>
-                    <button className="w-full rounded-2xl py-3.5 text-sm font-bold transition-colors" style={{ background: 'var(--color-orange)', color: '#1A4D2E' }}>
+                    {/* Same green as the desktop button - one action, one
+                        colour. The old pairing (dark green on orange) measured
+                        2.9:1, worse than the white-on-orange it replaced. */}
+                    <button className="w-full rounded-2xl py-3.5 text-sm font-bold text-white transition-colors" style={{ background: 'var(--color-primary)' }}>
                       <span className="inline-flex items-center gap-2"><Plus size={16} /> Jetzt verkaufen</span>
                     </button>
                   </Link>

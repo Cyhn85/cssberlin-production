@@ -167,7 +167,7 @@ export default function LoginPage() {
                         <button
                             type="button"
                             onClick={() => signIn('google', { callbackUrl: '/' })}
-                            className="w-full h-12 rounded-xl border border-input font-semibold flex items-center justify-center gap-3 transition-all hover:bg-muted focus:ring-2 focus:ring-ring focus:outline-none"
+                            className="w-full h-12 rounded-xl border border-[var(--color-primary)] text-[var(--color-primary)] font-semibold flex items-center justify-center gap-3 transition-all hover:bg-black/5 focus:ring-2 focus:ring-ring focus:outline-none"
                         >
                             <svg width="20" height="20" viewBox="0 0 24 24">
                                 <path fill="#4285F4" d="M23.52 12.27c0-.85-.08-1.67-.22-2.45H12v4.64h6.47c-.28 1.5-1.13 2.77-2.4 3.62v3h3.88c2.27-2.09 3.57-5.17 3.57-8.81z" />

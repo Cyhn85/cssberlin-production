@@ -62,7 +62,7 @@ export default function RegisterPage() {
             <div className="max-w-sm w-full p-6 rounded-3xl shadow-xl bg-white/95 backdrop-blur" style={{ border: '1px solid var(--color-border)' }}>
                 <div className="text-center mb-6">
                     <AuthBrandHeader />
-                    <h2 className="text-2xl font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text)' }}>Konto erstellen</h2>
+                    <h2 className="text-2xl font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--color-primary)' }}>Konto erstellen</h2>
                     <p className="mt-2 text-sm" style={{ color: 'var(--color-text-secondary)' }}>Werde Teil der nachhaltigen Mode-Community Berlins.</p>
                 </div>
 
@@ -76,7 +76,7 @@ export default function RegisterPage() {
                     type="button"
                     onClick={() => signIn('google', { callbackUrl: '/' })}
                     className="w-full h-11 rounded-xl border-[1.5px] font-semibold flex items-center justify-center gap-2 transition-colors hover:bg-black/5"
-                    style={{ borderColor: 'var(--color-text-muted)', color: 'var(--color-text)' }}
+                    style={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)' }}
                 >
                     <svg width="18" height="18" viewBox="0 0 24 24">
                         <path fill="#4285F4" d="M23.52 12.27c0-.85-.08-1.67-.22-2.45H12v4.64h6.47c-.28 1.5-1.13 2.77-2.4 3.62v3h3.88c2.27-2.09 3.57-5.17 3.57-8.81z" />
@@ -95,33 +95,33 @@ export default function RegisterPage() {
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text)' }}>Vor- und Nachname</label>
+                        <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-primary)' }}>Vor- und Nachname</label>
                         <input
                             type="text"
                             required
                             value={formData.name}
                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                             className="w-full h-11 px-4 rounded-xl border-[1.5px] outline-none focus:ring-2"
-                            style={{ background: 'var(--color-bg)', borderColor: 'var(--color-text-muted)' }}
+                            style={{ background: 'var(--color-bg)', borderColor: 'var(--color-primary)' }}
                             placeholder="z.B. Anna Müller"
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text)' }}>E-Mail Adresse</label>
+                        <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-primary)' }}>E-Mail Adresse</label>
                         <input
                             type="email"
                             required
                             value={formData.email}
                             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                             className="w-full h-11 px-4 rounded-xl border-[1.5px] outline-none focus:ring-2"
-                            style={{ background: 'var(--color-bg)', borderColor: 'var(--color-text-muted)' }}
+                            style={{ background: 'var(--color-bg)', borderColor: 'var(--color-primary)' }}
                             placeholder="anna@beispiel.de"
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text)' }}>Passwort</label>
+                        <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-primary)' }}>Passwort</label>
                         <div className="relative">
                             <input
                                 type={showPassword ? 'text' : 'password'}
@@ -130,7 +130,7 @@ export default function RegisterPage() {
                                 value={formData.password}
                                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                                 className="w-full h-11 pl-4 pr-12 rounded-xl border-[1.5px] outline-none focus:ring-2"
-                                style={{ background: 'var(--color-bg)', borderColor: 'var(--color-text-muted)' }}
+                                style={{ background: 'var(--color-bg)', borderColor: 'var(--color-primary)' }}
                                 placeholder="Mind. 8 Zeichen"
                             />
                             <button
