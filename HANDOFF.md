@@ -13,7 +13,20 @@
 5. **Deploy komutu (kanıtlanmış):**
    `tar → scp → ssh "cd /opt/cssberlin-v2 && cp -r src /tmp/src_yedek_$(date +%s) && tar -xzf ... && docker compose --env-file .env.production up -d --build app"`
 
-## SON DURUM (en son güncelleyen: Claude Code — 2026-08-23)
+## SON DURUM (en son güncelleyen: Claude Code — 2026-10-19)
+- **DEPLOY EDİLDİ (2026-10-19 23:05).** Sunucu `src` = yerel `src` (md5 ile karşılaştırıldı, tek fark bu turun dosyaları).
+- **Tüm TATANGA importları SİLİNDİ** (sahip kararı: başka satıcıların ilan fotoğrafı mağazada olmayacak).
+  153 ürün (`sourceHubId` dolu) + 153 görsel klasörü; siparişli ürün yoktu. Önce yedek:
+  sunucuda `/opt/yedek/cssberlin_oncesi_withdraw_20261019_2308.sql.gz`; liste yerelde
+  `tatanga/istatistik/raporlar/cssberlin_silinen_20261019.csv`.
+- Yeni: `POST /api/products/withdraw` (x-api-key, yalnız `sourceHubId` dolu ürünler; siparişli -> HIDDEN; `dry_run`).
+- DÜZELTME: `src/proxy.ts` köprü listesinde yalnız `/import` vardı; `/reprice` ve `/withdraw` oturum kontrolüne
+  takılıp 401 alıyordu (TATANGA fiyat düşürme canlıda HİÇ çalışmamış). Artık üçü de handler'da anahtarla doğrulanıyor.
+- Bundan sonra TATANGA mağazaya YALNIZ kullanıcının kendi çektiği (stüdyo kalite kapısını geçmiş) fotoğraflarla yayın yapar.
+- SONRAKİ ADIM: yok (bu tur kapandı). Antigravity'nin commit'lenmemiş dosyaları (ANTIGRAVITY_GOREV.md, deploy.py,
+  check*.py, docs/audit/) olduğu gibi bırakıldı.
+
+## ÖNCEKİ DURUM (Claude Code — 2026-08-23)
 - Site CANLI: https://cssberlin.de (Hetzner /opt/cssberlin-v2, Docker Compose)
 - Deploy git ile DEĞİL, dosya-senkronu ile → git yalnızca checkpoint/görünürlük için.
 - Antigravity'nin Faz 1/2/7 turu **denetlendi ve tamamlandı**. Kabuk işi duruyor,
@@ -152,7 +165,9 @@ eşik 85'te sessiz kaldı.
 
 **Bu turda yakalanan iki sinsi hata (ikisi de "ara ara çalışıyor" cinsinden):**
 1. `/opt/tatanga-relay/.env` Windows satır sonuyla yazılmış — her değerin
-   sonunda `` var. Token 47 karakter okunuyor, gerçekte 46. Sonu `` olan
+   sonunda `
+` var. Token 47 karakter okunuyor, gerçekte 46. Sonu `
+` olan
    token bozuk URL üretiyor ve curl isteği hiç göndermiyor (`http=000`, ağ
    sorunu gibi görünüyor ama değil). Tüm ops betikleri artık CR temizliyor.
    **Not:** `relay.py` aynı dosyayı okuyor — onun Telegram bildirimleri de

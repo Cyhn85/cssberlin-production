@@ -58,7 +58,10 @@ function isProtectedRoute(pathname: string): boolean {
 function isProtectedApiRoute(pathname: string, method: string): boolean {
   // Server-to-server TATANGA bridge: authenticates its own callers via
   // x-api-key inside the route handler, not a browser session/cookie.
-  if (pathname === '/api/products/import') {
+  // reprice / withdraw were missing here (2026-10-19): the session check answered 401 before the
+  // handler could verify x-api-key, so TATANGA price drops and withdrawals never reached the shop.
+  if (pathname === '/api/products/import' || pathname === '/api/products/reprice' ||
+      pathname === '/api/products/withdraw') {
     return false;
   }
   if (pathname.startsWith('/api/products') && method === 'GET') {
