@@ -1,4 +1,6 @@
-﻿'use client';
+'use client';
+
+import OfferAdvice from '@/components/offers/OfferAdvice';
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -55,6 +57,9 @@ type OfferItem = {
   pendingOn: 'BUYER' | 'SELLER' | null;
   hasCompletedCheckout: boolean;
   latestOrder: OfferOrder | null;
+  round?: number;
+  roundsLeft?: number;
+  expiresAt?: string | null;
   product: OfferProduct;
   buyer: OfferParty;
   seller: OfferParty;
@@ -120,8 +125,11 @@ function getSentOfferMessage(offer: OfferItem) {
   if (offer.latestOrder) {
     return `Aus diesem Verhandlungspfad wurde bereits eine Bestellung mit Status ${orderStatusToLabel[offer.latestOrder.status] || offer.latestOrder.status} erzeugt.`;
   }
-  if (offer.status === 'ACCEPTED' && offer.product.status === 'ACTIVE') {
-    return 'Dein Preis wurde akzeptiert. Du kannst jetzt mit diesem Angebot in den Checkout gehen.';
+  if (offer.status === 'ACCEPTED' && (offer.product.status === 'ACTIVE' || offer.product.status === 'RESERVED')) {
+    return 'Dein Preis wurde angenommen! Der Artikel ist für dich reserviert - schließe den Kauf vor Ablauf der Frist ab.';
+  }
+  if (offer.status === 'EXPIRED') {
+    return 'Dieses Angebot ist abgelaufen (keine Antwort bzw. kein Kauf innerhalb der Frist).';
   }
   if (isBuyerCounterActionable(offer)) {
     return 'Der Verkäufer hat ein Gegenangebot geschickt. Du kannst es annehmen, ablehnen oder erneut verhandeln.';
@@ -157,7 +165,10 @@ function getReceivedOfferMessage(offer: OfferItem) {
     return availability.message;
   }
   if (offer.status === 'ACCEPTED') {
-    return 'Das Angebot wurde angenommen. Der Käufer kann nun in den Checkout gehen.';
+    return 'Angenommen - der Artikel ist für den Käufer reserviert, bis er kauft oder die Frist abläuft.';
+  }
+  if (offer.status === 'EXPIRED') {
+    return 'Abgelaufen.';
   }
   if (offer.status === 'REJECTED') {
     return 'Diese Verhandlungsrunde wurde abgelehnt.';
@@ -443,7 +454,7 @@ export default function OffersPage() {
                         </p>
 
                         <div className="mt-3 grid gap-2 text-sm md:grid-cols-2" style={{ color: 'var(--color-text-secondary)' }}>
-                          <p>Dein Verhandlungspreis: <span className="font-semibold" style={{ color: 'var(--color-text)' }}>{formatPrice(offer.offeredPrice)}</span></p>
+                          <p>{view === 'sent' ? 'Dein Preis' : 'Angebot'}: <span className="font-semibold" style={{ color: 'var(--color-text)' }}>{formatPrice(offer.offeredPrice)}</span></p>
                           <p>Listenpreis: <span className="font-semibold" style={{ color: 'var(--color-text)' }}>{formatPrice(offer.product.price)}</span></p>
                           <p>Erstellt: <span className="font-semibold" style={{ color: 'var(--color-text)' }}>{formatRelativeTime(offer.createdAt)}</span></p>
                           <p>Zuletzt aktualisiert: <span className="font-semibold" style={{ color: 'var(--color-text)' }}>{formatRelativeTime(offer.updatedAt)}</span></p>
@@ -451,7 +462,16 @@ export default function OffersPage() {
 
                         <div className="mt-4 rounded-2xl p-4 text-sm" style={{ background: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)' }}>
                           {offerMessage}
+                          {offer.expiresAt && (offer.status === 'PENDING' || offer.status === 'ACCEPTED') ? (
+                            <p className="mt-2 text-xs font-semibold" style={{ color: 'var(--color-text)' }}>
+                              {offer.status === 'ACCEPTED' ? 'Kaufen bis' : 'Antwort bis'} {new Date(offer.expiresAt).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })}
+                              {typeof offer.roundsLeft === 'number' && offer.status === 'PENDING' ? ` · noch ${offer.roundsLeft} Gegenangebot${offer.roundsLeft === 1 ? '' : 'e'} möglich` : ''}
+                            </p>
+                          ) : null}
                         </div>
+                        {view === 'received' && canSellerAct ? (
+                          <OfferAdvice offerId={offer.id} onUseCounter={(price) => { setCounterTargetId(offer.id); setCounterValue(price.toFixed(2)); }} />
+                        ) : null}
 
                         {feedbackForCard ? (
                           <div className={`mt-4 rounded-2xl px-4 py-3 text-sm ${feedbackForCard.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
@@ -507,7 +527,7 @@ export default function OffersPage() {
                         </Link>
                       ) : null}
 
-                      {view === 'sent' && offer.status === 'ACCEPTED' && offer.product.status === 'ACTIVE' && !offer.latestOrder ? (
+                      {view === 'sent' && offer.status === 'ACCEPTED' && (offer.product.status === 'ACTIVE' || offer.product.status === 'RESERVED') && !offer.latestOrder ? (
                         <Link href={checkoutHref} className="inline-flex items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-bold text-white" style={{ background: 'var(--color-primary)' }}>
                           Mit Angebot kaufen <ArrowRight size={16} />
                         </Link>
@@ -526,7 +546,8 @@ export default function OffersPage() {
                           </button>
                           <button
                             onClick={() => openCounterForm(offer)}
-                            disabled={isActioning}
+                            disabled={isActioning || offer.roundsLeft === 0}
+                            title={offer.roundsLeft === 0 ? 'Keine weiteren Gegenangebote möglich' : undefined}
                             className="rounded-full border px-4 py-3 text-sm font-bold"
                             style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
                           >
@@ -556,7 +577,8 @@ export default function OffersPage() {
                           </button>
                           <button
                             onClick={() => openCounterForm(offer)}
-                            disabled={isActioning}
+                            disabled={isActioning || offer.roundsLeft === 0}
+                            title={offer.roundsLeft === 0 ? 'Keine weiteren Gegenangebote möglich' : undefined}
                             className="rounded-full border px-4 py-3 text-sm font-bold"
                             style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
                           >

@@ -12,6 +12,7 @@ const navItems = [
   { href: '/admin/products', label: 'Artikel', icon: Package },
   { href: '/admin/categories', label: 'Kategorien', icon: FolderTree },
   { href: '/admin/personas', label: 'Verkäufer-Profile', icon: UserCog },
+  { href: '/admin/kontakt', label: 'Kontakt & Meldungen', icon: Bell },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

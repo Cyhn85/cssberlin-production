@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { Suspense, startTransition, useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -65,6 +65,38 @@ function CatalogContent() {
   const [minPrice, setMinPrice] = useState(searchParams.get('minPrice') || '');
   const [maxPrice, setMaxPrice] = useState(searchParams.get('maxPrice') || '');
   const [selectedSort, setSelectedSort] = useState(searchParams.get('sort') || 'newest');
+  // Umkreis (Kleinanzeigen style): radius around the searcher's PLZ (profile) or, with permission, the browser location
+  const [radius, setRadius] = useState(searchParams.get('radius') || '');
+  const [origin, setOrigin] = useState<{ lat: number; lng: number } | null>(() => {
+    const lat = Number(searchParams.get('lat'));
+    const lng = Number(searchParams.get('lng'));
+    return Number.isFinite(lat) && Number.isFinite(lng) && searchParams.get('lat') ? { lat, lng } : null;
+  });
+  const [radiusNote, setRadiusNote] = useState<string | null>(null);
+  const [savedState, setSavedState] = useState<'idle' | 'busy' | 'saved' | 'error'>('idle');
+
+  const chooseRadius = async (value: string) => {
+    setRadiusNote(null);
+    if (!value) { setRadius(''); return; }
+    if (origin) { setRadius(value); return; }
+    // 1) the signed-in user's own PLZ centroid
+    const me = await fetch('/api/users/me').then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    if (me?.success && typeof me.data?.lat === 'number' && typeof me.data?.lng === 'number') {
+      setOrigin({ lat: me.data.lat, lng: me.data.lng });
+      setRadius(value);
+      return;
+    }
+    // 2) browser location, only after the browser asked the visitor
+    if (!('geolocation' in navigator)) { setRadiusNote('Standort nicht verfügbar. Hinterlege deine PLZ in den Einstellungen.'); return; }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setOrigin({ lat: Math.round(pos.coords.latitude * 100) / 100, lng: Math.round(pos.coords.longitude * 100) / 100 });
+        setRadius(value);
+      },
+      () => setRadiusNote('Ohne Standortfreigabe geht die Umkreissuche nur mit deiner PLZ (Einstellungen → Profil).'),
+      { maximumAge: 600000, timeout: 8000 },
+    );
+  };
 
   const deferredQuery = useDeferredValue(query);
 
@@ -104,6 +136,7 @@ function CatalogContent() {
     if (minPrice) params.set('minPrice', minPrice);
     if (maxPrice) params.set('maxPrice', maxPrice);
     if (selectedSort) params.set('sort', selectedSort);
+    if (radius && origin) { params.set('lat', String(origin.lat)); params.set('lng', String(origin.lng)); params.set('radius', radius); }
     params.set('limit', '16');
     if (cursor) params.set('cursor', cursor);
     return params;
@@ -133,7 +166,7 @@ function CatalogContent() {
     return () => {
       cancelled = true;
     };
-  }, [deferredQuery, selectedCategory, selectedBrand, selectedSize, selectedCondition, minPrice, maxPrice, selectedSort]);
+  }, [deferredQuery, selectedCategory, selectedBrand, selectedSize, selectedCondition, minPrice, maxPrice, selectedSort, radius, origin]);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -145,9 +178,30 @@ function CatalogContent() {
     if (minPrice) params.set('minPrice', minPrice);
     if (maxPrice) params.set('maxPrice', maxPrice);
     if (selectedSort && selectedSort !== 'newest') params.set('sort', selectedSort);
+    if (radius && origin) { params.set('lat', String(origin.lat)); params.set('lng', String(origin.lng)); params.set('radius', radius); }
 
     router.replace(params.size ? `?${params.toString()}` : '/catalog', { scroll: false });
-  }, [query, selectedCategory, selectedBrand, selectedSize, selectedCondition, minPrice, maxPrice, selectedSort, router]);
+  }, [query, selectedCategory, selectedBrand, selectedSize, selectedCondition, minPrice, maxPrice, selectedSort, radius, origin, router]);
+
+  const saveSearch = async () => {
+    const params = new URLSearchParams();
+    if (query.trim()) params.set('q', query.trim());
+    if (selectedCategory) params.set('category', selectedCategory);
+    if (selectedBrand) params.set('brand', selectedBrand);
+    if (selectedSize) params.set('size', selectedSize);
+    if (selectedCondition) params.set('condition', labelToCondition[selectedCondition] || selectedCondition);
+    if (minPrice) params.set('minPrice', minPrice);
+    if (maxPrice) params.set('maxPrice', maxPrice);
+    if (radius && origin) { params.set('lat', String(origin.lat)); params.set('lng', String(origin.lng)); params.set('radius', radius); }
+    const label = [query.trim(), selectedBrand, selectedCategory, selectedSize && `Gr. ${selectedSize}`, maxPrice && `bis ${maxPrice} €`, radius && `${radius} km`].filter(Boolean).join(' · ') || 'Alle Artikel';
+    setSavedState('busy');
+    const res = await fetch('/api/saved-searches', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ label, query: params.toString() }) }).catch(() => null);
+    if (res?.status === 401) {
+      router.push(`/login?callbackUrl=${encodeURIComponent(`/catalog${window.location.search}`)}`);
+      return;
+    }
+    setSavedState(res?.ok ? 'saved' : 'error');
+  };
 
   const loadMore = async () => {
     if (!hasMore || !nextCursor || loadingMore) return;
@@ -178,10 +232,11 @@ function CatalogContent() {
     setMinPrice('');
     setMaxPrice('');
     setSelectedSort('newest');
+    setRadius('');
   };
 
   const hasActiveFilters = Boolean(
-    query || selectedCategory || selectedBrand || selectedSize || selectedCondition || minPrice || maxPrice || selectedSort !== 'newest'
+    query || selectedCategory || selectedBrand || selectedSize || selectedCondition || minPrice || maxPrice || selectedSort !== 'newest' || radius
   );
 
   const activeSortLabel = useMemo(
@@ -216,6 +271,21 @@ function CatalogContent() {
         active={selectedCondition}
         onSelect={(value) => setSelectedCondition(value === selectedCondition ? '' : value)}
       />
+
+      <div className="pb-6">
+        <h3 className="mb-3 text-sm font-bold" style={{ color: 'var(--color-text)' }}>Umkreis</h3>
+        <select
+          value={radius}
+          onChange={(event) => void chooseRadius(event.target.value)}
+          className="h-10 w-full rounded-xl border px-3 text-sm outline-none"
+          style={{ background: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)' }}
+          aria-label="Umkreis"
+        >
+          <option value="">Ganz Deutschland</option>
+          {['5', '10', '25', '50', '100'].map((km) => <option key={km} value={km}>{km} km um mich</option>)}
+        </select>
+        {radiusNote ? <p className="mt-2 text-xs" style={{ color: 'var(--color-text-muted)' }}>{radiusNote}</p> : null}
+      </div>
 
       <div className="pb-6">
         <h3 className="mb-3 text-sm font-bold" style={{ color: 'var(--color-text)' }}>Preis (EUR)</h3>
@@ -314,6 +384,15 @@ function CatalogContent() {
                 {selectedCondition ? <FilterTag label={selectedCondition} onRemove={() => setSelectedCondition('')} /> : null}
                 {minPrice || maxPrice ? <FilterTag label={`${minPrice || 0} - ${maxPrice || '∞'} EUR`} onRemove={() => { setMinPrice(''); setMaxPrice(''); }} /> : null}
                 {selectedSort !== 'newest' ? <FilterTag label={activeSortLabel} onRemove={() => setSelectedSort('newest')} /> : null}
+                {radius ? <FilterTag label={`${radius} km Umkreis`} onRemove={() => setRadius('')} /> : null}
+                <button
+                  onClick={() => void saveSearch()}
+                  disabled={savedState === 'busy' || savedState === 'saved'}
+                  className="rounded-full border px-3 py-1 text-xs font-bold disabled:opacity-70"
+                  style={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)' }}
+                >
+                  {savedState === 'saved' ? 'Suche gespeichert ✓' : savedState === 'error' ? 'Speichern fehlgeschlagen' : 'Suche speichern & benachrichtigen'}
+                </button>
                 <button onClick={clearAllFilters} className="px-2 text-xs font-bold underline" style={{ color: 'var(--color-text-muted)' }}>
                   Alles löschen
                 </button>

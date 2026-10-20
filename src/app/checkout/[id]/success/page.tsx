@@ -1,5 +1,6 @@
-﻿import Link from 'next/link';
+import Link from 'next/link';
 import { CheckCircle2, PackageCheck, ShieldCheck } from 'lucide-react';
+import { cancellationPolicy, pickupPolicy, shippingDeadlines } from '@/config/marketplace-policy';
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -13,8 +14,10 @@ type PageProps = {
 export default async function CheckoutSuccessPage({ params, searchParams }: PageProps) {
   const { id } = await params;
   const query = await searchParams;
-  const isDevMode = query.mode === 'dev';
-  const reference = isDevMode ? query.orderId : query.session_id;
+  // 'pickup' = Abholung requested (no online payment). The old 'dev' mode (paid
+  // order without payment) no longer exists.
+  const isPickup = query.mode === 'pickup';
+  const reference = isPickup ? query.orderId : query.session_id;
 
   return (
     <div className="min-h-screen py-24" style={{ background: 'var(--color-bg)' }}>
@@ -26,22 +29,24 @@ export default async function CheckoutSuccessPage({ params, searchParams }: Page
 
           <div className="text-center">
             <h1 className="text-3xl font-bold" style={{ color: 'var(--color-text)', fontFamily: 'var(--font-display)' }}>
-              {isDevMode ? 'Bestellung bestätigt' : 'Zahlung erfolgreich übermittelt'}
+              {isPickup ? 'Abholung angefragt' : 'Zahlung erfolgreich übermittelt'}
             </h1>
             <p className="mx-auto mt-4 max-w-2xl text-sm leading-7" style={{ color: 'var(--color-text-secondary)' }}>
-              {isDevMode
-                ? 'Deine Bestellung wurde aufgenommen und der Artikel für dich reserviert. Die Zahlungsabwicklung wird in Kürze abgeschlossen.'
-                : 'Deine Zahlung wurde an den sicheren Checkout übergeben. Die Bestellung wird über den Stripe-Webhook abgeschlossen. Falls sie nicht sofort unter Einkäufe erscheint, aktualisiere die Seite in ein paar Sekunden.'}
+              {isPickup
+                ? `Der Artikel ist jetzt ${pickupPolicy.holdHours} Stunden für dich reserviert. Der Verkäufer wurde benachrichtigt - vereinbart Ort und Zeit im Chat. Bezahlt wird bar bei der Übergabe.`
+                : 'Deine Zahlung wird bestätigt. Sobald sie eingegangen ist, erscheint die Bestellung unter „Meine Einkäufe“ und der Verkäufer wird benachrichtigt - meist innerhalb weniger Sekunden.'}
             </p>
           </div>
 
           <div className="mt-8 grid gap-4 md:grid-cols-2">
             <div className="rounded-3xl p-5" style={{ background: 'var(--color-primary-50)' }}>
               <div className="mb-3 flex items-center gap-2 text-sm font-bold" style={{ color: 'var(--color-primary-dark)' }}>
-                <ShieldCheck size={18} /> Geschützter Kauf
+                <ShieldCheck size={18} /> {isPickup ? 'Bei der Übergabe' : 'Geschützter Kauf'}
               </div>
               <p className="text-sm leading-6" style={{ color: 'var(--color-primary)' }}>
-                Deine Zahlung bleibt abgesichert, bis der Versandprozess sauber gestartet ist.
+                {isPickup
+                  ? 'Prüfe den Artikel vor Ort, bevor du bezahlst. Bei Abholung gilt kein Käuferschutz.'
+                  : 'Dein Geld wird erst nach Abschluss der Bestellung an den Verkäufer ausgezahlt.'}
               </p>
             </div>
             <div className="rounded-3xl p-5" style={{ background: 'var(--color-bg-secondary)' }}>
@@ -59,15 +64,25 @@ export default async function CheckoutSuccessPage({ params, searchParams }: Page
               Nächste Schritte
             </h2>
             <ul className="mt-3 space-y-3 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-              <li>Prüfe deine Einkäufe für den aktuellen Bestellstatus.</li>
-              <li>Der Verkäufer wird nach erfolgreicher Zahlungsbestaetigung benachrichtigt.</li>
-              <li>Bei Rückfragen findest du den Artikel weiter auf der Produktseite.</li>
+              {isPickup ? (
+                <>
+                  <li>Öffne den Chat mit dem Verkäufer und vereinbart einen Termin.</li>
+                  <li>Nach der Übergabe bestätigt der Verkäufer „Übergeben & bezahlt“.</li>
+                  <li>Kein Termin möglich? Du kannst in deiner Bestellung bis zur Übergabe kostenlos stornieren.</li>
+                </>
+              ) : (
+                <>
+                  <li>Den Status und später die Sendungsnummer findest du unter „Meine Einkäufe“.</li>
+                  <li>Innerhalb der ersten {cancellationPolicy.buyerFreeCancelMinutes} Minuten kannst du dort noch kostenlos stornieren.</li>
+                  <li>Der Verkäufer hat {shippingDeadlines.autoCancelAfterDays} Tage Zeit zu versenden.</li>
+                </>
+              )}
             </ul>
           </div>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Link href="/purchases" className="btn-mars-earth flex-1 rounded-2xl px-6 py-4 text-center font-bold text-white" style={{ background: 'var(--color-orange)' }}>
-              <span>Zu meinen Einkäufen</span>
+            <Link href={isPickup && query.orderId ? `/purchases/${query.orderId}` : '/purchases'} className="btn-mars-earth flex-1 rounded-2xl px-6 py-4 text-center font-bold text-white" style={{ background: 'var(--color-orange)' }}>
+              <span>{isPickup ? 'Zur Bestellung & zum Chat' : 'Zu meinen Einkäufen'}</span>
             </Link>
             <Link href={`/product/${id}`} className="flex-1 rounded-2xl border px-6 py-4 text-center font-bold" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}>
               Zur Produktseite

@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import prisma from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
 import { ApiResponse } from '@/lib/api-response';
+import { notifyNewFollower } from '@/lib/product-alerts';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -61,6 +62,8 @@ export async function POST(request: NextRequest, { params }: Params) {
           followedId: targetUserId,
         },
       });
+
+      await notifyNewFollower(session.user.id, targetUserId);
 
       const followerCount = await prisma.follow.count({
         where: { followedId: targetUserId },

@@ -1,6 +1,7 @@
 'use client';
 
 import { SessionProvider } from 'next-auth/react';
+import CartSync from '@/components/cart/CartSync';
 
 export default function AuthProvider({
     children,
@@ -15,6 +16,7 @@ export default function AuthProvider({
     // one extra /api/auth/session call per open tab per five minutes.
     return (
         <SessionProvider refetchInterval={5 * 60} refetchOnWindowFocus>
+            <CartSync />
             {children}
         </SessionProvider>
     );

@@ -40,17 +40,17 @@ export default function AboutPage() {
             {
               icon: <ShieldCheck size={32} />,
               title: 'Käuferschutz',
-              desc: 'Zahlungen bleiben geschützt, bis Bestellungen bestätigt und sicher angekommen sind.',
+              desc: 'Bei Online-Käufen wird das Geld erst ausgezahlt, wenn die Bestellung abgeschlossen ist. Klare Fristen für Versand, Stornierung und Problemmeldungen.',
             },
             {
               icon: <Truck size={32} />,
               title: 'Einfacher Versand',
-              desc: 'Deine erste Bestellung ist versandkostenfrei. Danach zeigen wir Versandkosten und Tracking transparent im Checkout.',
+              desc: 'Versand ab 50 € Warenwert kostenlos, bei der ersten Bestellung schon ab 30 €. Oder lokal abholen und bar bezahlen.',
             },
             {
               icon: <MessageCircle size={32} />,
               title: 'Direkter Kontakt',
-              desc: 'Nachrichten, Angebote und Profilseiten greifen auf dieselben Live-Daten zu.',
+              desc: 'Chat, faire Preisvorschläge mit Fristen und Verkäuferprofile mit Standort, Antwortzeit und Bewertungen.',
             },
           ].map((feature) => (
             <motion.div key={feature.title} variants={item} className="flex flex-col items-center p-8 text-center rounded-3xl shadow-sm border transition-all duration-300 hover:shadow-md hover:-translate-y-1 bg-white dark:bg-[#161b22]" style={{ borderColor: 'var(--color-border)' }}>

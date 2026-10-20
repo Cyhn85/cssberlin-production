@@ -1,7 +1,6 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { ArrowRight, Leaf, Loader2 } from 'lucide-react';
 import ProductCard from '@/components/product/ProductCard';
@@ -21,27 +20,23 @@ type ProductCardData = {
   seller: { name: string | null };
 };
 
-const container = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: { staggerChildren: 0.08 },
-  },
-};
+export type HomeInitial = { items: ProductCardData[]; hasMore: boolean; nextCursor: string | null } | null;
 
-const item = {
-  hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.45 } },
-};
-
-export default function HomePageClient() {
-  const [featuredProducts, setFeaturedProducts] = useState<ProductCardData[]>([]);
+/**
+ * The first 12 products now arrive in the server-rendered HTML (see page.tsx):
+ * no client fetch waterfall before anything is visible, and crawlers see real
+ * products. Further pages still load on scroll. The framer-motion stagger is
+ * gone - a CSS fade does the same without shipping the library on the homepage.
+ */
+export default function HomePageClient({ initial = null }: { initial?: HomeInitial }) {
+  const [featuredProducts, setFeaturedProducts] = useState<ProductCardData[]>(initial?.items ?? []);
   const [isDegraded, setIsDegraded] = useState(false);
-  const [hasMore, setHasMore] = useState(false);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(initial?.hasMore ?? false);
+  const [nextCursor, setNextCursor] = useState<string | null>(initial?.nextCursor ?? null);
   const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
+    if (initial) return;
     let cancelled = false;
 
     const load = async () => {
@@ -68,7 +63,7 @@ export default function HomePageClient() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [initial]);
 
   const loadMoreFeatured = async () => {
     if (!hasMore || !nextCursor || loadingMore) return;
@@ -98,7 +93,7 @@ export default function HomePageClient() {
                 Neu im Feed
               </h2>
               <p className="mt-2 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                Live aus deinem Marktplatz statt statischer Platzhalter.
+                Frisch eingestellt von Verkäufern aus deiner Stadt.
               </p>
             </div>
             <Link href="/catalog" className="flex items-center gap-1 text-sm font-medium" style={{ color: 'var(--color-primary)' }}>
@@ -107,19 +102,13 @@ export default function HomePageClient() {
           </div>
 
           {featuredProducts.length > 0 ? (
-            <motion.div
-              variants={container}
-              initial="hidden"
-              whileInView="show"
-              viewport={{ once: true }}
-              className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4"
-            >
-              {featuredProducts.map((product) => (
-                <motion.div key={product.id} variants={item}>
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4">
+              {featuredProducts.map((product, i) => (
+                <div key={product.id} className="animate-[fadeUp_.45s_ease-out_both]" style={{ animationDelay: `${Math.min(i, 11) * 40}ms` }}>
                   <ProductCard product={product} showSeller />
-                </motion.div>
+                </div>
               ))}
-            </motion.div>
+            </div>
           ) : null}
 
           {featuredProducts.length > 0 && hasMore ? <div ref={sentinelRef} aria-hidden className="h-1" /> : null}

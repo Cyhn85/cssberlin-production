@@ -96,8 +96,7 @@ export const messageTypeValues = [
   'TEXT',
   'IMAGE',
   'OFFER_ACTION',
-  'SYSTEM_INFO',
-] as const;
+] as const; // SYSTEM_INFO / PERSONA_RELAY are written by the server only, never by a client
 
 /**
  * Schema for sending a message
@@ -137,7 +136,21 @@ export const updateProfileSchema = z.object({
     .string()
     .max(100, 'Standort darf maximal 100 Zeichen lang sein.')
     .optional(),
-  avatar: z.string().url('Ungültige Avatar-URL.').optional(),
+  // Avatars are uploaded through /api/users/me/avatar; a raw URL here could point
+  // anywhere (tracking pixels), so it is no longer accepted from the client.
+  postalCode: z
+    .string()
+    .regex(/^(\d{5})?$/, 'Bitte gib eine 5-stellige Postleitzahl an.')
+    .optional(),
+  city: z.string().max(60, 'Ort darf maximal 60 Zeichen lang sein.').optional(),
+  notificationPrefs: z.record(z.string(), z.any()).optional(),
+  offerMinPercent: z
+    .number()
+    .int()
+    .min(0)
+    .max(95, 'Höchstens 95 %.')
+    .nullable()
+    .optional(),
 });
 
 /**
@@ -162,6 +175,7 @@ export const registerSchema = z.object({
 
 export const orderStatusValues = [
   'PENDING_PAYMENT',
+  'PENDING_PICKUP',
   'PAID',
   'SHIPPED',
   'DELIVERED',

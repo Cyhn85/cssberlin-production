@@ -1,8 +1,8 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import {
   ChevronDown,
@@ -26,6 +26,8 @@ import { useFavorites } from '@/store/useFavorites';
 import { useCart } from '@/store/useCart';
 import { Copy, Mail, Share, ShoppingCart } from 'lucide-react';
 import { priceDisclosure } from '@/config/business-profile';
+import { resolveShippingFee, SHIPPING_CARRIERS, FREE_SHIPPING_THRESHOLD_EUR } from '@/config/shipping-policy';
+import SellerLocationMap from '@/components/profile/SellerLocationMap';
 
 const DETAIL_TABS = [
   { id: 'description', label: 'Beschreibung' },
@@ -45,6 +47,7 @@ type ProductDetail = {
   size: string | null;
   condition: string;
   shippingCost: number;
+  status: string;
   views: number;
   likes: number;
   ecoCO2Saved: number;
@@ -61,6 +64,8 @@ type ProductDetail = {
     name: string | null;
     avatar: string | null;
     location: string | null;
+    publicLocation?: { label: string | null; lat: number | null; lng: number | null } | null;
+    trust?: { replyTime: string | null; lastSeenAt: string | null; completedSales: number; cancelRate: number | null } | null;
     isVerified: boolean;
     createdAt: string;
     _count: {
@@ -103,6 +108,16 @@ export default function ProductDetailPage() {
   const [isShippingOpen, setIsShippingOpen] = useState(false);
   const { isFavorited: isLocalFavorited, toggleFavorite } = useFavorites();
   const { isInCart, toggleCart } = useCart();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (session && searchParams.get('angebot') === '1') setIsOfferModalOpen(true);
+  }, [session, searchParams]);
+
+  const requireLogin = (action: 'nachricht' | 'angebot') => {
+    const back = `/product/${Array.isArray(params.id) ? params.id[0] : params.id}${action === 'angebot' ? '?angebot=1' : ''}`;
+    router.push(`/login?callbackUrl=${encodeURIComponent(back)}`);
+  };
 
   useEffect(() => {
     const productId = Array.isArray(params.id) ? params.id[0] : params.id;
@@ -234,6 +249,8 @@ export default function ProductDetailPage() {
   const activeImageUrl = product.images[activeImage]?.mediumUrl || product.images[activeImage]?.url || product.images[0]?.mediumUrl || product.images[0]?.url || '';
   const sellerName = product.seller.name || 'cssberlin seller';
   const isOwner = session?.user?.id === product.seller.id;
+  // the same rule the checkout charges (first-order discount is shown in the checkout itself)
+  const shippingQuote = resolveShippingFee({ itemPrice: product.price, productShippingCost: product.shippingCost });
 
   return (
     <div className="min-h-screen pb-20 pt-6" style={{ background: 'var(--color-bg)' }}>
@@ -399,12 +416,12 @@ export default function ProductDetailPage() {
                   <p>
                     Versandkosten für diesen Artikel:{' '}
                     <span className="font-semibold" style={{ color: 'var(--color-text)' }}>
-                      {formatPrice(product.shippingCost)}
+                      {shippingQuote.free ? 'kostenlos' : formatPrice(shippingQuote.fee)}
                     </span>
                   </p>
                   <p>
-                    Jeder Kauf ist über den Käuferschutz abgesichert: Der Betrag wird erst an den
-                    Verkäufer ausgezahlt, wenn die Sendung bei dir angekommen ist.
+                    Online-Käufe mit Versand sind über den Käuferschutz abgesichert: Der Betrag wird erst an den
+                    Verkäufer ausgezahlt, wenn die Bestellung abgeschlossen ist. Bei Abholung mit Barzahlung gilt kein Käuferschutz.
                   </p>
                   <p>
                     Zu deinem Widerrufsrecht und den vollständigen Bedingungen:{' '}
@@ -539,50 +556,42 @@ export default function ProductDetailPage() {
             </div>
 
             <div className="flex flex-col rounded-2xl border transition-all" style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg-secondary)' }}>
-              <button 
+              <button
                 onClick={() => setIsShippingOpen(!isShippingOpen)}
                 className="flex items-center justify-between p-4"
+                aria-expanded={isShippingOpen}
               >
                 <div className="flex items-center gap-3">
                   <Truck size={24} style={{ color: 'var(--color-text-secondary)', flexShrink: 0 }} />
                   <div className="text-left">
                     <h4 className="text-sm font-bold" style={{ color: 'var(--color-text)' }}>
-                      Versand ab {formatPrice(product.shippingCost)}
+                      {shippingQuote.free ? 'Kostenloser Versand' : `Versand ${formatPrice(shippingQuote.fee)}`}
                     </h4>
                     <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                      Verschiedene Lieferdienste verfügbar
+                      oder Abholung{product.seller.publicLocation?.label ? ` in ${product.seller.publicLocation.label}` : ''}
                     </p>
                   </div>
                 </div>
                 <ChevronDown size={18} className={`transition-transform ${isShippingOpen ? 'rotate-180' : ''}`} style={{ color: 'var(--color-text-muted)' }} />
               </button>
-              
+
               {isShippingOpen && (
-                <div className="border-t p-4 pt-3 text-sm" style={{ borderColor: 'var(--color-border)' }}>
-                  <div className="mb-3 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold" style={{ color: 'var(--color-text)' }}>DHL</span> Paket
-                    </div>
-                    <span>{formatPrice(product.shippingCost)}</span>
-                  </div>
-                  <div className="mb-3 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold" style={{ color: 'var(--color-text)' }}>Hermes</span> Päckchen
-                    </div>
-                    <span>{formatPrice(product.shippingCost * 0.9)}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold" style={{ color: 'var(--color-text)' }}>DPD</span> Classic
-                    </div>
-                    <span>{formatPrice(product.shippingCost * 1.1)}</span>
-                  </div>
+                <div className="space-y-2 border-t p-4 pt-3 text-sm" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
+                  <p>{SHIPPING_CARRIERS.map((c) => c.name).join(', ')} - {shippingQuote.free ? 'kostenlos' : formatPrice(shippingQuote.fee)}.</p>
+                  {!shippingQuote.free ? <p>Ab {FREE_SHIPPING_THRESHOLD_EUR} € Warenwert ist der Versand kostenlos, bei deiner ersten Bestellung schon ab 30 €.</p> : null}
+                  <p>Selbstabholung mit Barzahlung: kostenlos, ohne Käuferschutz.</p>
+                  <Link href="/hilfe/versand" className="inline-block text-xs font-semibold" style={{ color: 'var(--color-primary)' }}>Alles zu Versand & Abholung</Link>
                 </div>
               )}
             </div>
 
             <div className="flex flex-col gap-3 py-2">
-              {!isOwner ? (
+              {!isOwner && product.status !== 'ACTIVE' ? (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-900">
+                  {product.status === 'SOLD' ? 'Dieser Artikel wurde verkauft.' : 'Dieser Artikel ist gerade reserviert. Merke ihn dir - wird der Kauf nicht abgeschlossen, ist er bald wieder verfügbar.'}
+                </div>
+              ) : null}
+              {!isOwner && product.status === 'ACTIVE' ? (
                 <>
                   <div className="grid grid-cols-2 gap-3">
                     <button 
@@ -604,7 +613,7 @@ export default function ProductDetailPage() {
 
                   <div className="grid grid-cols-2 gap-3">
                     <button
-                      onClick={() => setIsOfferModalOpen(true)}
+                      onClick={() => (session ? setIsOfferModalOpen(true) : requireLogin('angebot'))}
                       className="btn-mars-earth-outline w-full rounded-2xl py-3.5 text-base font-bold transition-all"
                       style={{ border: '2px solid var(--color-orange)', color: '#1A4D2E' }}
                     >
@@ -612,7 +621,7 @@ export default function ProductDetailPage() {
                     </button>
 
                     <button
-                      onClick={() => router.push(`/inbox?with=${product.seller.id}`)}
+                      onClick={() => (session ? router.push(`/inbox?with=${product.seller.id}`) : requireLogin('nachricht'))}
                       className="w-full rounded-2xl border py-3.5 text-base font-bold transition-colors hover:bg-black/5 dark:hover:bg-white/5"
                       style={{ borderColor: 'var(--color-border)', color: '#1A4D2E' }}
                     >
@@ -622,11 +631,12 @@ export default function ProductDetailPage() {
                     </button>
                   </div>
                 </>
-              ) : (
+              ) : null}
+              {isOwner ? (
                 <div className="rounded-2xl border px-4 py-4 text-sm" style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)' }}>
                   Das ist dein eigener Artikel. Kauf- und Kontaktaktionen sind hier deaktiviert.
                 </div>
-              )}
+              ) : null}
             </div>
 
             <div className="mt-2 border-t pt-6" style={{ borderColor: 'var(--color-border)' }}>
@@ -635,9 +645,13 @@ export default function ProductDetailPage() {
               </h3>
               <div className="flex items-center justify-between gap-3">
                 <Link href={`/profile/${product.seller.id}`} className="group flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full text-white" style={{ background: 'var(--color-primary-light)', fontFamily: 'var(--font-display)' }}>
-                    {sellerName.charAt(0).toUpperCase()}
-                  </div>
+                  {product.seller.avatar ? (
+                    <img src={product.seller.avatar} alt="" className="h-12 w-12 rounded-full object-cover" referrerPolicy="no-referrer" />
+                  ) : (
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full text-white" style={{ background: 'var(--color-primary-light)', fontFamily: 'var(--font-display)' }}>
+                      {sellerName.charAt(0).toUpperCase()}
+                    </div>
+                  )}
                   <div>
                     <h4 className="text-sm font-bold transition-colors group-hover:text-[var(--color-primary)]" style={{ color: 'var(--color-text)' }}>
                       {sellerName}
@@ -653,9 +667,18 @@ export default function ProductDetailPage() {
                   </span>
                 ) : null}
               </div>
-              <p className="mt-3 text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                {product.seller.location || 'Deutschland'} - Mitglied {formatRelativeTime(product.seller.createdAt)}
-              </p>
+              <ul className="mt-3 space-y-1 text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                <li>Mitglied seit {new Date(product.seller.createdAt).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })} · {product.seller._count.products} Artikel</li>
+                {product.seller.trust?.completedSales ? <li>{product.seller.trust.completedSales} erfolgreiche Verkäufe{product.seller.trust.cancelRate != null ? ` · Stornoquote ${product.seller.trust.cancelRate} %` : ''}</li> : null}
+                {product.seller.trust?.replyTime ? <li>Antwortet meist {product.seller.trust.replyTime}</li> : null}
+                {product.seller.trust?.lastSeenAt ? <li>Zuletzt online {formatRelativeTime(product.seller.trust.lastSeenAt)}</li> : null}
+              </ul>
+              <SellerLocationMap
+                label={product.seller.publicLocation?.label ?? null}
+                lat={product.seller.publicLocation?.lat ?? null}
+                lng={product.seller.publicLocation?.lng ?? null}
+                compact
+              />
             </div>
 
             <div className="border-t pt-6 lg:hidden" style={{ borderColor: 'var(--color-border)' }}>

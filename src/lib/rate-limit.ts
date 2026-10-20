@@ -38,7 +38,8 @@ export const RATE_LIMIT_TIERS = {
   AUTH: { maxRequests: 5, windowMs: 60 * 1000 },        // 5/min
   API: { maxRequests: 30, windowMs: 60 * 1000 },        // 30/min
   UPLOAD: { maxRequests: 10, windowMs: 60 * 1000 },     // 10/min
-  AI: { maxRequests: 10, windowMs: 60 * 60 * 1000 },    // 10/hour
+  AI: { maxRequests: 30, windowMs: 60 * 60 * 1000 },    // 30/hour per signed-in user
+  AI_GUEST: { maxRequests: 8, windowMs: 60 * 60 * 1000 }, // 8/hour per IP for guests
   OFFER: { maxRequests: 25, windowMs: 24 * 60 * 60 * 1000 }, // 25/day (Vinted rule)
 
   // Abuse ceilings, not throttles. Crossing one of these does not slow a user

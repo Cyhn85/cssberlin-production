@@ -13,20 +13,31 @@
 5. **Deploy komutu (kanıtlanmış):**
    `tar → scp → ssh "cd /opt/cssberlin-v2 && cp -r src /tmp/src_yedek_$(date +%s) && tar -xzf ... && docker compose --env-file .env.production up -d --build app"`
 
-## SON DURUM (en son güncelleyen: Claude Code — 2026-10-19)
-- **DEPLOY EDİLDİ (2026-10-19 23:05).** Sunucu `src` = yerel `src` (md5 ile karşılaştırıldı, tek fark bu turun dosyaları).
-- **Tüm TATANGA importları SİLİNDİ** (sahip kararı: başka satıcıların ilan fotoğrafı mağazada olmayacak).
-  153 ürün (`sourceHubId` dolu) + 153 görsel klasörü; siparişli ürün yoktu. Önce yedek:
-  sunucuda `/opt/yedek/cssberlin_oncesi_withdraw_20261019_2308.sql.gz`; liste yerelde
-  `tatanga/istatistik/raporlar/cssberlin_silinen_20261019.csv`.
-- Yeni: `POST /api/products/withdraw` (x-api-key, yalnız `sourceHubId` dolu ürünler; siparişli -> HIDDEN; `dry_run`).
-- DÜZELTME: `src/proxy.ts` köprü listesinde yalnız `/import` vardı; `/reprice` ve `/withdraw` oturum kontrolüne
-  takılıp 401 alıyordu (TATANGA fiyat düşürme canlıda HİÇ çalışmamış). Artık üçü de handler'da anahtarla doğrulanıyor.
-- Bundan sonra TATANGA mağazaya YALNIZ kullanıcının kendi çektiği (stüdyo kalite kapısını geçmiş) fotoğraflarla yayın yapar.
-- SONRAKİ ADIM: yok (bu tur kapandı). Antigravity'nin commit'lenmemiş dosyaları (ANTIGRAVITY_GOREV.md, deploy.py,
-  check*.py, docs/audit/) olduğu gibi bırakıldı.
+## SON DURUM (en son güncelleyen: Claude Code — 2026-10-20)
+- **Ticaret akışları baştan kuruldu + DEPLOY.** Ayrıntı: `src/lib/order-state.ts` (tek durum makinesi), `src/lib/offer-state.ts`,
+  `src/config/marketplace-policy.ts` (tüm süre/ücret kuralları TEK kaynak), `src/content/help.ts` (yardım + SSS + KI bilgisi).
+- KRİTİK düzeltme: Stripe anahtarı boşken checkout ödeme almadan PAID sipariş açıyordu → artık 503, hiçbir şey oluşmaz.
+  Kabul edilmiş teklif başka ürüne uygulanabiliyordu → productId kontrolü. giropay kaldırıldı.
+- Ödeme: `src/lib/payments/methods.ts` (Karte/Klarna/SEPA = Stripe, PayPal = adaptör yok → kapalı, Abholung & Barzahlung = açık).
+- Yeni akışlar: Abholung (PENDING_PICKUP, 48 s), eBay/Vinted tarzı iptal (60 dk anında / talep / satıcı / 5 gün otomatik),
+  otomatik tamamlama, değerlendirme her iki yön, uyuşmazlık sonucu ürün durumunu ve bildirimleri günceller.
+- Teklif: 48 s süre, en fazla 3 karşı teklif, kabulde ürün 24 s alıcıya kilitli, satıcı alt sınırı (`User.offerMinPercent`), öneri.
+- Bildirim tercihleri (`User.notificationPrefs`), e-posta Resend yoksa SMTP'ye düşer (ikisi de sunucuda BOŞ → şimdilik yalnız uygulama içi).
+- Persona: yansıtma kopyaları `MessageType.PERSONA_RELAY` (yalnız zil); yönetici kendi personasına yazamaz (eko hatası bitti).
+- Yeni sayfalar: /bestellungen, /geldbeutel, /hilfe, /hilfe/[slug], /kontakt, /admin/kontakt. Footer yeniden, avatar menüsü Vinted sırası.
+- Konum: `User.postalCode/city/lat/lng` (Nominatim, ~1 km yuvarlama), satıcı haritası yalnız tıklayınca OSM karosu yükler.
+- Migration: `prisma/migrations/20261020130000_commerce_flows` + `20261020130100_persona_relay_backfill` (AYRI dosya: yeni enum
+  değeri aynı transaction'da kullanılamaz). Sunucuda _prisma_migrations YOK → psql ile sırayla uygulanır.
+- Cron: saatlik `ENDPOINT=http://localhost:3000/api/cron/lifecycle ops/cron-cleanup.sh` (crontab), gecelik cleanup aynı kaldı.
+- Test: izole test DB `cssberlin_akistest` (rol akistest) üzerinde uçtan uca 95/95 senaryo geçti (scratch: akis_testi.js).
+- Bilinçli DOKUNULMAYANLAR: hukuki metinler (Widerruf/AGB, checkout §356 onay kutusu), `priceDisclosure.isKleinunternehmer` (sahip kararı).
+- SONRAKİ ADIM: Personalisierung (beden/marka tercihleri) + "lüks/dekor" tasarım turu sahiple konuşulacak. Antigravity'nin
+  commit'lenmemiş dosyaları (ANTIGRAVITY_GOREV.md, deploy.py, check*.py, docs/audit/) olduğu gibi bırakıldı.
 
-## ÖNCEKİ DURUM (Claude Code — 2026-08-23)
+## ÖNCEKİ DURUM (2026-10-19)
+- withdraw endpoint + TATANGA importları silindi (bkz. git 4566b32).
+
+## DAHA ÖNCEKİ DURUM (Claude Code — 2026-08-23)
 - Site CANLI: https://cssberlin.de (Hetzner /opt/cssberlin-v2, Docker Compose)
 - Deploy git ile DEĞİL, dosya-senkronu ile → git yalnızca checkpoint/görünürlük için.
 - Antigravity'nin Faz 1/2/7 turu **denetlendi ve tamamlandı**. Kabuk işi duruyor,

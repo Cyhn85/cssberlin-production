@@ -32,6 +32,7 @@ export const productStatusToLabel: Record<string, string> = {
 
 export const orderStatusToLabel: Record<string, string> = {
   PENDING_PAYMENT: 'Ausstehende Zahlung',
+  PENDING_PICKUP: 'Abholung vereinbart',
   PAID: 'Bezahlt',
   SHIPPED: 'Versendet',
   DELIVERED: 'Zugestellt',
@@ -102,7 +103,35 @@ function getTimelineState(status: string) {
   }
 }
 
-export function getOrderTimeline(status: string): OrderTimelineStep[] {
+const PICKUP_TIMELINE_BLUEPRINT = [
+  { key: 'payment', label: 'Abholung angefragt', description: 'Der Artikel ist für den Käufer reserviert. Ort und Zeit werden im Chat vereinbart.' },
+  { key: 'delivery', label: 'Übergabe & Barzahlung', description: 'Käufer prüft den Artikel vor Ort und zahlt bar.' },
+  { key: 'completion', label: 'Kauf abgeschlossen', description: 'Der Verkäufer hat die Übergabe bestätigt.' },
+] as const;
+
+function getPickupState(status: string) {
+  switch (status) {
+    case 'PENDING_PICKUP':
+      return { completedCount: 1, activeIndex: 1 };
+    case 'COMPLETED':
+      return { completedCount: 3, activeIndex: -1 };
+    case 'CANCELLED':
+    case 'REFUNDED':
+      return { completedCount: 1, activeIndex: -1 };
+    default:
+      return { completedCount: 0, activeIndex: 0 };
+  }
+}
+
+export function getOrderTimeline(status: string, pickup = false): OrderTimelineStep[] {
+  if (pickup) {
+    const st = getPickupState(status);
+    return PICKUP_TIMELINE_BLUEPRINT.map((step, index) => ({
+      ...step,
+      completed: index < st.completedCount,
+      active: index === st.activeIndex,
+    })) as unknown as OrderTimelineStep[];
+  }
   const state = getTimelineState(status);
 
   return ORDER_TIMELINE_BLUEPRINT.map((step, index) => ({

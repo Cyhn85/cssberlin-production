@@ -1,14 +1,15 @@
-﻿import type { Metadata } from 'next';
+import type { Metadata } from 'next';
 import ConditionalChrome from '@/components/layout/ConditionalChrome';
 import AuthProvider from '@/components/providers/AuthProvider';
-import CookieBanner from '@/components/ui/CookieBanner';
+import DeferredChrome from '@/components/layout/DeferredChrome';
 import AiAssistant from '@/components/ai/AiAssistant';
-import ScrollToTop from '@/components/ui/ScrollToTop';
 import './globals.css';
-import { Geist } from "next/font/google";
+import { Geist, Outfit } from "next/font/google";
 import { cn } from "@/lib/utils";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
+// Headings use var(--font-display) = Outfit, which was referenced everywhere but never loaded.
+const outfit = Outfit({ subsets: ['latin'], variable: '--font-outfit', display: 'swap', weight: ['500', '600', '700', '800'] });
 
 export const metadata: Metadata = {
   title: {
@@ -63,7 +64,7 @@ export const viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="de" suppressHydrationWarning className={cn("font-sans", geist.variable)}>
+    <html lang="de" suppressHydrationWarning className={cn("font-sans", geist.variable, outfit.variable)}>
       <body className="antialiased" style={{ fontFamily: 'var(--font-sans)' }}>
         {/* Site-geneli yapisal veri: OnlineStore + arama aksiyonu (sitelinks searchbox) */}
         <script
@@ -82,7 +83,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
                 '@type': 'SearchAction',
                 target: {
                   '@type': 'EntryPoint',
-                  urlTemplate: 'https://cssberlin.de/catalog?search={search_term_string}',
+                  urlTemplate: 'https://cssberlin.de/catalog?q={search_term_string}',
                 },
                 'query-input': 'required name=search_term_string',
               },
@@ -91,9 +92,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         />
         <AuthProvider>
           <ConditionalChrome>{children}</ConditionalChrome>
-          <CookieBanner />
+          <DeferredChrome />
           <AiAssistant />
-          <ScrollToTop />
         </AuthProvider>
       </body>
     </html>

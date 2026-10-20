@@ -5,29 +5,22 @@ import { ApiResponse } from '@/lib/api-response';
 import { respondOfferSchema } from '@/lib/validations';
 import { createSystemNotification } from '@/lib/notifications';
 import { resolveActingIdentity } from '@/lib/persona-auth';
-
-const FINALIZED_ORDER_STATUSES = ['PAID', 'SHIPPED', 'DELIVERED', 'COMPLETED'] as const;
+import {
+  FINALIZED_ORDER_STATUSES,
+  answerDeadline,
+  minimumOffer,
+  offerAdvice,
+  offerTurn,
+  paymentDeadline,
+} from '@/lib/offer-state';
+import { offerPolicy } from '@/config/marketplace-policy';
 
 type Params = { params: Promise<{ id: string }> };
 
-function getOfferOriginRole(offer: {
-  sellerId: string;
-  messages: Array<{ senderId: string }>;
-}) {
-  const firstMessageSenderId = offer.messages[0]?.senderId;
-  if (firstMessageSenderId && firstMessageSenderId === offer.sellerId) {
-    return 'SELLER_COUNTER' as const;
-  }
-  return 'BUYER_OFFER' as const;
-}
-
-function getPendingOn(status: string, originRole: 'BUYER_OFFER' | 'SELLER_COUNTER') {
-  if (status !== 'PENDING') return null;
-  return originRole === 'SELLER_COUNTER' ? 'BUYER' : 'SELLER';
-}
+const eur = (n: number) => `${n.toFixed(2)} EUR`;
 
 /**
- * GET /api/offers/[id] - Get offer details
+ * GET /api/offers/[id] - Get offer details (+ advice for the seller side)
  */
 export async function GET(request: NextRequest, { params }: Params) {
   try {
@@ -61,12 +54,17 @@ export async function GET(request: NextRequest, { params }: Params) {
       return ApiResponse.forbidden();
     }
 
-    const originRole = getOfferOriginRole(offer);
+    const turn = offerTurn(offer);
+    const isSellerSide = offer.sellerId === session.user.id || managesSellerPersona;
+    const advice = isSellerSide && turn.pendingOn === 'SELLER'
+      ? await offerAdvice({ productId: offer.productId, offeredPrice: offer.offeredPrice })
+      : null;
 
     return ApiResponse.success({
       ...offer,
-      originRole,
-      pendingOn: getPendingOn(offer.status, originRole),
+      ...turn,
+      advice,
+      roundsLeft: Math.max(0, offerPolicy.maxRounds - offer.round),
       latestOrder: offer.orders[0] || null,
     });
   } catch (error: any) {
@@ -83,8 +81,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
     const session = await requireAuth();
     const { id } = await params;
 
-    const body = await request.json();
-    const parsed = respondOfferSchema.safeParse(body);
+    const parsed = respondOfferSchema.safeParse(await request.json().catch(() => null));
     if (!parsed.success) {
       return ApiResponse.validationError('Ungültige Aktion.');
     }
@@ -94,24 +91,25 @@ export async function PUT(request: NextRequest, { params }: Params) {
       include: {
         product: true,
         buyer: { select: { id: true, name: true } },
-        seller: { select: { id: true, name: true } },
-        messages: {
-          select: { senderId: true },
-          orderBy: { createdAt: 'asc' },
-          take: 1,
-        },
+        seller: { select: { id: true, name: true, email: true, offerMinPercent: true } },
+        messages: { select: { senderId: true }, orderBy: { createdAt: 'asc' }, take: 1 },
       },
     });
 
     if (!offer) return ApiResponse.notFound('Angebot nicht gefunden.');
     if (offer.status !== 'PENDING') return ApiResponse.error('Dieses Angebot ist nicht mehr aktiv.');
+    if (offer.expiresAt && offer.expiresAt.getTime() < Date.now()) {
+      await prisma.offer.updateMany({ where: { id, status: 'PENDING' }, data: { status: 'EXPIRED' } });
+      return ApiResponse.error(`Dieses Angebot ist abgelaufen (keine Antwort innerhalb von ${offerPolicy.answerHours} Stunden).`, 409);
+    }
 
-    const originRole = getOfferOriginRole(offer);
-    const expectedActorId = originRole === 'SELLER_COUNTER' ? offer.buyerId : offer.sellerId;
-    const actorRole = expectedActorId === offer.buyerId ? 'BUYER' : 'SELLER';
+    const { pendingOn, originRole } = offerTurn(offer);
+    const expectedActorId = pendingOn === 'BUYER' ? offer.buyerId : offer.sellerId;
+    const actorRole = pendingOn === 'BUYER' ? 'BUYER' : 'SELLER';
+    const otherId = actorRole === 'SELLER' ? offer.buyerId : offer.sellerId;
 
     // Allows the real, authenticated manager of a persona seller/buyer account
-    // to act "as" that persona — see src/lib/persona-auth.ts. Never automated:
+    // to act "as" that persona - see src/lib/persona-auth.ts. Never automated:
     // this still requires a genuine, currently-authenticated human session.
     const acting = await resolveActingIdentity(session.user.id, expectedActorId);
     if (!acting.allowed) {
@@ -120,125 +118,94 @@ export async function PUT(request: NextRequest, { params }: Params) {
     const actingId = acting.actingId;
 
     const { action, counterPrice } = parsed.data;
-    const requiresAvailableProduct = action !== 'reject';
 
-    if (requiresAvailableProduct && offer.product.status !== 'ACTIVE') {
-      return ApiResponse.error('Dieser Artikel ist nicht mehr für neue Angebotsaktionen verfügbar.', 409);
-    }
-
-    if (requiresAvailableProduct) {
+    if (action !== 'reject') {
+      if (offer.product.status !== 'ACTIVE') {
+        return ApiResponse.error('Dieser Artikel ist gerade reserviert oder verkauft - das Angebot kann nicht angenommen werden.', 409);
+      }
       const existingFinalizedOrder = await prisma.order.findFirst({
-        where: {
-          productId: offer.productId,
-          status: { in: [...FINALIZED_ORDER_STATUSES] },
-        },
+        where: { productId: offer.productId, status: { in: [...FINALIZED_ORDER_STATUSES] } },
         select: { id: true },
       });
-
       if (existingFinalizedOrder) {
         return ApiResponse.error('Dieser Artikel wurde bereits verkauft.', 409);
       }
     }
 
+    const chat = (content: string, offerId: string) =>
+      prisma.message.create({ data: { content, type: 'OFFER_ACTION', senderId: actingId, receiverId: otherId, offerId } });
+
     switch (action) {
       case 'accept': {
-        const updated = await prisma.offer.update({
-          where: { id },
-          data: { status: 'ACCEPTED' },
+        const due = paymentDeadline();
+        // Conditional on PENDING: a double click or a race with expiry accepts once.
+        const { count } = await prisma.offer.updateMany({ where: { id, status: 'PENDING' }, data: { status: 'ACCEPTED', expiresAt: due } });
+        if (!count) return ApiResponse.error('Dieses Angebot ist nicht mehr aktiv.', 409);
+
+        // Reserve the item for the buyer at the agreed price; released by the
+        // offer timer if the buyer does not check out in time.
+        const lock = await prisma.product.updateMany({
+          where: { id: offer.productId, status: 'ACTIVE' },
+          data: { status: 'RESERVED', reservedById: offer.buyerId, reservedUntil: due },
         });
+        if (!lock.count) {
+          await prisma.offer.update({ where: { id }, data: { status: 'PENDING', expiresAt: offer.expiresAt } });
+          return ApiResponse.error('Der Artikel wurde in diesem Moment von jemand anderem gekauft.', 409);
+        }
 
-        if (actorRole === 'SELLER') {
-          await prisma.message.create({
-            data: {
-              content: `Angebot von ${offer.offeredPrice.toFixed(2)} EUR wurde angenommen!`,
-              type: 'OFFER_ACTION',
-              senderId: actingId,
-              receiverId: offer.buyerId,
-              offerId: id,
-            },
-          });
-
+        await chat(`${actorRole === 'SELLER' ? 'Angebot' : 'Gegenangebot'} über ${eur(offer.offeredPrice)} angenommen.`, id);
+        await createSystemNotification(
+          actorRole === 'SELLER'
+            ? {
+                senderId: actingId, receiverId: offer.buyerId, offerId: id, category: 'offers',
+                content: `Dein Angebot für ${offer.product.title} wurde angenommen! Der Artikel ist ${offerPolicy.paymentHours} Stunden für dich zum Preis von ${eur(offer.offeredPrice)} reserviert.`,
+                email: {
+                  subject: `Angebot angenommen: ${offer.product.title}`, title: 'Dein Angebot wurde angenommen',
+                  lines: [`Preis: ${eur(offer.offeredPrice)}`, `Schließe den Kauf innerhalb von ${offerPolicy.paymentHours} Stunden ab, sonst wird der Artikel wieder freigegeben.`],
+                  ctaLabel: 'Jetzt kaufen', ctaPath: `/checkout/${offer.productId}?offerId=${id}`,
+                },
+              }
+            : {
+                senderId: actingId, receiverId: offer.sellerId, offerId: id, category: 'offers',
+                content: `${offer.buyer.name || 'Ein Mitglied'} hat dein Gegenangebot für ${offer.product.title} angenommen. Der Artikel ist ${offerPolicy.paymentHours} Stunden für den Kauf reserviert.`,
+              },
+        );
+        // when the seller's counter is accepted, the buyer still has to pay: tell the buyer too
+        if (actorRole === 'BUYER') {
           await createSystemNotification({
-            senderId: actingId,
-            receiverId: offer.buyerId,
-            offerId: id,
-            content: `Dein Angebot für ${offer.product.title} wurde angenommen. Du kannst jetzt den Checkout starten.`,
-          });
-        } else {
-          await prisma.message.create({
-            data: {
-              content: `Gegenangebot von ${offer.offeredPrice.toFixed(2)} EUR wurde angenommen.`,
-              type: 'OFFER_ACTION',
-              senderId: actingId,
-              receiverId: offer.sellerId,
-              offerId: id,
-            },
-          });
-
-          await createSystemNotification({
-            senderId: actingId,
-            receiverId: offer.sellerId,
-            offerId: id,
-            content: `${offer.buyer.name || 'Ein Mitglied'} hat dein Gegenangebot für ${offer.product.title} angenommen.`,
+            senderId: offer.sellerId, receiverId: offer.buyerId, offerId: id, category: 'offers',
+            content: `Einigung erzielt: ${offer.product.title} für ${eur(offer.offeredPrice)}. Schließe den Kauf innerhalb von ${offerPolicy.paymentHours} Stunden ab.`,
           });
         }
 
-        return ApiResponse.success({ ...updated, action: 'accepted', actorRole, originRole });
+        return ApiResponse.success({ id, status: 'ACCEPTED', expiresAt: due, action: 'accepted', actorRole, originRole });
       }
 
       case 'reject': {
-        const updated = await prisma.offer.update({
-          where: { id },
-          data: { status: 'REJECTED' },
+        const { count } = await prisma.offer.updateMany({ where: { id, status: 'PENDING' }, data: { status: 'REJECTED' } });
+        if (!count) return ApiResponse.error('Dieses Angebot ist nicht mehr aktiv.', 409);
+
+        await chat(`${actorRole === 'SELLER' ? 'Angebot' : 'Gegenangebot'} über ${eur(offer.offeredPrice)} abgelehnt.`, id);
+        await createSystemNotification({
+          senderId: actingId, receiverId: otherId, offerId: id, category: 'offers',
+          content: actorRole === 'SELLER'
+            ? `Dein Angebot für ${offer.product.title} wurde abgelehnt. Du kannst ein neues Angebot senden, solange der Artikel aktiv ist.`
+            : `${offer.buyer.name || 'Ein Mitglied'} hat dein Gegenangebot für ${offer.product.title} abgelehnt.`,
         });
 
-        if (actorRole === 'SELLER') {
-          await prisma.message.create({
-            data: {
-              content: `Angebot von ${offer.offeredPrice.toFixed(2)} EUR wurde abgelehnt.`,
-              type: 'OFFER_ACTION',
-              senderId: actingId,
-              receiverId: offer.buyerId,
-              offerId: id,
-            },
-          });
-
-          await createSystemNotification({
-            senderId: actingId,
-            receiverId: offer.buyerId,
-            offerId: id,
-            content: `Dein Angebot für ${offer.product.title} wurde abgelehnt. Du kannst ein neues Angebot senden, solange der Artikel aktiv ist.`,
-          });
-        } else {
-          await prisma.message.create({
-            data: {
-              content: `Gegenangebot von ${offer.offeredPrice.toFixed(2)} EUR wurde abgelehnt.`,
-              type: 'OFFER_ACTION',
-              senderId: actingId,
-              receiverId: offer.sellerId,
-              offerId: id,
-            },
-          });
-
-          await createSystemNotification({
-            senderId: actingId,
-            receiverId: offer.sellerId,
-            offerId: id,
-            content: `${offer.buyer.name || 'Ein Mitglied'} hat dein Gegenangebot für ${offer.product.title} abgelehnt.`,
-          });
-        }
-
-        return ApiResponse.success({ ...updated, action: 'rejected', actorRole, originRole });
+        return ApiResponse.success({ id, status: 'REJECTED', action: 'rejected', actorRole, originRole });
       }
 
       case 'counter': {
         if (!counterPrice) return ApiResponse.error('Gegenangebotspreis ist erforderlich.');
-
-        const minimumOffer = offer.product.price * 0.6;
-        if (counterPrice < minimumOffer) {
-          return ApiResponse.error(`Mindestangebot ist ${minimumOffer.toFixed(2)} EUR.`, 422);
+        if (offer.round >= offerPolicy.maxRounds) {
+          return ApiResponse.error(`Maximal ${offerPolicy.maxRounds - 1} Gegenangebote pro Verhandlung. Bitte nimm an oder lehne ab.`, 422);
         }
 
+        const floor = minimumOffer(offer.product.price, offer.seller.offerMinPercent);
+        if (counterPrice < floor.amount) {
+          return ApiResponse.error(`Mindestangebot ist ${eur(floor.amount)}.`, 422);
+        }
         if (actorRole === 'SELLER') {
           if (counterPrice <= offer.offeredPrice || counterPrice >= offer.product.price) {
             return ApiResponse.error('Gegenangebot muss zwischen dem Angebot und dem Listenpreis liegen.');
@@ -247,10 +214,8 @@ export async function PUT(request: NextRequest, { params }: Params) {
           return ApiResponse.error('Dein neues Angebot muss unter dem Gegenangebot und unter dem Listenpreis liegen.');
         }
 
-        await prisma.offer.update({
-          where: { id },
-          data: { status: 'COUNTERED' },
-        });
+        const { count } = await prisma.offer.updateMany({ where: { id, status: 'PENDING' }, data: { status: 'COUNTERED' } });
+        if (!count) return ApiResponse.error('Dieses Angebot ist nicht mehr aktiv.', 409);
 
         const counter = await prisma.offer.create({
           data: {
@@ -258,46 +223,29 @@ export async function PUT(request: NextRequest, { params }: Params) {
             productId: offer.productId,
             buyerId: offer.buyerId,
             sellerId: offer.sellerId,
+            createdById: actorRole === 'SELLER' ? offer.sellerId : offer.buyerId,
+            round: offer.round + 1,
+            expiresAt: answerDeadline(),
           },
         });
 
-        if (actorRole === 'SELLER') {
-          await prisma.message.create({
-            data: {
-              content: `Gegenangebot: ${counterPrice.toFixed(2)} EUR`,
-              type: 'OFFER_ACTION',
-              senderId: actingId,
-              receiverId: offer.buyerId,
-              offerId: counter.id,
-            },
-          });
+        await chat(`${actorRole === 'SELLER' ? 'Gegenangebot' : 'Neues Angebot'}: ${eur(counterPrice)}`, counter.id);
+        const left = offerPolicy.maxRounds - counter.round;
+        await createSystemNotification({
+          senderId: actingId, receiverId: otherId, offerId: counter.id, category: 'offers',
+          content: actorRole === 'SELLER'
+            ? `Gegenangebot über ${eur(counterPrice)} für ${offer.product.title}. Antworte innerhalb von ${offerPolicy.answerHours} Stunden${left === 0 ? ' - das ist die letzte Runde' : ''}.`
+            : `${offer.buyer.name || 'Ein Mitglied'} hat ein neues Angebot über ${eur(counterPrice)} für ${offer.product.title} geschickt.`,
+          email: {
+            subject: `${actorRole === 'SELLER' ? 'Gegenangebot' : 'Neues Angebot'}: ${offer.product.title}`,
+            title: actorRole === 'SELLER' ? 'Du hast ein Gegenangebot' : 'Neues Angebot eingegangen',
+            lines: [`Artikel: ${offer.product.title}`, `Preis: ${eur(counterPrice)}`, `Antwort innerhalb von ${offerPolicy.answerHours} Stunden möglich.`],
+            ctaLabel: 'Angebot ansehen',
+            ctaPath: '/offers',
+          },
+        });
 
-          await createSystemNotification({
-            senderId: actingId,
-            receiverId: offer.buyerId,
-            offerId: counter.id,
-            content: `Du hast ein Gegenangebot über ${counterPrice.toFixed(2)} EUR für ${offer.product.title} erhalten.`,
-          });
-        } else {
-          await prisma.message.create({
-            data: {
-              content: `Neues Angebot nach Gegenangebot: ${counterPrice.toFixed(2)} EUR`,
-              type: 'OFFER_ACTION',
-              senderId: actingId,
-              receiverId: offer.sellerId,
-              offerId: counter.id,
-            },
-          });
-
-          await createSystemNotification({
-            senderId: actingId,
-            receiverId: offer.sellerId,
-            offerId: counter.id,
-            content: `${offer.buyer.name || 'Ein Mitglied'} hat ein neues Angebot über ${counterPrice.toFixed(2)} EUR für ${offer.product.title} geschickt.`,
-          });
-        }
-
-        return ApiResponse.success({ ...counter, action: 'countered', actorRole, originRole });
+        return ApiResponse.success({ ...counter, action: 'countered', actorRole, originRole, roundsLeft: left });
       }
 
       default:

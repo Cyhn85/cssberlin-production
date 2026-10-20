@@ -1,13 +1,13 @@
-﻿import { NextRequest } from 'next/server';
+import { NextRequest } from 'next/server';
 import prisma from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
 import { ApiResponse } from '@/lib/api-response';
 import { updateOrderSchema } from '@/lib/validations';
-import { publishOrderLifecycleEvent } from '@/lib/order-events';
+import { markShipped } from '@/lib/order-state';
+import { orderErrorResponse } from '@/lib/api-order-errors';
+import { normalizeCarrier } from '@/config/shipping-policy';
 
 type Params = { params: Promise<{ id: string }> };
-
-const SELLER_EDITABLE_STATUSES = ['PAID', 'SHIPPED'] as const;
 
 /**
  * GET /api/orders/[id] - Get order details
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest, { params }: Params) {
         buyer: { select: { id: true, name: true, avatar: true, location: true } },
         seller: { select: { id: true, name: true, avatar: true, location: true } },
         offer: true,
-        review: true,
+        reviews: true,
       },
     });
 
@@ -33,7 +33,12 @@ export async function GET(request: NextRequest, { params }: Params) {
       return ApiResponse.forbidden();
     }
 
-    return ApiResponse.success(order);
+    const me = session.user.id;
+    return ApiResponse.success({
+      ...order,
+      review: order.reviews.find((r) => r.authorId === me) ?? null,
+      receivedReview: order.reviews.find((r) => r.authorId !== me) ?? null,
+    });
   } catch (error: any) {
     if (error.name === 'AuthError') return ApiResponse.unauthorized();
     return ApiResponse.serverError();
@@ -41,75 +46,36 @@ export async function GET(request: NextRequest, { params }: Params) {
 }
 
 /**
- * PUT /api/orders/[id] - Update seller shipping details
+ * PUT /api/orders/[id] - Seller marks the order shipped / updates tracking.
  */
 export async function PUT(request: NextRequest, { params }: Params) {
   try {
     const session = await requireAuth();
     const { id } = await params;
 
-    const order = await prisma.order.findUnique({
-      where: { id },
-      include: {
-        product: { select: { id: true, title: true } },
-        buyer: { select: { id: true, name: true, email: true } },
-        seller: { select: { id: true, name: true, email: true } },
-      },
-    });
-    if (!order) return ApiResponse.notFound('Bestellung nicht gefunden.');
-
-    const body = await request.json();
-    const parsed = updateOrderSchema.safeParse(body);
+    const parsed = updateOrderSchema.safeParse(await request.json().catch(() => null));
     if (!parsed.success) return ApiResponse.validationError('Ungültige Versanddaten.');
 
-    if (order.sellerId !== session.user.id) {
-      return ApiResponse.forbidden('Nur der Verkäufer kann Versandinformationen aktualisieren.');
-    }
-
     const { status, trackingCode, shippingCarrier } = parsed.data;
-
     if (status && status !== 'SHIPPED') {
       return ApiResponse.forbidden('Bestellungen können hier nur als versendet markiert werden.');
     }
 
-    if (!SELLER_EDITABLE_STATUSES.includes(order.status as (typeof SELLER_EDITABLE_STATUSES)[number])) {
-      return ApiResponse.error('Versandinformationen können nur für bezahlte oder bereits versendete Bestellungen aktualisiert werden.');
+    const current = await prisma.order.findUnique({ where: { id }, select: { shippingCarrier: true, trackingCode: true } });
+    if (!current) return ApiResponse.notFound('Bestellung nicht gefunden.');
+
+    const carrier = normalizeCarrier(shippingCarrier || current.shippingCarrier || '');
+    if (!carrier || carrier === 'PICKUP') {
+      return ApiResponse.validationError('Bitte wähle einen Versanddienst (DHL, Hermes, DPD oder GLS).');
+    }
+    const tracking = trackingCode?.trim() || current.trackingCode || null;
+    if (tracking && !/^[A-Za-z0-9-]{6,40}$/.test(tracking)) {
+      return ApiResponse.validationError('Die Sendungsnummer sieht ungültig aus (6-40 Buchstaben/Ziffern).');
     }
 
-    const nextShippingCarrier = shippingCarrier?.trim() || order.shippingCarrier || '';
-    const nextTrackingCode = trackingCode?.trim() || order.trackingCode || null;
-
-    if (!nextShippingCarrier) {
-      return ApiResponse.validationError('Bitte gib einen Versanddienst an.');
-    }
-
-    const wasAlreadyShipped = order.status === 'SHIPPED';
-
-    const updated = await prisma.order.update({
-      where: { id },
-      data: {
-        status: 'SHIPPED',
-        shippingCarrier: nextShippingCarrier,
-        trackingCode: nextTrackingCode,
-      },
-      include: {
-        product: { select: { id: true, title: true } },
-        buyer: { select: { id: true, name: true, email: true } },
-        seller: { select: { id: true, name: true, email: true } },
-      },
-    });
-
-    await publishOrderLifecycleEvent({
-      eventType: 'ORDER_SHIPPED',
-      order: updated,
-      actorId: order.sellerId,
-      wasAlreadyShipped,
-    });
-
+    const updated = await markShipped(id, session.user.id, carrier, tracking);
     return ApiResponse.success(updated);
   } catch (error: any) {
-    if (error.name === 'AuthError') return ApiResponse.unauthorized();
-    console.error('PUT /api/orders/[id] error:', error);
-    return ApiResponse.serverError();
+    return orderErrorResponse(error, 'PUT /api/orders/[id]');
   }
 }

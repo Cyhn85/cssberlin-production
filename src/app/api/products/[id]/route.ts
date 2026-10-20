@@ -4,6 +4,8 @@ import { requireAuth, getOptionalSession } from '@/lib/auth';
 import { ApiResponse } from '@/lib/api-response';
 import { respondWithApiError } from '@/lib/api-error';
 import { updateProductSchema } from '@/lib/validations';
+import { notifyPriceDrop } from '@/lib/product-alerts';
+import { publicLocation, sellerTrust } from '@/lib/seller-stats';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -25,6 +27,10 @@ export async function GET(request: NextRequest, { params }: Params) {
             username: true,
             avatar: true,
             location: true,
+            postalCode: true,
+            city: true,
+            lat: true,
+            lng: true,
             isVerified: true,
             createdAt: true,
             _count: { select: { products: true, receivedReviews: true, followers: true } },
@@ -73,8 +79,10 @@ export async function GET(request: NextRequest, { params }: Params) {
       isFavorited = !!fav;
     }
 
+    const { lat: _lat, lng: _lng, ...sellerPublic } = product.seller;
     return ApiResponse.success({
       ...product,
+      seller: { ...sellerPublic, publicLocation: publicLocation(product.seller), trust: await sellerTrust(product.sellerId) },
       sellerRating: {
         average: sellerRating._avg.rating || 0,
         count: sellerRating._count,
@@ -115,6 +123,10 @@ export async function PUT(request: NextRequest, { params }: Params) {
         category: true,
       },
     });
+
+    if (typeof parsed.data.price === 'number' && parsed.data.price < product.price) {
+      await notifyPriceDrop(id, product.price, parsed.data.price);
+    }
 
     return ApiResponse.success(updated);
   } catch (error: any) {

@@ -63,6 +63,12 @@ function setFavorites(next: string[], { write = true } = {}) {
   emit();
 }
 
+/** After login: adopt the account's favourites (union with the guest list, see CartSync). */
+export function replaceFavorites(ids: string[]) {
+  hydrated = true;
+  setFavorites(Array.from(new Set(ids)));
+}
+
 /**
  * Reads localStorage once on the client. Kept out of the render path so the
  * hydration render still matches the server's empty snapshot.

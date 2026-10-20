@@ -1,9 +1,9 @@
-﻿import { NextRequest } from 'next/server';
-import prisma from '@/lib/db';
+import { NextRequest } from 'next/server';
+import { z } from 'zod/v4';
 import { requireAuth } from '@/lib/auth';
 import { ApiResponse } from '@/lib/api-response';
-import { z } from 'zod/v4';
-import { publishOrderLifecycleEvent } from '@/lib/order-events';
+import { openDispute } from '@/lib/order-state';
+import { orderErrorResponse } from '@/lib/api-order-errors';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -15,66 +15,24 @@ const disputeSchema = z.object({
 });
 
 /**
- * POST /api/orders/[id]/dispute - Buyer opens a dispute
+ * POST /api/orders/[id]/dispute - Buyer reports a problem (Käuferschutz).
+ *
+ * Possible while the order is SHIPPED/DELIVERED, i.e. until it completes -
+ * either by the buyer's confirmation or automatically (completionPolicy).
+ * The window used to be "2 days since updatedAt", so any later edit to the
+ * order silently reset or shortened it.
  */
 export async function POST(request: NextRequest, { params }: Params) {
   try {
     const session = await requireAuth();
     const { id } = await params;
-
-    const order = await prisma.order.findUnique({
-      where: { id },
-      include: {
-        product: { select: { id: true, title: true } },
-        buyer: { select: { id: true, name: true, email: true } },
-        seller: { select: { id: true, name: true, email: true } },
-      },
-    });
-    if (!order) return ApiResponse.notFound('Bestellung nicht gefunden.');
-
-    if (order.buyerId !== session.user.id) {
-      return ApiResponse.forbidden('Nur der Käufer kann einen Käuferschutz-Fall eröffnen.');
-    }
-
-    if (order.status !== 'DELIVERED' && order.status !== 'SHIPPED') {
-      return ApiResponse.error('Käuferschutz ist nur für versendete oder zugestellte Bestellungen möglich.');
-    }
-
-    const twoDaysMs = 2 * 24 * 60 * 60 * 1000;
-    const timeSinceUpdate = Date.now() - order.updatedAt.getTime();
-    if (timeSinceUpdate > twoDaysMs) {
-      return ApiResponse.error('Der Käuferschutz-Zeitraum (2 Tage nach Zustellung) ist abgelaufen.');
-    }
-
-    const body = await request.json();
-    const parsed = disputeSchema.safeParse(body);
+    const parsed = disputeSchema.safeParse(await request.json().catch(() => null));
     if (!parsed.success) {
-      return ApiResponse.validationError('Bitte gib einen gültigen Grund an.');
+      return ApiResponse.validationError(parsed.error.issues[0]?.message || 'Bitte gib einen gültigen Grund an.');
     }
-
-    const updated = await prisma.order.update({
-      where: { id },
-      data: {
-        status: 'DISPUTED',
-        disputeReason: parsed.data.reason,
-      },
-      include: {
-        product: { select: { id: true, title: true } },
-        buyer: { select: { id: true, name: true, email: true } },
-        seller: { select: { id: true, name: true, email: true } },
-      },
-    });
-
-    await publishOrderLifecycleEvent({
-      eventType: 'ORDER_DISPUTED',
-      order: updated,
-      actorId: order.buyerId,
-    });
-
+    const updated = await openDispute(id, session.user.id, parsed.data.reason);
     return ApiResponse.success(updated);
   } catch (error: any) {
-    if (error.name === 'AuthError') return ApiResponse.unauthorized();
-    console.error('POST /api/orders/[id]/dispute error:', error);
-    return ApiResponse.serverError();
+    return orderErrorResponse(error, 'POST /api/orders/[id]/dispute');
   }
 }

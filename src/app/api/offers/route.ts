@@ -6,8 +6,8 @@ import { createOfferSchema } from '@/lib/validations';
 import { rateLimit } from '@/lib/rate-limit';
 import { recordAction } from '@/lib/abuse-monitor';
 import { createSystemNotification } from '@/lib/notifications';
-
-const FINALIZED_ORDER_STATUSES = ['PAID', 'SHIPPED', 'DELIVERED', 'COMPLETED'] as const;
+import { FINALIZED_ORDER_STATUSES, answerDeadline, minimumOffer, offerTurn } from '@/lib/offer-state';
+import { offerPolicy } from '@/config/marketplace-policy';
 
 const offerCardInclude = {
   product: {
@@ -45,6 +45,9 @@ type OfferWithCardData = {
   productId: string;
   buyerId: string;
   sellerId: string;
+  createdById: string | null;
+  round: number;
+  expiresAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
   product: {
@@ -61,21 +64,8 @@ type OfferWithCardData = {
   messages: Array<{ senderId: string }>;
 };
 
-function getOfferOriginRole(offer: OfferWithCardData) {
-  const firstMessageSenderId = offer.messages[0]?.senderId;
-  if (firstMessageSenderId && firstMessageSenderId === offer.sellerId) {
-    return 'SELLER_COUNTER' as const;
-  }
-  return 'BUYER_OFFER' as const;
-}
-
-function getPendingOn(status: string, originRole: 'BUYER_OFFER' | 'SELLER_COUNTER') {
-  if (status !== 'PENDING') return null;
-  return originRole === 'SELLER_COUNTER' ? 'BUYER' : 'SELLER';
-}
-
 function serializeOffer(offer: OfferWithCardData) {
-  const originRole = getOfferOriginRole(offer);
+  const { pendingOn, originRole } = offerTurn(offer);
   const latestOrder = offer.orders[0] || null;
 
   return {
@@ -85,16 +75,19 @@ function serializeOffer(offer: OfferWithCardData) {
     productId: offer.productId,
     buyerId: offer.buyerId,
     sellerId: offer.sellerId,
+    round: offer.round,
+    roundsLeft: Math.max(0, offerPolicy.maxRounds - offer.round),
+    expiresAt: offer.expiresAt,
     createdAt: offer.createdAt,
     updatedAt: offer.updatedAt,
     product: offer.product,
     buyer: offer.buyer,
     seller: offer.seller,
     originRole,
-    pendingOn: getPendingOn(offer.status, originRole),
+    pendingOn,
     latestOrder,
     hasCompletedCheckout: latestOrder
-      ? FINALIZED_ORDER_STATUSES.includes(latestOrder.status as (typeof FINALIZED_ORDER_STATUSES)[number])
+      ? (FINALIZED_ORDER_STATUSES as readonly string[]).includes(latestOrder.status)
       : false,
   };
 }
@@ -150,39 +143,49 @@ export async function POST(request: NextRequest) {
       return ApiResponse.error('Dein Konto wurde wegen ungewöhnlicher Aktivität gesperrt.', 403);
     }
 
-    const body = await request.json();
-    const parsed = createOfferSchema.safeParse(body);
+    const parsed = createOfferSchema.safeParse(await request.json().catch(() => null));
     if (!parsed.success) {
       return ApiResponse.validationError('Ungültiges Angebot.');
     }
 
     const { productId, offeredPrice, message } = parsed.data;
 
-    const product = await prisma.product.findUnique({ where: { id: productId } });
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+      include: { seller: { select: { name: true, offerMinPercent: true } } },
+    });
     if (!product) return ApiResponse.notFound('Artikel nicht gefunden.');
     if (product.status !== 'ACTIVE') {
-      return ApiResponse.error('Dieser Artikel ist nicht mehr verfügbar.', 409);
+      return ApiResponse.error('Dieser Artikel ist gerade reserviert oder verkauft.', 409);
     }
     if (product.sellerId === session.user.id) {
       return ApiResponse.error('Du kannst kein Angebot für deinen eigenen Artikel abgeben.');
     }
+    if (offeredPrice >= product.price) {
+      return ApiResponse.error('Dein Angebot liegt nicht unter dem Preis - kaufe den Artikel direkt.');
+    }
 
-    const minPrice = product.price * 0.6;
-    if (offeredPrice < minPrice) {
+    // Platform floor (60 %) or the seller's own higher rule. Offers below never
+    // reach the seller; the buyer is told the real minimum instead of guessing.
+    const floor = minimumOffer(product.price, product.seller.offerMinPercent);
+    if (offeredPrice < floor.amount) {
       return ApiResponse.error(
-        `Mindestangebot ist ${minPrice.toFixed(2)} EUR (60% des Listenpreises).`
+        floor.sellerRule
+          ? `Dieser Verkäufer nimmt Angebote ab ${floor.amount.toFixed(2)} EUR an.`
+          : `Mindestangebot ist ${floor.amount.toFixed(2)} EUR (${offerPolicy.minPercent} % des Listenpreises).`,
+        422
       );
     }
 
     const existingOffer = await prisma.offer.findFirst({
-      where: {
-        productId,
-        buyerId: session.user.id,
-        status: 'PENDING',
-      },
+      where: { productId, buyerId: session.user.id, status: { in: ['PENDING', 'ACCEPTED'] } },
     });
     if (existingOffer) {
-      return ApiResponse.error('Du hast bereits ein offenes Angebot für diesen Artikel.');
+      return ApiResponse.error(
+        existingOffer.status === 'ACCEPTED'
+          ? 'Dein Angebot wurde bereits angenommen - du kannst den Artikel jetzt kaufen.'
+          : 'Du hast bereits ein offenes Angebot für diesen Artikel.'
+      );
     }
 
     const offer = await prisma.offer.create({
@@ -191,6 +194,9 @@ export async function POST(request: NextRequest) {
         productId,
         buyerId: session.user.id,
         sellerId: product.sellerId,
+        createdById: session.user.id,
+        round: 1,
+        expiresAt: answerDeadline(),
       },
       include: {
         product: { select: { title: true, price: true } },
@@ -198,23 +204,37 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    if (message) {
-      await prisma.message.create({
-        data: {
-          content: message,
-          type: 'OFFER_ACTION',
-          senderId: session.user.id,
-          receiverId: product.sellerId,
-          offerId: offer.id,
-        },
-      });
-    }
+    // Always leave the offer in the chat (both sides see it there, Vinted style);
+    // the optional note is part of the same bubble.
+    await prisma.message.create({
+      data: {
+        content: message?.trim()
+          ? `Preisvorschlag: ${offeredPrice.toFixed(2)} EUR\n${message.trim()}`
+          : `Preisvorschlag: ${offeredPrice.toFixed(2)} EUR`,
+        type: 'OFFER_ACTION',
+        senderId: session.user.id,
+        receiverId: product.sellerId,
+        offerId: offer.id,
+      },
+    });
 
     await createSystemNotification({
       senderId: session.user.id,
       receiverId: product.sellerId,
       offerId: offer.id,
-      content: `${offer.buyer.name || 'Ein Mitglied'} hat dir ein neues Angebot über ${offeredPrice.toFixed(2)} EUR für ${offer.product.title} geschickt.`,
+      category: 'offers',
+      content: `${offer.buyer.name || 'Ein Mitglied'} bietet ${offeredPrice.toFixed(2)} EUR für ${offer.product.title}. Antworte innerhalb von ${offerPolicy.answerHours} Stunden.`,
+      email: {
+        subject: `Neues Angebot für ${offer.product.title}`,
+        title: 'Neues Angebot eingegangen',
+        lines: [
+          `Artikel: ${offer.product.title}`,
+          `Angebot: ${offeredPrice.toFixed(2)} EUR (dein Preis: ${offer.product.price.toFixed(2)} EUR)`,
+          `Ohne Antwort läuft das Angebot nach ${offerPolicy.answerHours} Stunden ab.`,
+        ],
+        ctaLabel: 'Angebot ansehen',
+        ctaPath: '/offers',
+      },
     });
 
     return ApiResponse.created(offer);

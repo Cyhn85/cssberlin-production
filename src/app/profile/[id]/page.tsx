@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import ProductCard from '@/components/product/ProductCard';
 import { formatRelativeTime } from '@/lib/utils/condition-map';
+import SellerLocationMap from '@/components/profile/SellerLocationMap';
 
 type PublicProfile = {
   id: string;
@@ -28,6 +29,8 @@ type PublicProfile = {
   bio: string | null;
   avatar: string | null;
   location: string | null;
+  publicLocation?: { label: string | null; lat: number | null; lng: number | null } | null;
+  trust?: { replyTime: string | null; lastSeenAt: string | null; completedSales: number; cancelRate: number | null } | null;
   isVerified: boolean;
   phoneVerified: boolean;
   ecoCO2Saved: number;
@@ -126,7 +129,7 @@ export default function PublicProfilePage() {
           : current
       );
     } catch {
-      router.push('/login');
+      router.push(`/login?callbackUrl=${encodeURIComponent(window.location.pathname)}`);
     } finally {
       setFollowBusy(false);
     }
@@ -195,7 +198,12 @@ export default function PublicProfilePage() {
               </p>
               
               <div className="flex flex-wrap items-center gap-4 mt-3 text-sm text-[var(--color-text-secondary)] font-medium">
-                <span className="flex items-center gap-1.5 bg-[var(--color-bg-secondary)] px-2.5 py-1 rounded-md"><MapPin size={14} className="text-[var(--color-primary)]" /> {profile.location || 'Berlin, Deutschland'}</span>
+                {profile.publicLocation?.label ? (
+                  <span className="flex items-center gap-1.5 bg-[var(--color-bg-secondary)] px-2.5 py-1 rounded-md"><MapPin size={14} className="text-[var(--color-primary)]" /> {profile.publicLocation.label}</span>
+                ) : null}
+                {profile.trust?.lastSeenAt ? (
+                  <span className="bg-[var(--color-bg-secondary)] px-2.5 py-1 rounded-md">Zuletzt online {formatRelativeTime(profile.trust.lastSeenAt)}</span>
+                ) : null}
                 <span className="flex items-center gap-1.5 bg-[var(--color-bg-secondary)] px-2.5 py-1 rounded-md">
                   <Star size={14} className="text-[var(--color-warning)] fill-[var(--color-warning)]" />
                   <span className="font-bold text-[var(--color-text)]">{profile.averageRating.toFixed(1)}</span> ({profile._count.receivedReviews} Bewertungen)
@@ -275,6 +283,13 @@ export default function PublicProfilePage() {
           </button>
         </div>
 
+        {profile.publicLocation?.label ? (
+          <div className="mb-6 max-w-md rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-card)] p-4 shadow-sm">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Standort</h3>
+            <SellerLocationMap label={profile.publicLocation.label} lat={profile.publicLocation.lat} lng={profile.publicLocation.lng} compact />
+          </div>
+        ) : null}
+
         {/* The bio, the eco/sales cards and the profile facts used to sit above
             the tab bar, permanently expanded, pushing the actual wardrobe below
             the fold. They are reference material, not the reason someone opens
@@ -305,7 +320,7 @@ export default function PublicProfilePage() {
                     </div>
                     <div>
                       <p className="text-[10px] font-bold uppercase text-[var(--color-text-muted)]">Verkäufe</p>
-                      <p className="text-sm font-bold text-[var(--color-text)]">{profile.itemsRecycled} Artikel verkauft</p>
+                      <p className="text-sm font-bold text-[var(--color-text)]">{profile.trust?.completedSales ?? 0} Artikel verkauft</p>
                     </div>
                  </div>
               </div>
@@ -318,6 +333,18 @@ export default function PublicProfilePage() {
                    <span className="text-[var(--color-text-secondary)]">Mitglied seit</span>
                    <span className="font-semibold text-[var(--color-text)]">{new Date(profile.createdAt).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })}</span>
                  </li>
+                 {profile.trust?.replyTime ? (
+                   <li className="flex justify-between gap-3">
+                     <span className="text-[var(--color-text-secondary)]">Antwortzeit</span>
+                     <span className="text-right font-semibold text-[var(--color-text)]">{profile.trust.replyTime}</span>
+                   </li>
+                 ) : null}
+                 {profile.trust?.cancelRate != null ? (
+                   <li className="flex justify-between">
+                     <span className="text-[var(--color-text-secondary)]">Stornoquote</span>
+                     <span className="font-semibold text-[var(--color-text)]">{profile.trust.cancelRate} %</span>
+                   </li>
+                 ) : null}
                  <li className="flex justify-between">
                    <span className="text-[var(--color-text-secondary)]">Follower</span>
                    <span className="font-semibold text-[var(--color-text)]">{profile._count.followers}</span>

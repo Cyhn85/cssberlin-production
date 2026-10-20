@@ -1,6 +1,7 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { ApiResponse } from '@/lib/api-response';
+import { notifyPriceDrop } from '@/lib/product-alerts';
 
 export const runtime = 'nodejs';
 
@@ -84,6 +85,7 @@ export async function POST(request: NextRequest) {
         },
       });
       updated.push({ id: product.id, from: product.price, to: newPrice });
+      await notifyPriceDrop(product.id, product.price, newPrice);
     }
 
     return NextResponse.json({ success: true, updated: updated.length, items: updated, skipped });

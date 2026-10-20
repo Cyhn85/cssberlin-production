@@ -1,6 +1,7 @@
 import prisma from '@/lib/db';
 
-const FINALIZED_ORDER_STATUSES = ['PAID', 'SHIPPED', 'DELIVERED', 'COMPLETED'] as const;
+// PENDING_PICKUP and DISPUTED also own the item - never hand those back to the catalogue.
+const FINALIZED_ORDER_STATUSES = ['PENDING_PICKUP', 'PAID', 'SHIPPED', 'DELIVERED', 'COMPLETED', 'DISPUTED'] as const;
 
 /**
  * How often one server process will actually run the sweep, no matter how

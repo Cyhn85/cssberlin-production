@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import prisma from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
 import { ApiResponse } from '@/lib/api-response';
+import { offerTurn } from '@/lib/offer-state';
 
 type Params = { params: Promise<{ conversationId: string }> };
 
@@ -20,6 +21,9 @@ const messageOfferSelect = {
       images: { take: 1, select: { url: true, thumbUrl: true }, orderBy: { orderIndex: 'asc' } },
     },
   },
+  createdById: true,
+  round: true,
+  expiresAt: true,
   orders: {
     select: { id: true, status: true, createdAt: true },
     orderBy: { createdAt: 'desc' },
@@ -37,11 +41,10 @@ const messageOfferSelect = {
  * whether the seller countered (buyer's turn) or the buyer proposed (seller's
  * turn). Mirrors the same rule /api/offers uses for its own list view.
  */
-function withPendingOn<T extends { status: string; sellerId: string; messages: Array<{ senderId: string }> }>(
+function withPendingOn<T extends { status: string; sellerId: string; createdById: string | null; messages: Array<{ senderId: string }> }>(
   offer: T
 ) {
-  const originRole = offer.messages[0]?.senderId === offer.sellerId ? 'SELLER_COUNTER' : 'BUYER_OFFER';
-  const pendingOn = offer.status !== 'PENDING' ? null : originRole === 'SELLER_COUNTER' ? 'BUYER' : 'SELLER';
+  const { pendingOn } = offerTurn(offer);
   const { messages: _messages, ...rest } = offer;
   return { ...rest, pendingOn };
 }
@@ -70,8 +73,8 @@ export async function GET(request: NextRequest, { params }: Params) {
     const messages = await prisma.message.findMany({
       where: {
         OR: [
-          { senderId: session.user.id, receiverId: partnerId },
-          { senderId: partnerId, receiverId: session.user.id },
+          { senderId: session.user.id, receiverId: partnerId, type: { notIn: ['SYSTEM_INFO', 'PERSONA_RELAY'] } },
+          { senderId: partnerId, receiverId: session.user.id, type: { not: 'PERSONA_RELAY' } },
         ],
       },
       include: {

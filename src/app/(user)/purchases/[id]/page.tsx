@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { FormEvent, useEffect, useEffectEvent, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -23,8 +23,11 @@ import {
 import { getPusherClient } from '@/lib/pusher-client';
 import { CHANNELS, EVENTS, type OrderStatusEvent } from '@/lib/realtime';
 import OrderTimeline from '@/components/order/OrderTimeline';
+import OrderActions, { type ActionOrder } from '@/components/order/OrderActions';
+import { carrierLabel } from '@/config/shipping-policy';
+import { completionPolicy } from '@/config/marketplace-policy';
 
-type OrderDetail = {
+type OrderDetail = ActionOrder & {
   id: string;
   totalAmount: number;
   itemPrice: number;
@@ -129,6 +132,14 @@ export default function PurchaseDetailPage() {
   const canOpenDispute = useMemo(() => {
     return order?.status === 'SHIPPED' || order?.status === 'DELIVERED';
   }, [order]);
+
+  // plain function for child components (useEffectEvent handlers may only run inside effects)
+  const reloadOrder = async () => {
+    if (!orderId) return;
+    const response = await fetch(`/api/orders/${orderId}`);
+    const result = await response.json().catch(() => null);
+    if (response.ok && result?.success) setOrder(result.data);
+  };
 
   const refreshOrder = useEffectEvent(async () => {
     if (!orderId) return;
@@ -341,6 +352,7 @@ export default function PurchaseDetailPage() {
               </h2>
               <OrderTimeline
                 status={order.status}
+                pickup={order.shippingCarrier === 'PICKUP'}
                 createdAt={order.createdAt}
                 activeDetail={
                   order.trackingCode ? (
@@ -360,6 +372,8 @@ export default function PurchaseDetailPage() {
               ) : null}
             </div>
 
+            <OrderActions order={order} role="buyer" partnerId={order.seller.id} onChanged={reloadOrder} />
+
             <div className="rounded-3xl border bg-white p-6 shadow-sm" style={{ borderColor: 'var(--color-border)' }}>
               <h2 className="mb-4 text-lg font-bold" style={{ color: 'var(--color-text)' }}>
                 Versand und Schutz
@@ -369,7 +383,7 @@ export default function PurchaseDetailPage() {
                   <Truck size={18} style={{ color: 'var(--color-primary)', marginTop: 2 }} />
                   <div>
                     <p className="font-semibold" style={{ color: 'var(--color-text)' }}>Versanddienst</p>
-                    <p>{order.shippingCarrier || 'Noch nicht hinterlegt'}</p>
+                    <p>{order.shippingCarrier ? carrierLabel(order.shippingCarrier) : 'Noch nicht hinterlegt'}</p>
                     {order.trackingCode ? <p className="mt-1">Tracking: {order.trackingCode}</p> : null}
                   </div>
                 </div>
@@ -394,11 +408,11 @@ export default function PurchaseDetailPage() {
                 <div className="mb-3 flex items-center gap-2">
                   <ShieldAlert size={18} style={{ color: 'var(--color-primary)' }} />
                   <h2 className="text-lg font-bold" style={{ color: 'var(--color-text)' }}>
-                    Streitfall eröffnen
+                    Problem melden (Käuferschutz)
                   </h2>
                 </div>
                 <p className="mb-4 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                  Nutze diese Option nur, wenn es ein echtes Problem mit Versand oder Artikelzustand gibt.
+                  Artikel nicht angekommen, beschädigt oder deutlich anders als beschrieben? Melde es, bevor die Bestellung automatisch abgeschlossen wird ({completionPolicy.autoCompleteAfterShippedDays} Tage nach Versand). Bis zur Entscheidung wird nichts ausgezahlt.
                 </p>
                 <textarea
                   value={disputeReason}
@@ -413,7 +427,7 @@ export default function PurchaseDetailPage() {
                   className="mt-4 rounded-full px-5 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
                   style={{ background: 'var(--color-primary)' }}
                 >
-                  {submitting ? 'Wird gesendet...' : 'Streitfall senden'}
+                  {submitting ? 'Wird gesendet...' : 'Problem melden'}
                 </button>
               </form>
             ) : null}

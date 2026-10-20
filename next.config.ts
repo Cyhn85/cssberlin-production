@@ -11,7 +11,7 @@ const CSP = [
   // Both hostnames are listed on purpose: product image URLs written before the
   // switch to relative paths are hard-coded to the apex, so a visitor on the www
   // host would otherwise have every one of them blocked as cross-origin by 'self'.
-  "img-src 'self' data: blob: https://cssberlin.de https://www.cssberlin.de https://utfs.io https://*.uploadthing.com https://lh3.googleusercontent.com https://picsum.photos https://fastly.picsum.photos https://i.pravatar.cc",
+  "img-src 'self' data: blob: https://cssberlin.de https://www.cssberlin.de https://utfs.io https://*.uploadthing.com https://lh3.googleusercontent.com https://tile.openstreetmap.org",
   "font-src 'self' data:",
   "connect-src 'self' https://utfs.io https://*.uploadthing.com https://api.stripe.com",
   "frame-src 'self' https://accounts.google.com https://js.stripe.com https://hooks.stripe.com",
@@ -63,10 +63,9 @@ const nextConfig: NextConfig = {
         source: '/:path*',
         headers: [
           { key: 'Content-Security-Policy', value: CSP },
-          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(self), payment=(self)' },
         ],
       },
     ];

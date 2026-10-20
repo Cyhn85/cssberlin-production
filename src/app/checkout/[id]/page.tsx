@@ -4,34 +4,21 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import {
-  ChevronLeft,
-  Info,
-  Leaf,
-  Loader2,
-  Lock,
-  ShieldCheck,
-  Tag,
-  Truck,
-} from 'lucide-react';
+import { ChevronLeft, CreditCard, Handshake, Info, Leaf, Loader2, Lock, MapPin, ShieldCheck, Tag, Truck } from 'lucide-react';
 import { formatPrice, getConditionLabel } from '@/lib/utils/condition-map';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import {
-  resolveShippingFee,
-  amountToFreeShipping,
-  FREE_SHIPPING_THRESHOLD_EUR,
-} from '@/config/shipping-policy';
+import { SHIPPING_CARRIERS, FREE_SHIPPING_THRESHOLD_EUR, amountToFreeShipping } from '@/config/shipping-policy';
+import { quoteCheckout } from '@/lib/payments/pricing';
 import { priceDisclosure } from '@/config/business-profile';
+import { pickupPolicy, checkoutPolicy, cancellationPolicy } from '@/config/marketplace-policy';
 
-const BUYER_PROTECTION_RATE = 0.05;
-const BUYER_PROTECTION_FIXED = 0.99;
-
-const shippingMethods = [
-  { id: 'HAND', name: 'Kostenlose Selbstabholung', eta: 'Nach Absprache (Berlin/Brandenburg)' },
-  { id: 'DHL', name: 'DHL Paket', eta: '1-3 Werktage' },
-  { id: 'HERMES', name: 'Hermes Päckchen', eta: '2-4 Werktage' },
-  { id: 'DPD', name: 'DPD Classic', eta: '1-2 Werktage' },
-];
+type PaymentMethod = {
+  id: 'card' | 'klarna' | 'sepa_debit' | 'paypal' | 'pickup_cash';
+  label: string;
+  description: string;
+  requiresShipping: boolean;
+  buyerProtection: boolean;
+  enabled: boolean;
+};
 
 type CheckoutProduct = {
   id: string;
@@ -42,12 +29,8 @@ type CheckoutProduct = {
   size: string | null;
   condition: string;
   status: string;
-  images: Array<{ id: string; url: string; orderIndex: number }>;
-  seller: {
-    id: string;
-    name: string | null;
-    location: string | null;
-  };
+  images: Array<{ id: string; url: string; thumbUrl?: string | null; orderIndex: number }>;
+  seller: { id: string; name: string | null; publicLocation?: { label: string | null } | null };
 };
 
 type CheckoutOffer = {
@@ -55,190 +38,166 @@ type CheckoutOffer = {
   offeredPrice: number;
   status: string;
   pendingOn: 'BUYER' | 'SELLER' | null;
+  expiresAt?: string | null;
   latestOrder: { id: string; status: string } | null;
-  product: { id: string; title: string; status: string };
+  product: { id: string };
 };
 
-export default function CheckoutPage() {
-  const { status } = useSession({
-    required: true,
-    onUnauthenticated() {
-      router.push(`/login?callbackUrl=/checkout/${params.id}`);
-    },
-  });
+type Address = { name: string; street: string; extra: string; postalCode: string; city: string };
 
+const ADDRESS_KEY = 'cssberlin_last_address';
+
+export default function CheckoutPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
   const offerId = searchParams.get('offerId');
+  const productId = Array.isArray(params.id) ? params.id[0] : params.id;
+
+  const { status } = useSession({
+    required: true,
+    onUnauthenticated() {
+      const back = `/checkout/${productId}${offerId ? `?offerId=${encodeURIComponent(offerId)}` : ''}`;
+      router.push(`/login?callbackUrl=${encodeURIComponent(back)}`);
+    },
+  });
+
   const [product, setProduct] = useState<CheckoutProduct | null>(null);
   const [offer, setOffer] = useState<CheckoutOffer | null>(null);
   const [offerNotice, setOfferNotice] = useState<string | null>(null);
+  const [methods, setMethods] = useState<PaymentMethod[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedShipping, setSelectedShipping] = useState(shippingMethods[0].id);
+  const [delivery, setDelivery] = useState<'ship' | 'pickup'>('ship');
+  const [carrier, setCarrier] = useState<string>(SHIPPING_CARRIERS[0].id);
+  const [method, setMethod] = useState<PaymentMethod['id']>('card');
   const [isFirstOrder, setIsFirstOrder] = useState(false);
+  const [address, setAddress] = useState<Address>({ name: '', street: '', extra: '', postalCode: '', city: '' });
+  const [agb, setAgb] = useState(false);
+  const [widerruf, setWiderruf] = useState(false);
 
   useEffect(() => {
-    // useSession({ required: true }) yukarida oturumsuz kullaniciyi zaten /login'e
-    // yonlendiriyor, o yuzden burada 'unauthenticated' durumu olusmuyor.
-    if (status === 'loading') return;
+    try {
+      const saved = localStorage.getItem(ADDRESS_KEY);
+      if (saved) setAddress((a) => ({ ...a, ...JSON.parse(saved) }));
+    } catch { /* private mode */ }
+  }, []);
 
-    const productId = Array.isArray(params.id) ? params.id[0] : params.id;
-    if (!productId) {
-      setLoading(false);
-      setError('Produkt-ID fehlt.');
-      return;
-    }
-
+  useEffect(() => {
+    if (status === 'loading' || !productId) return;
     let cancelled = false;
 
-    const loadData = async () => {
+    (async () => {
       setLoading(true);
       setError(null);
-      setOffer(null);
-      setOfferNotice(null);
-
       try {
-        const productRequest = fetch(`/api/products/${productId}`);
-        const offerRequest: Promise<Response | null> = offerId
-          ? fetch(`/api/offers/${offerId}`)
-          : Promise.resolve(null);
-        const firstOrderRequest = fetch('/api/checkout/first-order-status');
-
-        const [productResponse, offerResponse, firstOrderResponse] = await Promise.all([productRequest, offerRequest, firstOrderRequest]);
-        const productResult = await productResponse.json();
-
-        if (!cancelled) {
-          const firstOrderResult = await firstOrderResponse.json().catch(() => null);
-          setIsFirstOrder(Boolean(firstOrderResult?.success && firstOrderResult.data?.isFirstOrder));
-        }
-
-        if (!productResponse.ok || !productResult.success) {
-          throw new Error(productResult.error || 'Checkout konnte nicht geladen werden.');
-        }
-
+        const [pRes, mRes, fRes, oRes] = await Promise.all([
+          fetch(`/api/products/${productId}`),
+          fetch('/api/checkout/methods'),
+          fetch('/api/checkout/first-order-status'),
+          offerId ? fetch(`/api/offers/${offerId}`) : Promise.resolve(null),
+        ]);
+        const p = await pRes.json();
+        if (!pRes.ok || !p.success) throw new Error(p.error || 'Checkout konnte nicht geladen werden.');
+        const m = await mRes.json().catch(() => null);
+        const f = await fRes.json().catch(() => null);
         if (cancelled) return;
-        setProduct(productResult.data);
 
-        if (offerResponse) {
-          const offerResult = await offerResponse.json().catch(() => null);
-          if (offerResponse.ok && offerResult?.success && offerResult.data?.product?.id === productId) {
-            const offerData = offerResult.data as CheckoutOffer;
+        setProduct(p.data);
+        const list: PaymentMethod[] = m?.data?.methods || [];
+        setMethods(list);
+        setIsFirstOrder(Boolean(f?.success && f.data?.isFirstOrder));
 
-            if (offerData.latestOrder) {
-              setOfferNotice('Zu diesem Angebot existiert bereits eine Bestellung. Bitte prüfe zuerst deine Käufe.');
-            } else if (offerData.status === 'ACCEPTED') {
-              setOffer(offerData);
-            } else if (offerData.pendingOn === 'BUYER') {
-              setOfferNotice('Dieses Gegenangebot muss zuerst in deiner Angebotsliste bestätigt werden.');
-            } else {
-              setOfferNotice('Das übergebene Angebot ist aktuell nicht checkout-bereit. Es wird der Listenpreis verwendet.');
-            }
-          } else if (!cancelled) {
-            setOfferNotice(offerResult?.error || 'Das übergebene Angebot konnte nicht geladen werden.');
+        // no online method live yet -> start on pickup so the page is usable immediately
+        if (!list.some((x) => x.requiresShipping && x.enabled)) {
+          setDelivery('pickup');
+          setMethod('pickup_cash');
+        } else {
+          const firstOnline = list.find((x) => x.requiresShipping && x.enabled);
+          if (firstOnline) setMethod(firstOnline.id);
+        }
+
+        if (oRes) {
+          const o = await oRes.json().catch(() => null);
+          if (oRes.ok && o?.success && o.data?.product?.id === productId) {
+            const data = o.data as CheckoutOffer;
+            if (data.latestOrder) setOfferNotice('Zu diesem Angebot existiert bereits eine Bestellung. Bitte prüfe deine Käufe.');
+            else if (data.status === 'ACCEPTED') setOffer(data);
+            else if (data.pendingOn === 'BUYER') setOfferNotice('Dieses Gegenangebot musst du zuerst unter „Angebote“ annehmen.');
+            else setOfferNotice('Das Angebot ist nicht (mehr) angenommen. Es gilt der Listenpreis.');
+          } else {
+            setOfferNotice(o?.error || 'Das Angebot konnte nicht geladen werden. Es gilt der Listenpreis.');
           }
         }
-      } catch (loadError: any) {
-        if (!cancelled) {
-          setError(loadError.message || 'Checkout konnte nicht geladen werden.');
-        }
+      } catch (e: any) {
+        if (!cancelled) setError(e.message || 'Checkout konnte nicht geladen werden.');
       } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
+        if (!cancelled) setLoading(false);
       }
-    };
-
-    void loadData();
+    })();
 
     return () => {
       cancelled = true;
     };
-  }, [params.id, offerId, status]);
+  }, [productId, offerId, status]);
 
-  const itemPrice = useMemo(() => {
-    if (offer) return offer.offeredPrice;
-    return product?.price || 0;
-  }, [offer, product]);
-
-  // Dieselbe Regel wie in der Checkout-API (src/config/shipping-policy),
-  // damit angezeigter Preis und Rechnung nicht auseinanderlaufen können.
-  const shipping = useMemo(
-    () => resolveShippingFee({
-      itemPrice,
-      productShippingCost: product?.shippingCost,
-      isFirstOrder,
-      shippingMethod: selectedShipping,
-    }),
-    [itemPrice, product, isFirstOrder, selectedShipping],
+  const itemPrice = offer ? offer.offeredPrice : product?.price || 0;
+  const quote = useMemo(
+    () => quoteCheckout({ itemPrice, productShippingCost: product?.shippingCost, isFirstOrder, carrier: delivery === 'pickup' ? 'PICKUP' : carrier }),
+    [itemPrice, product, isFirstOrder, carrier, delivery],
   );
-  const shippingFee = shipping.fee;
-  const missingForFreeShipping = amountToFreeShipping(itemPrice);
-  // Durchgestrichener Preis: was der Versand ohne Aktion kosten würde.
-  const standardShippingFee = useMemo(
-    () => (product?.shippingCost && product.shippingCost > 0 ? product.shippingCost : 4.99),
-    [product],
-  );
+  const missingForFree = delivery === 'ship' ? amountToFreeShipping(itemPrice) : 0;
 
-  const protectionFee = useMemo(() => {
-    if (!product) return 0;
-    return Math.round((itemPrice * BUYER_PROTECTION_RATE + BUYER_PROTECTION_FIXED) * 100) / 100;
-  }, [itemPrice, product]);
+  const onlineMethods = methods.filter((m) => m.requiresShipping);
+  const pickupMethod = methods.find((m) => m.id === 'pickup_cash');
+  const selected = methods.find((m) => m.id === method);
+  const addressValid = /^\d{5}$/.test(address.postalCode.trim()) && address.name.trim().length >= 3 && address.street.trim().length >= 3 && address.city.trim().length >= 2;
+  const canSubmit = Boolean(product && product.status === 'ACTIVE' && selected?.enabled && agb && widerruf && (delivery === 'pickup' || addressValid));
 
-  const totalCost = useMemo(() => {
-    if (!product) return 0;
-    return Math.round((itemPrice + shippingFee + protectionFee) * 100) / 100;
-  }, [itemPrice, product, protectionFee, shippingFee]);
+  const chooseDelivery = (d: 'ship' | 'pickup') => {
+    setDelivery(d);
+    if (d === 'pickup') setMethod('pickup_cash');
+    else {
+      const first = onlineMethods.find((m) => m.enabled) || onlineMethods[0];
+      if (first) setMethod(first.id);
+    }
+  };
 
-  const handleCheckout = async () => {
-    if (!product || submitting) return;
-
+  const submit = async () => {
+    if (!product || !canSubmit || submitting) return;
     setSubmitting(true);
     setError(null);
-
     try {
-      const response = await fetch('/api/checkout/create-session', {
+      if (delivery === 'ship') {
+        try { localStorage.setItem(ADDRESS_KEY, JSON.stringify(address)); } catch { /* ignore */ }
+      }
+      const res = await fetch('/api/checkout/create-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           productId: product.id,
           offerId: offer?.id,
-          shippingMethod: selectedShipping,
+          carrier: delivery === 'pickup' ? 'PICKUP' : carrier,
+          paymentMethod: method,
+          shippingAddress: delivery === 'ship'
+            ? { name: address.name, street: address.street, extra: address.extra || undefined, postalCode: address.postalCode, city: address.city, country: 'DE' }
+            : undefined,
         }),
       });
-
-      const result = await response.json().catch(() => null);
-
-      if (response.status === 401) {
-        const callbackUrl = offer?.id
-          ? `/checkout/${product.id}?offerId=${encodeURIComponent(offer.id)}`
-          : `/checkout/${product.id}`;
-        router.push(`/login?callbackUrl=${encodeURIComponent(callbackUrl)}`);
+      const r = await res.json().catch(() => null);
+      if (!res.ok || !r?.success) throw new Error(r?.error || 'Checkout konnte nicht gestartet werden.');
+      if (r.data?.mode === 'stripe' && r.data.url) {
+        window.location.assign(r.data.url);
         return;
       }
-
-      if (!response.ok || !result?.success) {
-        throw new Error(result?.error || 'Checkout konnte nicht gestartet werden.');
-      }
-
-      const checkoutData = result.data || {};
-
-      if (checkoutData.url) {
-        window.location.assign(checkoutData.url);
+      if (r.data?.mode === 'pickup') {
+        router.push(`/checkout/${product.id}/success?mode=pickup&orderId=${encodeURIComponent(r.data.orderId)}`);
         return;
       }
-
-      if (checkoutData.mode === 'dev') {
-        const successUrl = `/checkout/${product.id}/success?mode=dev&orderId=${encodeURIComponent(checkoutData.orderId || '')}`;
-        router.push(successUrl);
-        return;
-      }
-
       throw new Error('Checkout-Antwort war unvollständig.');
-    } catch (checkoutError: any) {
-      setError(checkoutError.message || 'Checkout konnte nicht gestartet werden.');
+    } catch (e: any) {
+      setError(e.message);
     } finally {
       setSubmitting(false);
     }
@@ -246,310 +205,227 @@ export default function CheckoutPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="text-center" style={{ color: 'var(--color-primary)' }}>
-          <Loader2 size={42} className="mx-auto mb-4 animate-spin" />
-          <p className="text-sm font-semibold">Checkout wird geladen...</p>
-        </div>
+      <div className="flex min-h-[60vh] items-center justify-center" style={{ color: 'var(--color-primary)' }}>
+        <Loader2 size={42} className="animate-spin" />
       </div>
     );
   }
 
-  if (!product || error) {
+  if (!product) {
     return (
       <div className="container py-16">
         <div className="rounded-3xl border border-dashed p-10 text-center" style={{ borderColor: 'var(--color-border)' }}>
           <Info size={28} className="mx-auto mb-4" style={{ color: 'var(--color-primary)' }} />
-          <h1 className="mb-2 text-2xl font-bold" style={{ color: 'var(--color-text)' }}>
-            Checkout nicht verfügbar
-          </h1>
-          <p className="mb-6 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-            {error || 'Dieser Artikel kann gerade nicht gekauft werden.'}
-          </p>
-          <Link href="/catalog" className="rounded-full px-6 py-3 font-bold text-white btn-mars-earth" style={{ background: 'var(--color-orange)' }}>
-            <span>Zurück zum Katalog</span>
-          </Link>
+          <h1 className="mb-2 text-2xl font-bold">Checkout nicht verfügbar</h1>
+          <p className="mb-6 text-sm" style={{ color: 'var(--color-text-secondary)' }}>{error || 'Dieser Artikel kann gerade nicht gekauft werden.'}</p>
+          <Link href="/catalog" className="rounded-full px-6 py-3 font-bold text-white" style={{ background: 'var(--color-orange)' }}>Zurück zum Katalog</Link>
         </div>
       </div>
     );
   }
 
-  const isUnavailable = product.status !== 'ACTIVE';
-  const heroImage = product.images[0]?.url || '';
-  const sellerName = product.seller.name || 'cssberlin seller';
+  const unavailable = product.status !== 'ACTIVE';
+  const hero = product.images[0]?.thumbUrl || product.images[0]?.url || '';
+  const card = 'rounded-3xl border bg-[var(--color-bg-card)] p-6 shadow-sm';
+  const optionCls = (active: boolean, disabled = false) =>
+    `flex w-full items-start justify-between gap-3 rounded-2xl border p-4 text-left transition-colors ${disabled ? 'cursor-not-allowed opacity-55' : 'cursor-pointer'} ${active ? 'border-[var(--color-primary)] bg-[rgba(45,106,79,.14)]' : 'border-[var(--color-border)] hover:bg-[var(--color-bg-secondary)]'}`;
+  const input = 'w-full rounded-xl border border-[var(--color-border)] px-3 py-2.5 text-sm outline-none focus:border-[var(--color-primary)]';
 
   return (
     <div className="min-h-screen pb-20 pt-24" style={{ background: 'var(--color-bg)' }}>
       <div className="container max-w-5xl">
-        <div className="mb-8 flex items-center gap-4">
-          <button
-            onClick={() => router.back()}
-            className="flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-[var(--color-bg-secondary)]"
-          >
+        <div className="mb-8 flex flex-wrap items-center gap-4">
+          <button onClick={() => router.back()} aria-label="Zurück" className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-[var(--color-bg-secondary)]">
             <ChevronLeft size={22} />
           </button>
           <div>
-            <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text)', fontFamily: 'var(--font-display)' }}>
-              Sicherer Checkout
-            </h1>
-            <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-              Adresse und Zahlungsart werden im geschützten Bezahlfenster erfasst.
-            </p>
+            <h1 className="text-2xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>Kasse</h1>
+            <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Versand oder Abholung wählen, Zahlungsart festlegen, fertig.</p>
           </div>
-          <div className="ml-auto flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-green-700" style={{ background: 'rgba(34, 197, 94, 0.12)' }}>
-            <Lock size={16} /> Verschlüsselte Zahlung
+          <div className="ml-auto flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-green-700" style={{ background: 'rgba(34,197,94,.12)' }}>
+            <Lock size={16} /> Sichere Verbindung
           </div>
         </div>
 
-        {error ? (
-          <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {error}
-          </div>
-        ) : null}
-
+        {error ? <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">{error}</div> : null}
         {offer ? (
-          <div className="mb-6 rounded-2xl border px-4 py-3 text-sm text-emerald-800" style={{ borderColor: 'rgba(16, 185, 129, 0.28)', background: 'rgba(16, 185, 129, 0.10)' }}>
-            <div className="flex items-start gap-3">
-              <Tag size={18} style={{ marginTop: 2 }} />
-              <div>
-                <p className="font-semibold">Du kaufst mit einem akzeptierten Angebot.</p>
-                <p className="mt-1">Für diesen Checkout wird dein verhandelter Preis von {formatPrice(offer.offeredPrice)} verwendet.</p>
-              </div>
-            </div>
-          </div>
-        ) : null}
-
-        {offerNotice ? (
-          <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            {offerNotice}
-          </div>
-        ) : null}
-
-        {isUnavailable ? (
-          <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            Dieser Artikel ist aktuell nicht mehr aktiv. Bitte prüfe zuerst die Produktseite.
-          </div>
-        ) : null}
-
-        <div className="mb-6 rounded-3xl border p-5" style={{ borderColor: 'var(--color-border)', background: 'var(--color-primary-50)' }}>
-          <div className="flex items-start gap-3">
-            <ShieldCheck size={22} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
+          <div className="mb-6 flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm text-emerald-800" style={{ borderColor: 'rgba(16,185,129,.28)', background: 'rgba(16,185,129,.10)' }}>
+            <Tag size={18} className="mt-0.5" />
             <div>
-              <h2 className="text-sm font-bold" style={{ color: 'var(--color-primary-dark)' }}>
-                Käuferschutz ist automatisch enthalten
-              </h2>
-              <p className="mt-1 text-sm" style={{ color: 'var(--color-primary)' }}>
-                Deine Zahlung bleibt geschützt, bis der Artikel angekommen ist. Der Schutzbetrag wird im Gesamtpreis transparent ausgewiesen.
-              </p>
+              <p className="font-semibold">Du kaufst zum vereinbarten Preis von {formatPrice(offer.offeredPrice)}.</p>
+              {offer.expiresAt ? <p className="mt-1">Reserviert für dich bis {new Date(offer.expiresAt).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })}.</p> : null}
             </div>
           </div>
-        </div>
+        ) : null}
+        {offerNotice ? <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{offerNotice}</div> : null}
+        {unavailable ? <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">Dieser Artikel ist gerade reserviert oder verkauft.</div> : null}
 
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
           <div className="space-y-6 lg:col-span-7">
-            <div className="rounded-3xl border bg-white p-6 shadow-sm" style={{ borderColor: 'var(--color-border)' }}>
-              <div className="mb-4 flex items-center gap-3">
-                <Truck size={20} />
-                <h2 className="text-lg font-bold">Versandmethode</h2>
+            {/* 1. Lieferung */}
+            <section className={card} style={{ borderColor: 'var(--color-border)' }}>
+              <h2 className="mb-4 flex items-center gap-3 text-lg font-bold"><Truck size={20} /> 1. Lieferung</h2>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <button type="button" className={optionCls(delivery === 'ship')} onClick={() => chooseDelivery('ship')}>
+                  <div>
+                    <p className="text-sm font-bold">Versand</p>
+                    <p className="text-xs text-[var(--color-text-muted)]">Mit Käuferschutz, Sendungsverfolgung</p>
+                  </div>
+                  <Truck size={18} />
+                </button>
+                <button type="button" className={optionCls(delivery === 'pickup')} onClick={() => chooseDelivery('pickup')}>
+                  <div>
+                    <p className="text-sm font-bold">Selbstabholung</p>
+                    <p className="text-xs text-[var(--color-text-muted)]">{product.seller.publicLocation?.label || 'Ort nach Absprache'} · bar bei Übergabe</p>
+                  </div>
+                  <Handshake size={18} />
+                </button>
               </div>
-              {/* Removed: a hard-coded "free shipping until tomorrow 23:59"
-                  banner, in Turkish, rendered unconditionally on every
-                  checkout. The deadline never moved and no code honoured it -
-                  the only real rule is `shipping.free` (first order), shown
-                  right below. A permanent countdown that is not true is
-                  misleading advertising under UWG, not a design detail. */}
-              {shipping.free ? (
-                <div className="mb-4 flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold text-emerald-800" style={{ background: 'rgba(16, 185, 129, 0.10)' }}>
-                  <Leaf size={16} /> Deine erste Bestellung ist versandkostenfrei.
+
+              {delivery === 'ship' ? (
+                <div className="mt-5 space-y-3">
+                  <p className="text-sm font-semibold">Versanddienst</p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {SHIPPING_CARRIERS.map((c) => (
+                      <button key={c.id} type="button" className={optionCls(carrier === c.id)} onClick={() => setCarrier(c.id)}>
+                        <div>
+                          <p className="text-sm font-bold">{c.name}</p>
+                          <p className="text-xs text-[var(--color-text-muted)]">{c.eta}</p>
+                        </div>
+                        <span className="text-sm font-bold">{quote.shipping.free ? <span className="text-emerald-700">Kostenlos</span> : formatPrice(quote.shippingFee)}</span>
+                      </button>
+                    ))}
+                  </div>
+                  {quote.shipping.free ? (
+                    <p className="flex items-center gap-2 text-sm font-semibold text-emerald-700"><Leaf size={14} /> {quote.shipping.reason === 'first_order' ? 'Deine erste Bestellung ist versandkostenfrei.' : `Versandkostenfrei ab ${FREE_SHIPPING_THRESHOLD_EUR} €.`}</p>
+                  ) : missingForFree > 0 ? (
+                    <p className="text-xs text-emerald-700">Noch {formatPrice(missingForFree)} bis zum Gratisversand.</p>
+                  ) : null}
+
+                  <p className="pt-2 text-sm font-semibold">Lieferadresse</p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <input className={`${input} sm:col-span-2`} placeholder="Vor- und Nachname" autoComplete="name" value={address.name} onChange={(e) => setAddress({ ...address, name: e.target.value })} />
+                    <input className={`${input} sm:col-span-2`} placeholder="Straße und Hausnummer" autoComplete="street-address" value={address.street} onChange={(e) => setAddress({ ...address, street: e.target.value })} />
+                    <input className={`${input} sm:col-span-2`} placeholder="Adresszusatz (optional)" value={address.extra} onChange={(e) => setAddress({ ...address, extra: e.target.value })} />
+                    <input className={input} placeholder="PLZ" inputMode="numeric" maxLength={5} autoComplete="postal-code" value={address.postalCode} onChange={(e) => setAddress({ ...address, postalCode: e.target.value.replace(/\D/g, '') })} />
+                    <input className={input} placeholder="Ort" autoComplete="address-level2" value={address.city} onChange={(e) => setAddress({ ...address, city: e.target.value })} />
+                  </div>
+                  <p className="text-xs text-[var(--color-text-muted)]">Versand innerhalb Deutschlands. Die Adresse sieht nur der Verkäufer dieser Bestellung.</p>
+                </div>
+              ) : (
+                <div className="mt-5 rounded-2xl p-4 text-sm" style={{ background: 'var(--color-bg-secondary)' }}>
+                  <p className="flex items-center gap-2 font-semibold"><MapPin size={16} /> So läuft die Abholung</p>
+                  <ul className="mt-2 list-disc space-y-1 pl-5" style={{ color: 'var(--color-text-secondary)' }}>
+                    <li>Der Artikel ist {pickupPolicy.holdHours} Stunden für dich reserviert.</li>
+                    <li>Ort und Zeit vereinbart ihr im Chat; die genaue Adresse teilt der Verkäufer dort mit.</li>
+                    <li>Prüfe den Artikel vor Ort und zahle bar. Bei Abholung gilt kein Käuferschutz.</li>
+                    <li>Du kannst bis zur Übergabe kostenlos stornieren.</li>
+                  </ul>
+                  <Link href="/hilfe/abholung" className="mt-2 inline-block text-xs font-semibold" style={{ color: 'var(--color-primary)' }}>Mehr zur Abholung</Link>
+                </div>
+              )}
+            </section>
+
+            {/* 2. Zahlung */}
+            <section className={card} style={{ borderColor: 'var(--color-border)' }}>
+              <h2 className="mb-4 flex items-center gap-3 text-lg font-bold"><CreditCard size={20} /> 2. Zahlungsart</h2>
+              <div className="space-y-2" role="radiogroup" aria-label="Zahlungsart">
+                {(delivery === 'pickup' ? (pickupMethod ? [pickupMethod] : []) : onlineMethods).map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={method === m.id}
+                    disabled={!m.enabled}
+                    className={optionCls(method === m.id, !m.enabled)}
+                    onClick={() => m.enabled && setMethod(m.id)}
+                  >
+                    <div>
+                      <p className="text-sm font-bold">{m.label}</p>
+                      <p className="text-xs text-[var(--color-text-muted)]">{m.description}</p>
+                    </div>
+                    {!m.enabled ? <span className="whitespace-nowrap rounded-full bg-[var(--color-bg-secondary)] px-2 py-1 text-[11px] font-semibold text-[var(--color-text-secondary)]">derzeit nicht verfügbar</span> : null}
+                  </button>
+                ))}
+              </div>
+              {delivery === 'ship' && !onlineMethods.some((m) => m.enabled) ? (
+                <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                  Die Online-Zahlung wird gerade eingerichtet. Du kannst diesen Artikel schon jetzt per <button type="button" className="font-bold underline" onClick={() => chooseDelivery('pickup')}>Abholung & Barzahlung</button> kaufen.
                 </div>
               ) : null}
-              <RadioGroup value={selectedShipping} onValueChange={setSelectedShipping} className="space-y-3">
-                {shippingMethods.map((method) => (
-                  <label
-                    key={method.id}
-                    className={`flex cursor-pointer items-center justify-between rounded-2xl border p-4 transition-colors ${selectedShipping === method.id ? 'border-[var(--color-primary)] bg-[var(--color-primary-50)]' : 'border-gray-200 hover:bg-gray-50'}`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <RadioGroupItem value={method.id} />
-                      <div>
-                        <p className="font-bold text-sm">{method.name}</p>
-                        <p className="text-xs text-gray-500">{method.eta}</p>
-                      </div>
-                    </div>
-                    {shipping.free ? (
-                      <span className="flex items-center gap-2 text-sm font-bold">
-                        <span className="text-xs font-normal line-through text-gray-400">{formatPrice(standardShippingFee)}</span>
-                        <span className="text-emerald-700">Kostenlos</span>
-                      </span>
-                    ) : (
-                      <span className="text-sm font-bold">{formatPrice(shippingFee)}</span>
-                    )}
-                  </label>
-                ))}
-              </RadioGroup>
-            </div>
-
-            <div className="rounded-3xl border bg-white p-6 shadow-sm" style={{ borderColor: 'var(--color-border)' }}>
-              <div className="mb-3 flex items-center gap-3">
-                <Info size={20} />
-                <h2 className="text-lg font-bold">Vor dem Bezahlen</h2>
-              </div>
-              <ul className="space-y-3 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                <li>Deine Lieferadresse und finale Zahlungsart werden im sicheren Checkout erfasst.</li>
-                <li>Du wirst direkt zur sicheren Zahlungsabwicklung weitergeleitet.</li>
-                {offer ? <li>Dein akzeptierter Verhandlungspreis wird statt des Listenpreises verwendet.</li> : null}
-              </ul>
-            </div>
+            </section>
           </div>
 
-          <div className="lg:col-span-5">
-            <div className="sticky top-24 rounded-3xl border bg-white p-6 shadow-sm" style={{ borderColor: 'var(--color-border)' }}>
+          {/* Übersicht */}
+          <aside className="lg:col-span-5">
+            <div className={`${card} sticky top-24`} style={{ borderColor: 'var(--color-border)' }}>
               <h2 className="mb-4 text-lg font-bold">Bestellübersicht</h2>
-
               <div className="mb-6 flex items-center gap-4 border-b pb-6" style={{ borderColor: 'var(--color-border)' }}>
-                <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl" style={{ background: 'var(--color-bg-secondary)' }}>
-                  {heroImage ? (
-                    <img src={heroImage} alt={product.title} className="h-full w-full object-cover" />
-                  ) : (
-                    <Leaf size={28} style={{ color: 'var(--color-primary)', opacity: 0.2 }} />
-                  )}
+                <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl" style={{ background: 'var(--color-bg-secondary)' }}>
+                  {hero ? <img src={hero} alt={product.title} className="h-full w-full object-cover" /> : <Leaf size={28} style={{ opacity: 0.2 }} />}
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--color-text-muted)' }}>
-                    {product.brand || 'cssberlin'}
-                  </p>
-                  <p className="line-clamp-2 font-bold text-sm" style={{ color: 'var(--color-text)' }}>
-                    {product.title}
-                  </p>
-                  <p className="mt-1 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                    {sellerName} - {getConditionLabel(product.condition)}
-                  </p>
-                  {offer ? (
-                    <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
-                      <span className="font-semibold" style={{ color: 'var(--color-primary)' }}>
-                        {formatPrice(offer.offeredPrice)}
-                      </span>
-                      <span className="text-xs line-through" style={{ color: 'var(--color-text-muted)' }}>
-                        {formatPrice(product.price)}
-                      </span>
-                    </div>
-                  ) : (
-                    <p className="mt-2 text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>
-                      {formatPrice(product.price)}
-                    </p>
-                  )}
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--color-text-muted)' }}>{product.brand || 'cssberlin'}</p>
+                  <p className="line-clamp-2 text-sm font-bold">{product.title}</p>
+                  <p className="mt-1 text-xs" style={{ color: 'var(--color-text-secondary)' }}>{product.seller.name || 'Verkäufer'} · {getConditionLabel(product.condition)}{product.size ? ` · Gr. ${product.size}` : ''}</p>
                 </div>
               </div>
 
-              <div className="space-y-3 border-b pb-6 text-sm" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
+              <dl className="space-y-3 border-b pb-6 text-sm" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
+                <div className="flex justify-between"><dt>Artikelpreis</dt><dd className="font-semibold" style={{ color: 'var(--color-text)' }}>{formatPrice(quote.itemPrice)}{offer ? <span className="ml-2 text-xs line-through" style={{ color: 'var(--color-text-muted)' }}>{formatPrice(product.price)}</span> : null}</dd></div>
+                <div className="flex justify-between"><dt>{delivery === 'pickup' ? 'Abholung' : 'Versand'}</dt><dd className="font-semibold">{quote.shippingFee === 0 ? <span className="text-emerald-700">Kostenlos</span> : formatPrice(quote.shippingFee)}</dd></div>
                 <div className="flex justify-between">
-                  <span>Artikelpreis</span>
-                  <div className="text-right">
-                    <span className="font-semibold" style={{ color: 'var(--color-text)' }}>{formatPrice(itemPrice)}</span>
-                    {offer ? (
-                      <p className="text-xs line-through" style={{ color: 'var(--color-text-muted)' }}>{formatPrice(product.price)}</p>
-                    ) : null}
-                  </div>
+                  <dt className="flex items-center gap-1"><ShieldCheck size={14} /> Käuferschutz</dt>
+                  <dd className="font-semibold">{quote.pickup ? <span className="text-xs">entfällt bei Abholung</span> : formatPrice(quote.protectionFee)}</dd>
                 </div>
-                <div className="flex justify-between">
-                  <span>
-                    Versand
-                    {shipping.reason === 'first_order' ? ' (1. Bestellung)' : ''}
-                    {shipping.reason === 'threshold' ? ` (ab ${FREE_SHIPPING_THRESHOLD_EUR} EUR)` : ''}
-                  </span>
-                  {shipping.free ? (
-                    <div className="text-right">
-                      <span className="font-semibold text-emerald-700">Kostenlos</span>
-                      <p className="text-xs line-through" style={{ color: 'var(--color-text-muted)' }}>{formatPrice(standardShippingFee)}</p>
-                    </div>
-                  ) : (
-                    <div className="text-right">
-                      <span className="font-semibold" style={{ color: 'var(--color-text)' }}>{formatPrice(shippingFee)}</span>
-                      {missingForFreeShipping > 0 ? (
-                        <p className="text-xs text-emerald-700">
-                          Noch {formatPrice(missingForFreeShipping)} bis zum Gratisversand
-                        </p>
-                      ) : null}
-                    </div>
-                  )}
-                </div>
-                <div className="flex justify-between">
-                  <span>Käuferschutz</span>
-                  <span className="font-semibold" style={{ color: 'var(--color-primary)' }}>{formatPrice(protectionFee)}</span>
-                </div>
-              </div>
+              </dl>
 
               <div className="mb-1 mt-6 flex items-end justify-between">
-                <span className="font-bold">Gesamtbetrag</span>
-                <span className="text-3xl font-bold" style={{ color: 'var(--color-text)', fontFamily: 'var(--font-display)' }}>
-                  {formatPrice(totalCost)}
-                </span>
+                <span className="font-bold">{quote.pickup ? 'Bei Übergabe zu zahlen' : 'Gesamtbetrag'}</span>
+                <span className="text-3xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>{formatPrice(quote.totalAmount)}</span>
               </div>
-              {/* PAngV: the total is the last price the buyer sees before
-                  paying, so the VAT statement belongs here too. Shipping is
-                  already itemised above, hence the short form. */}
               <p className="mb-6 text-right text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                {priceDisclosure.isKleinunternehmer
-                  ? priceDisclosure.kleinunternehmerNotice
-                  : 'inkl. gesetzlicher MwSt.'}
+                {priceDisclosure.isKleinunternehmer ? priceDisclosure.kleinunternehmerNotice : 'inkl. gesetzlicher MwSt.'}
               </p>
 
-              {/* HUKUKİ ONAYLAR (GDPR & Tüketici Hakları) */}
-              <div className="mb-6 space-y-3 rounded-xl bg-gray-50 p-4 border border-gray-200">
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <input type="checkbox" id="agb" className="mt-1 h-4 w-4 rounded border-gray-300 text-[var(--color-primary)] focus:ring-[var(--color-primary)]" required />
-                  <span className="text-xs text-gray-600 leading-relaxed">
-                    Ich habe die <Link href="/agb" className="font-bold text-[var(--color-primary)] hover:underline" target="_blank">AGB</Link> gelesen und erkläre mich mit diesen einverstanden. Die <Link href="/datenschutz" className="font-bold text-[var(--color-primary)] hover:underline" target="_blank">Datenschutzerklärung</Link> habe ich zur Kenntnis genommen.
-                  </span>
-                </label>
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <input type="checkbox" id="widerruf" className="mt-1 h-4 w-4 rounded border-gray-300 text-[var(--color-primary)] focus:ring-[var(--color-primary)]" required />
-                  <span className="text-xs text-gray-600 leading-relaxed">
-                    Ich stimme ausdrücklich zu, dass cssberlin vor Ablauf der Widerrufsfrist mit der Ausführung des Vertrags beginnt. Mir ist bekannt, dass ich dadurch mein <Link href="/widerruf" className="font-bold text-[var(--color-primary)] hover:underline" target="_blank">Widerrufsrecht</Link> verliere. (Gemäß § 356 Abs. 4 BGB)
-                  </span>
-                </label>
-                <div className="flex items-start gap-3">
-                  <Info size={16} className="mt-0.5 shrink-0 text-gray-500" />
-                  <span className="text-[11px] text-gray-500 leading-relaxed">
-                    <strong>Hinweis zum Privatverkauf:</strong> Sofern der Verkäufer nicht explizit als gewerblich gekennzeichnet ist, kaufst du von einer Privatperson (C2C). Die EU-Verbraucherrechte (Widerrufsrecht, Gewährleistung) gelten in diesem Fall nicht für den Kaufvertrag zwischen dir und dem Verkäufer. Dein <span className="font-bold text-[var(--color-primary)]">Käuferschutz</span> durch cssberlin bleibt davon unberührt.
-                  </span>
-                </div>
-              </div>
+              <label className="mb-4 flex cursor-pointer items-start gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4">
+                <input type="checkbox" checked={agb} onChange={(e) => setAgb(e.target.checked)} className="mt-1 h-4 w-4" />
+                <span className="text-xs leading-relaxed text-[var(--color-text-secondary)]">
+                  Ich habe die <Link href="/agb" target="_blank" className="font-bold" style={{ color: 'var(--color-primary)' }}>AGB</Link> gelesen und erkläre mich mit diesen einverstanden. Die <Link href="/datenschutz" target="_blank" className="font-bold" style={{ color: 'var(--color-primary)' }}>Datenschutzerklärung</Link> habe ich zur Kenntnis genommen.
+                </span>
+              </label>
+              {/* Rechtstext unverändert übernommen - Formulierung entscheidet der Betreiber */}
+              <label className="mb-4 flex cursor-pointer items-start gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4">
+                <input type="checkbox" checked={widerruf} onChange={(e) => setWiderruf(e.target.checked)} className="mt-1 h-4 w-4" />
+                <span className="text-xs leading-relaxed text-[var(--color-text-secondary)]">
+                  Ich stimme ausdrücklich zu, dass cssberlin vor Ablauf der Widerrufsfrist mit der Ausführung des Vertrags beginnt. Mir ist bekannt, dass ich dadurch mein <Link href="/widerruf" target="_blank" className="font-bold" style={{ color: 'var(--color-primary)' }}>Widerrufsrecht</Link> verliere. (Gemäß § 356 Abs. 4 BGB)
+                </span>
+              </label>
+              <p className="mb-4 flex items-start gap-2 text-[11px] leading-relaxed text-[var(--color-text-muted)]">
+                <Info size={14} className="mt-0.5 shrink-0" />
+                <span>
+                  <strong>Hinweis zum Privatverkauf:</strong> Sofern der Verkäufer nicht explizit als gewerblich gekennzeichnet ist, kaufst du von einer Privatperson (C2C). Die EU-Verbraucherrechte (Widerrufsrecht, Gewährleistung) gelten in diesem Fall nicht für den Kaufvertrag zwischen dir und dem Verkäufer. Dein Käuferschutz durch cssberlin bleibt davon unberührt.{' '}
+                  <Link href="/hilfe/stornierung" className="underline">Stornierung</Link> · <Link href="/hilfe/kaeuferschutz" className="underline">Käuferschutz</Link>
+                </span>
+              </p>
 
               <button
-                onClick={(e) => {
-                  const agb = document.getElementById('agb') as HTMLInputElement;
-                  const widerruf = document.getElementById('widerruf') as HTMLInputElement;
-                  if (!agb?.checked || !widerruf?.checked) {
-                    alert('Bitte akzeptiere die rechtlichen Bedingungen, um fortzufahren.');
-                    return;
-                  }
-                  handleCheckout();
-                }}
-                disabled={submitting || isUnavailable}
-                className="btn-mars-earth w-full rounded-2xl py-4 text-lg font-bold text-white transition-shadow hover:shadow-[0_0_28px_var(--color-orange-glow)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:shadow-none"
+                onClick={submit}
+                disabled={!canSubmit || submitting}
+                className="w-full rounded-2xl py-4 text-lg font-bold text-white transition-shadow disabled:cursor-not-allowed disabled:opacity-60"
                 style={{ background: 'var(--color-orange)' }}
               >
-                {submitting ? (
-                  <span className="inline-flex items-center gap-2">
-                    <Loader2 size={18} className="animate-spin" /> Checkout startet...
-                  </span>
-                ) : offer ? (
-                  <span>Kostenpflichtig bestellen</span>
-                ) : (
-                  <span>Kostenpflichtig bestellen</span>
-                )}
+                {submitting ? <span className="inline-flex items-center gap-2"><Loader2 size={18} className="animate-spin" /> Wird gestartet…</span>
+                  : quote.pickup ? 'Abholung verbindlich anfragen' : 'Kaufen und bezahlen'}
               </button>
-
-              <div className="mt-4 text-center text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                Mit dem Klick auf "Kostenpflichtig bestellen" schließt du einen rechtsverbindlichen Vertrag ab.
-              </div>
-
-              <Link href={`/product/${product.id}`} className="mt-4 block text-center text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>
-                Zurück zur Produktseite
-              </Link>
+              {!canSubmit && !submitting ? (
+                <p className="mt-2 text-center text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                  {unavailable ? 'Artikel nicht verfügbar.' : !selected?.enabled ? 'Diese Zahlungsart ist noch nicht verfügbar.' : delivery === 'ship' && !addressValid ? 'Bitte Lieferadresse vollständig ausfüllen.' : !agb || !widerruf ? 'Bitte beide Bestätigungen anhaken.' : ''}
+                </p>
+              ) : null}
+              {!quote.pickup ? <p className="mt-3 text-center text-xs" style={{ color: 'var(--color-text-muted)' }}>Der Artikel ist während der Zahlung {checkoutPolicy.reservationMinutes} Minuten für dich reserviert.</p> : null}
             </div>
-          </div>
+          </aside>
         </div>
       </div>
     </div>

@@ -3,6 +3,7 @@ import prisma from '@/lib/db';
 import { ApiResponse } from '@/lib/api-response';
 import { respondWithApiError } from '@/lib/api-error';
 import { getOptionalSession } from '@/lib/auth';
+import { publicLocation, sellerTrust } from '@/lib/seller-stats';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -22,6 +23,10 @@ export async function GET(request: NextRequest, { params }: Params) {
           username: true,
           bio: true,
           location: true,
+          postalCode: true,
+          city: true,
+          lat: true,
+          lng: true,
           avatar: true,
           isVerified: true,
           phoneVerified: true,
@@ -71,8 +76,11 @@ export async function GET(request: NextRequest, { params }: Params) {
       isFollowing = !!follow;
     }
 
+    const { lat: _lat, lng: _lng, ...publicUser } = user;
     return ApiResponse.success({
-      ...user,
+      ...publicUser,
+      publicLocation: publicLocation(user),
+      trust: await sellerTrust(id),
       averageRating: Math.round((rating._avg.rating || 0) * 10) / 10,
       isFollowing,
     });

@@ -1,4 +1,4 @@
-﻿import { NextRequest } from 'next/server';
+import { NextRequest } from 'next/server';
 import prisma from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
 import { ApiResponse } from '@/lib/api-response';
@@ -38,10 +38,19 @@ export async function GET() {
     const session = await requireAuth();
     const userId = session.user.id;
 
+    // Chat threads: real messages both ways, plus system notices addressed TO me
+    // (a notice written for the seller must not appear in the buyer's own thread).
+    // Persona relay copies are bell-only. Capped: the newest 1000 rows are plenty
+    // to build the conversation list; older threads still open via their page.
     const messages = await prisma.message.findMany({
       where: {
-        OR: [{ senderId: userId }, { receiverId: userId }],
+        AND: [
+          { OR: [{ senderId: userId }, { receiverId: userId }] },
+          { type: { not: 'PERSONA_RELAY' } },
+          { OR: [{ type: { not: 'SYSTEM_INFO' } }, { receiverId: userId }] },
+        ],
       },
+      take: 1000,
       include: {
         sender: { select: { id: true, name: true, avatar: true, username: true } },
         receiver: { select: { id: true, name: true, avatar: true, username: true } },
@@ -120,10 +129,15 @@ export async function POST(request: NextRequest) {
 
     const receiver = await prisma.user.findUnique({
       where: { id: receiverId },
-      select: { id: true },
+      select: { id: true, isPersonaAccount: true, managedByUserId: true },
     });
     if (!receiver) {
       return ApiResponse.notFound('Empfänger nicht gefunden.');
+    }
+    // A manager writing to their own persona would only echo back to themselves.
+    // Replies on behalf of a persona go through /admin/personas/[id]/inbox.
+    if (receiver.isPersonaAccount && receiver.managedByUserId === session.user.id) {
+      return ApiResponse.error('Das ist dein eigenes Persona-Konto. Antworte Käufern über Admin → Personas → Postfach.', 409);
     }
 
     // Volume ceiling: crossing it suspends the account. Checked before the

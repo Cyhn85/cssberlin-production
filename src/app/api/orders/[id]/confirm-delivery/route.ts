@@ -1,73 +1,21 @@
-﻿import { NextRequest } from 'next/server';
-import prisma from '@/lib/db';
+import { NextRequest } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { ApiResponse } from '@/lib/api-response';
-import { publishOrderLifecycleEvent } from '@/lib/order-events';
+import { completeOrder } from '@/lib/order-state';
+import { orderErrorResponse } from '@/lib/api-order-errors';
 
 type Params = { params: Promise<{ id: string }> };
 
 /**
- * POST /api/orders/[id]/confirm-delivery - Buyer confirms delivery
+ * POST /api/orders/[id]/confirm-delivery - Buyer confirms the item arrived as described.
  */
-export async function POST(request: NextRequest, { params }: Params) {
+export async function POST(_request: NextRequest, { params }: Params) {
   try {
     const session = await requireAuth();
     const { id } = await params;
-
-    const order = await prisma.order.findUnique({
-      where: { id },
-      include: {
-        product: { select: { id: true, title: true, ecoCO2Saved: true } },
-        buyer: { select: { id: true, name: true, email: true } },
-        seller: { select: { id: true, name: true, email: true } },
-      },
-    });
-
-    if (!order) return ApiResponse.notFound('Bestellung nicht gefunden.');
-    if (order.buyerId !== session.user.id) {
-      return ApiResponse.forbidden('Nur der Käufer kann den Empfang bestätigen.');
-    }
-    if (order.status !== 'DELIVERED' && order.status !== 'SHIPPED') {
-      return ApiResponse.error('Empfangsbestaetigung nur für versendete oder zugestellte Bestellungen möglich.');
-    }
-
-    const updated = await prisma.$transaction(async (tx) => {
-      const completedOrder = await tx.order.update({
-        where: { id },
-        data: { status: 'COMPLETED' },
-        include: {
-          product: { select: { id: true, title: true } },
-          buyer: { select: { id: true, name: true, email: true } },
-          seller: { select: { id: true, name: true, email: true } },
-        },
-      });
-
-      await tx.product.update({
-        where: { id: order.productId },
-        data: { status: 'SOLD' },
-      });
-
-      await tx.user.update({
-        where: { id: order.buyerId },
-        data: {
-          ecoCO2Saved: { increment: order.product.ecoCO2Saved },
-          itemsRecycled: { increment: 1 },
-        },
-      });
-
-      return completedOrder;
-    });
-
-    await publishOrderLifecycleEvent({
-      eventType: 'ORDER_COMPLETED',
-      order: updated,
-      actorId: order.buyerId,
-    });
-
+    const updated = await completeOrder(id, { id: session.user.id, role: 'BUYER' });
     return ApiResponse.success(updated);
   } catch (error: any) {
-    if (error.name === 'AuthError') return ApiResponse.unauthorized();
-    console.error('POST /api/orders/[id]/confirm-delivery error:', error);
-    return ApiResponse.serverError();
+    return orderErrorResponse(error, 'POST /api/orders/[id]/confirm-delivery');
   }
 }

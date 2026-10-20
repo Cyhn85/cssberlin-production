@@ -1,8 +1,41 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { publishOrderLifecycleEvent } from '@/lib/order-events';
+import { ORDER_INCLUDE, closeCompetingOffers } from '@/lib/order-state';
+import { createSystemNotification } from '@/lib/notifications';
 
-const FINALIZED_ORDER_STATUSES = ['PAID', 'SHIPPED', 'DELIVERED', 'COMPLETED'] as const;
+const FINALIZED_ORDER_STATUSES = ['PENDING_PICKUP', 'PAID', 'SHIPPED', 'DELIVERED', 'COMPLETED', 'DISPUTED'] as const;
+
+function parseAddress(raw: unknown) {
+  if (typeof raw !== 'string' || !raw) return undefined;
+  try { return JSON.parse(raw); } catch { return undefined; }
+}
+
+/**
+ * Checkout page expired or async payment (SEPA/Klarna) failed: give the item
+ * back right away instead of waiting for the reservation sweep, and tell the
+ * buyer - before, the item just vanished from the catalogue for 30 minutes and
+ * nobody heard why the payment did not go through.
+ */
+async function releaseAfterFailedPayment(session: any, reason: 'expired' | 'failed') {
+  const productId = session?.metadata?.productId;
+  const buyerId = session?.metadata?.buyerId;
+  const sellerId = session?.metadata?.sellerId;
+  if (!productId || !buyerId) return;
+  const { count } = await prisma.product.updateMany({
+    where: { id: productId, status: 'RESERVED', reservedById: buyerId, orders: { none: { status: { in: [...FINALIZED_ORDER_STATUSES] } } } },
+    data: { status: 'ACTIVE', reservedUntil: null, reservedById: null },
+  });
+  if (reason === 'failed' && sellerId) {
+    const product = await prisma.product.findUnique({ where: { id: productId }, select: { title: true } });
+    await createSystemNotification({
+      senderId: sellerId,
+      receiverId: buyerId,
+      content: `Die Zahlung für ${product?.title ?? 'deinen Artikel'} ist fehlgeschlagen. Es wurde nichts abgebucht.${count ? ' Der Artikel ist wieder verfügbar - du kannst es erneut versuchen.' : ''}`,
+      email: { subject: 'Zahlung fehlgeschlagen', title: 'Zahlung fehlgeschlagen', ctaLabel: 'Erneut versuchen', ctaPath: `/product/${productId}` },
+    }).catch((e) => console.error('payment-failed notice failed', e));
+  }
+}
 const UNAVAILABLE_PRODUCT_STATUSES = ['DRAFT', 'HIDDEN', 'SOLD'] as const;
 
 function parseAmount(value: unknown, fallback: number = 0) {
@@ -95,14 +128,13 @@ async function finalizeCheckoutSession(session: any) {
         protectionFee: parseAmount(metadata.protectionFee),
         totalAmount,
         status: 'PAID',
+        paidAt: new Date(),
         paymentIntentId: paymentReference,
+        paymentMethod: metadata.paymentMethod || null,
         shippingCarrier: metadata.shippingMethod || 'DHL',
+        shippingAddress: parseAddress(metadata.shippingAddress),
       },
-      include: {
-        product: { select: { id: true, title: true } },
-        buyer: { select: { id: true, name: true, email: true } },
-        seller: { select: { id: true, name: true, email: true } },
-      },
+      include: ORDER_INCLUDE,
     });
 
     // Payment landed, so the item belongs to this order now. The timed
@@ -124,9 +156,10 @@ async function finalizeCheckoutSession(session: any) {
     return;
   }
 
+  await closeCompetingOffers(result.order.productId, result.order.offerId, result.order.sellerId);
   await publishOrderLifecycleEvent({
     eventType: 'ORDER_PAID',
-    order: result.order,
+    order: result.order as any,
     actorId: result.order.buyer.id,
   });
 }
@@ -140,7 +173,8 @@ export async function POST(request: NextRequest) {
     const signature = request.headers.get('stripe-signature');
 
     if (!process.env.STRIPE_SECRET_KEY || !process.env.STRIPE_WEBHOOK_SECRET) {
-      return NextResponse.json({ error: 'Stripe not configured' }, { status: 500 });
+      // 503, not 500: nothing is broken, online payment is simply switched off.
+      return NextResponse.json({ error: 'Stripe not configured' }, { status: 503 });
     }
 
     const stripe = (await import('stripe')).default;
@@ -181,11 +215,13 @@ export async function POST(request: NextRequest) {
 
       case 'checkout.session.async_payment_failed': {
         const session = event.data.object as any;
-        console.error('Async checkout payment failed:', {
-          checkoutSessionId: session.id,
-          productId: session.metadata?.productId,
-          buyerId: session.metadata?.buyerId,
-        });
+        console.error('Async checkout payment failed:', { checkoutSessionId: session.id, productId: session.metadata?.productId });
+        await releaseAfterFailedPayment(session, 'failed');
+        break;
+      }
+
+      case 'checkout.session.expired': {
+        await releaseAfterFailedPayment(event.data.object as any, 'expired');
         break;
       }
 

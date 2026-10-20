@@ -1,4 +1,4 @@
-﻿import { NextRequest } from 'next/server';
+import { NextRequest } from 'next/server';
 import { Prisma } from '@/generated/prisma';
 import { sweepExpiredReservations } from '@/lib/reservations';
 import prisma from '@/lib/db';
@@ -8,6 +8,7 @@ import { respondWithApiError, respondWithPublicApiFallback } from '@/lib/api-err
 import { createProductSchema } from '@/lib/validations';
 import { rateLimit } from '@/lib/rate-limit';
 import { embedImageFromUrl } from '@/lib/image-embedding';
+import { buildCatalogWhere } from '@/lib/catalog-filter';
 
 function parseNumber(value: string | null) {
   if (!value) return undefined;
@@ -24,14 +25,7 @@ export async function GET(request: NextRequest) {
 
     const cursor = searchParams.get('cursor') || undefined;
     const limit = Math.min(Number(searchParams.get('limit')) || 20, 50);
-    const category = searchParams.get('category') || undefined;
     const sort = searchParams.get('sort') || 'newest';
-    const q = searchParams.get('q')?.trim() || undefined;
-    const brand = searchParams.get('brand')?.trim() || undefined;
-    const size = searchParams.get('size')?.trim() || undefined;
-    const condition = searchParams.get('condition') || undefined;
-    const minPrice = parseNumber(searchParams.get('minPrice'));
-    const maxPrice = parseNumber(searchParams.get('maxPrice'));
     const sellerId = searchParams.get('sellerId') || undefined;
     const includeAll = searchParams.get('includeAll') === 'true';
 
@@ -60,40 +54,15 @@ export async function GET(request: NextRequest) {
       where.status = 'ACTIVE';
     }
 
-    if (q) {
-      where.OR = [
-        { title: { contains: q, mode: 'insensitive' } },
-        { description: { contains: q, mode: 'insensitive' } },
-        { brand: { contains: q, mode: 'insensitive' } },
-      ];
-    }
+    Object.assign(where, buildCatalogWhere(searchParams));
 
-    if (category) {
-      where.category = {
-        OR: [
-          { id: category },
-          { name: { equals: category, mode: 'insensitive' } },
-          { parent: { name: { equals: category, mode: 'insensitive' } } },
-        ],
-      };
-    }
-
-    if (brand) {
-      where.brand = { equals: brand, mode: 'insensitive' };
-    }
-
-    if (size) {
-      where.size = { equals: size, mode: 'insensitive' };
-    }
-
-    if (condition) {
-      where.condition = condition as any;
-    }
-
-    if (minPrice !== undefined || maxPrice !== undefined) {
-      where.price = {};
-      if (minPrice !== undefined) where.price.gte = minPrice;
-      if (maxPrice !== undefined) where.price.lte = maxPrice;
+    // ?ids=a,b,c - batch lookup for the cart (one request instead of one per item).
+    // Returns any status so the cart can show "verkauft" / "reserviert".
+    const ids = searchParams.get('ids')?.split(',').map((x) => x.trim()).filter(Boolean).slice(0, 50);
+    if (ids?.length) {
+      delete where.status;
+      where.id = { in: ids };
+      where.status = { in: ['ACTIVE', 'RESERVED', 'SOLD'] };
     }
 
     let orderBy: Prisma.ProductOrderByWithRelationInput | Prisma.ProductOrderByWithRelationInput[] = {
@@ -123,7 +92,7 @@ export async function GET(request: NextRequest) {
             orderIndex: true, productId: true, angle: true,
           },
         },
-        seller: { select: { id: true, name: true, avatar: true, username: true, location: true } },
+        seller: { select: { id: true, name: true, avatar: true, username: true, location: true, postalCode: true, city: true, ...(ids?.length ? { bundleDiscount: { select: { isActive: true, twoItems: true, threeItems: true, fiveItems: true } } } : {}) } },
         category: { select: { id: true, name: true, emoji: true } },
         _count: { select: { favorites: true, offers: true } },
       },

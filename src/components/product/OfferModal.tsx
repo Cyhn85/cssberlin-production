@@ -1,8 +1,9 @@
 ﻿'use client';
 
-import { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, X, Info } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
+import { Loader2, X, Info, Gauge, Clock } from 'lucide-react';
+import { offerPolicy } from '@/config/marketplace-policy';
 
 type OfferModalProps = {
   isOpen: boolean;
@@ -14,92 +15,97 @@ type OfferModalProps = {
   onSuccess?: () => void;
 };
 
-export default function OfferModal({
-  isOpen,
-  onClose,
-  productId,
-  productTitle,
-  productPrice,
-  productImage,
-  onSuccess,
-}: OfferModalProps) {
-  const [offerType, setOfferType] = useState<'10' | '20' | 'custom'>('custom');
-  const [customPrice, setCustomPrice] = useState<string>('');
+type Chance = { probability: number; band: 'hoch' | 'mittel' | 'niedrig' };
+type Advice = {
+  minimum: number;
+  sellerRule: boolean;
+  available: boolean;
+  quick: Array<{ pct: number; amount: number } & Chance>;
+};
+
+const eur = (n: number) => `${n.toFixed(2).replace('.', ',')} €`;
+const BAND_STYLE: Record<Chance['band'], { color: string; label: string }> = {
+  hoch: { color: '#15803d', label: 'gute Chancen' },
+  mittel: { color: '#b45309', label: 'mittlere Chancen' },
+  niedrig: { color: '#b91c1c', label: 'geringe Chancen' },
+};
+
+/** Same formula as acceptanceChance() in src/lib/offer-state.ts, without the age/interest terms (server adds those for the quick picks). */
+function roughChance(list: number, price: number): Chance {
+  const p = Math.max(0.05, Math.min(0.95, 0.85 - (1 - price / list) * 1.6));
+  return { probability: p, band: p >= 0.6 ? 'hoch' : p >= 0.35 ? 'mittel' : 'niedrig' };
+}
+
+export default function OfferModal({ isOpen, onClose, productId, productTitle, productPrice, productImage, onSuccess }: OfferModalProps) {
+  const [customPrice, setCustomPrice] = useState('');
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [advice, setAdvice] = useState<Advice | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
-  const minOffer = productPrice * 0.6;
-  const tenPercentOff = productPrice * 0.9;
-  const twentyPercentOff = productPrice * 0.8;
+  const minOffer = advice?.minimum ?? Math.ceil(productPrice * offerPolicy.minPercent) / 100;
 
   useEffect(() => {
     if (!isOpen) return;
-    setOfferType('custom');
     setCustomPrice('');
     setNote('');
     setError('');
     setSuccess('');
     setIsSubmitting(false);
-  }, [isOpen]);
-
-  const handleOfferTypeSelect = (type: '10' | '20' | 'custom') => {
-    setOfferType(type);
-    setError('');
-    setSuccess('');
-
-    if (type === '10') setCustomPrice(tenPercentOff.toFixed(2));
-    else if (type === '20') setCustomPrice(twentyPercentOff.toFixed(2));
-    else setCustomPrice('');
-  };
-
-  const handleCustomPriceChange = (value: string) => {
-    setCustomPrice(value);
-    setOfferType('custom');
-    setSuccess('');
-
-    const numValue = Number(value.replace(',', '.'));
-    if (!Number.isNaN(numValue) && numValue < minOffer) {
-      setError(`Der Minimalwert liegt bei ${minOffer.toFixed(2).replace('.', ',')} EUR.`);
-      return;
-    }
-
-    setError('');
-  };
+    let cancelled = false;
+    fetch(`/api/offers/advice?productId=${encodeURIComponent(productId)}`)
+      .then(async (r) => {
+        if (r.status === 401) {
+          // not signed in: go to login and come back to this product with the offer window open
+          const back = `${window.location.pathname}?angebot=1`;
+          window.location.assign(`/login?callbackUrl=${encodeURIComponent(back)}`);
+          return;
+        }
+        const j = await r.json().catch(() => null);
+        if (!cancelled && j?.success) setAdvice(j.data);
+      })
+      .catch(() => undefined);
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+    dialogRef.current?.focus();
+    return () => {
+      cancelled = true;
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [isOpen, productId, onClose]);
 
   const parsedPrice = Number(customPrice.replace(',', '.'));
-  const isSubmitDisabled = !customPrice || Number.isNaN(parsedPrice) || parsedPrice < minOffer || isSubmitting;
+  const validNumber = customPrice !== '' && !Number.isNaN(parsedPrice);
+  const tooLow = validNumber && parsedPrice < minOffer;
+  const tooHigh = validNumber && parsedPrice >= productPrice;
+  const chance = validNumber && !tooLow && !tooHigh ? roughChance(productPrice, parsedPrice) : null;
+  const isSubmitDisabled = !validNumber || tooLow || tooHigh || isSubmitting || advice?.available === false;
 
   const handleSubmit = async () => {
     if (isSubmitDisabled) return;
-
     setIsSubmitting(true);
     setError('');
     setSuccess('');
-
     try {
       const response = await fetch('/api/offers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          productId,
-          offeredPrice: parsedPrice,
-          message: note.trim() || undefined,
-        }),
+        body: JSON.stringify({ productId, offeredPrice: Math.round(parsedPrice * 100) / 100, message: note.trim() || undefined }),
       });
-
-      const result = await response.json();
-      if (!response.ok || !result.success) {
-        setError(result.error || 'Angebot konnte nicht gesendet werden.');
+      if (response.status === 401) {
+        window.location.assign(`/login?callbackUrl=${encodeURIComponent(`${window.location.pathname}?angebot=1`)}`);
         return;
       }
-
-      setSuccess('Angebot erfolgreich gesendet.');
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !result?.success) {
+        setError(result?.error || 'Angebot konnte nicht gesendet werden.');
+        return;
+      }
+      setSuccess(`Angebot gesendet. Der Verkäufer hat ${offerPolicy.answerHours} Stunden Zeit zu antworten - wir benachrichtigen dich.`);
       onSuccess?.();
-      window.setTimeout(() => {
-        onClose();
-      }, 700);
+      window.setTimeout(onClose, 1600);
     } catch {
       setError('Netzwerkfehler. Bitte versuche es erneut.');
     } finally {
@@ -109,112 +115,111 @@ export default function OfferModal({
 
   if (!isOpen) return null;
 
+  const quick = advice?.quick ?? offerPolicy.quickDiscounts.map((pct) => {
+    const amount = Math.max(minOffer, Math.round(productPrice * (100 - pct)) / 100);
+    return { pct, amount, ...roughChance(productPrice, amount) };
+  });
+
   return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          className="flex w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
-        >
-          <div className="flex items-center justify-between border-b border-gray-100 p-4">
-            <h2 className="ml-6 flex-1 text-center text-lg font-bold text-[var(--color-text)]">Preis vorschlagen</h2>
-            <button onClick={onClose} className="rounded-full p-2 text-gray-500 transition-colors hover:bg-gray-100">
-              <X size={20} />
-            </button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm" onClick={onClose}>
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="offer-title"
+        tabIndex={-1}
+        onClick={(e) => e.stopPropagation()}
+        className="flex max-h-[92vh] w-full max-w-lg flex-col overflow-y-auto rounded-2xl bg-[var(--color-bg-card)] shadow-xl outline-none"
+      >
+        <div className="flex items-center justify-between border-b border-gray-100 p-4">
+          <h2 id="offer-title" className="ml-6 flex-1 text-center text-lg font-bold text-[var(--color-text)]">Preis vorschlagen</h2>
+          <button onClick={onClose} aria-label="Schließen" className="rounded-full p-2 text-[var(--color-text-muted)] hover:bg-[var(--color-bg-secondary)]"><X size={20} /></button>
+        </div>
+
+        <div className="p-6">
+          <div className="mb-6 flex items-center gap-4">
+            <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
+              {productImage ? <img src={productImage} alt={productTitle} className="h-full w-full object-cover" /> : null}
+            </div>
+            <div>
+              <h3 className="font-semibold text-[var(--color-text)]">{productTitle}</h3>
+              <p className="text-sm text-[var(--color-text-secondary)]">Preis: {eur(productPrice)}</p>
+            </div>
           </div>
 
-          <div className="p-6">
-            <div className="mb-6 flex items-center gap-4">
-              <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-gray-200 bg-gray-100">
-                {productImage ? (
-                  <img src={productImage} alt={productTitle} className="h-full w-full object-cover" />
-                ) : (
-                  <div className="h-full w-full bg-[var(--color-primary-light)] opacity-20" />
-                )}
-              </div>
-              <div>
-                <h3 className="font-semibold text-[var(--color-text)]">{productTitle}</h3>
-                <p className="text-sm text-[var(--color-text-secondary)]">
-                  Listenpreis: {productPrice.toFixed(2).replace('.', ',')} EUR
-                </p>
-              </div>
-            </div>
+          {advice?.available === false ? (
+            <p className="mb-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">Dieser Artikel ist gerade reserviert oder verkauft - Preisvorschläge sind nicht möglich.</p>
+          ) : null}
 
-            <div className="mb-6 grid grid-cols-3 gap-3">
+          <div className="mb-5 grid grid-cols-3 gap-3">
+            {quick.map((q) => (
               <button
-                onClick={() => handleOfferTypeSelect('10')}
-                className={`rounded-xl border-2 p-3 transition-colors ${offerType === '10' ? 'border-[var(--color-primary)] bg-[var(--color-primary-50)]' : 'border-gray-200 hover:border-gray-300'}`}
+                key={q.pct}
+                type="button"
+                onClick={() => { setCustomPrice(q.amount.toFixed(2)); setError(''); }}
+                className={`rounded-xl border-2 p-3 text-left transition-colors ${Math.abs(parsedPrice - q.amount) < 0.005 ? 'border-[var(--color-primary)] bg-[rgba(45,106,79,.14)]' : 'border-[var(--color-border)] hover:border-[var(--color-text-muted)]'}`}
               >
-                <span className="block font-bold text-[var(--color-text)]">{tenPercentOff.toFixed(2).replace('.', ',')} EUR</span>
-                <span className="text-xs text-[var(--color-primary)]">10% weniger</span>
+                <span className="block font-bold text-[var(--color-text)]">{eur(q.amount)}</span>
+                <span className="text-xs text-[var(--color-primary)]">−{q.pct} %</span>
+                <span className="mt-1 block text-[11px]" style={{ color: BAND_STYLE[q.band].color }}>{BAND_STYLE[q.band].label}</span>
               </button>
+            ))}
+          </div>
 
-              <button
-                onClick={() => handleOfferTypeSelect('20')}
-                className={`rounded-xl border-2 p-3 transition-colors ${offerType === '20' ? 'border-[var(--color-primary)] bg-[var(--color-primary-50)]' : 'border-gray-200 hover:border-gray-300'}`}
-              >
-                <span className="block font-bold text-[var(--color-text)]">{twentyPercentOff.toFixed(2).replace('.', ',')} EUR</span>
-                <span className="text-xs text-[var(--color-primary)]">20% weniger</span>
-              </button>
-
-              <button
-                onClick={() => handleOfferTypeSelect('custom')}
-                className={`rounded-xl border-2 p-3 transition-colors ${offerType === 'custom' ? 'border-[var(--color-primary)] bg-[var(--color-primary-50)]' : 'border-gray-200 hover:border-gray-300'}`}
-              >
-                <span className="block font-bold text-[var(--color-text)]">Individuell</span>
-                <span className="text-xs text-[var(--color-primary)]">Eigener Preis</span>
-              </button>
-            </div>
-
-            <div className="mb-2 border-b border-gray-200 pb-2">
-              <input
-                type="text"
-                value={customPrice}
-                onChange={(event) => handleCustomPriceChange(event.target.value)}
-                placeholder="0,00"
-                className="w-full bg-transparent text-2xl font-bold outline-none text-[var(--color-text)]"
-              />
-            </div>
-
-            <textarea
-              value={note}
-              onChange={(event) => setNote(event.target.value)}
-              placeholder="Kurze Nachricht an den Verkäufer (optional)"
-              className="mt-4 min-h-[96px] w-full rounded-xl border border-gray-200 p-3 text-sm outline-none focus:border-[var(--color-primary)]"
+          <label htmlFor="offer-price" className="text-xs font-semibold text-[var(--color-text-secondary)]">Dein Preis in €</label>
+          <div className="mb-2 border-b border-[var(--color-border)] pb-2">
+            <input
+              id="offer-price"
+              type="text"
+              inputMode="decimal"
+              value={customPrice}
+              onChange={(e) => { setCustomPrice(e.target.value.replace(/[^\d.,]/g, '')); setError(''); setSuccess(''); }}
+              placeholder="0,00"
+              className="w-full bg-transparent text-2xl font-bold outline-none text-[var(--color-text)]"
             />
-
-            {error ? <p className="mt-3 text-sm text-red-500">{error}</p> : null}
-            {success ? <p className="mt-3 text-sm text-green-600">{success}</p> : null}
-
-            <p className="mb-4 mt-4 text-xs leading-relaxed text-[var(--color-text-secondary)]">
-              Mindestangebot: {minOffer.toFixed(2).replace('.', ',')} EUR. Offene Angebote können vom Verkäufer angenommen, abgelehnt oder mit einem Gegenangebot beantwortet werden.
-            </p>
-            
-            <div className="mb-6 flex items-start gap-2 rounded-lg bg-gray-50 p-3 text-gray-600">
-              <Info size={16} className="mt-0.5 shrink-0" />
-              <span className="text-[11px] leading-tight">
-                <strong>Verbindliches Angebot:</strong> Mit dem Senden eines Preisvorschlags erklärst du dich bereit, den Artikel zu diesem Preis zu kaufen. Nimmt der Verkäufer an, kommt ein rechtsverbindlicher Kaufvertrag zustande.
-              </span>
-            </div>
-
-            <button
-              disabled={isSubmitDisabled}
-              onClick={handleSubmit}
-              className={`flex w-full items-center justify-center gap-2 rounded-xl py-4 font-bold text-white transition-all ${isSubmitDisabled ? 'cursor-not-allowed bg-gray-400 opacity-50' : 'btn-mars-earth hover:scale-[1.02]'}`}
-              style={{ background: isSubmitDisabled ? '#9ca3af' : 'var(--color-orange)' }}
-            >
-              {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : null}
-              <span>
-                {parsedPrice > 0 && !Number.isNaN(parsedPrice)
-                  ? `${parsedPrice.toFixed(2).replace('.', ',')} EUR bieten`
-                  : 'Bitte Preis eingeben'}
-              </span>
-            </button>
           </div>
-        </motion.div>
+          {tooLow ? <p className="text-sm text-red-600">{advice?.sellerRule ? `Dieser Verkäufer nimmt Angebote ab ${eur(minOffer)} an.` : `Mindestangebot: ${eur(minOffer)}.`}</p> : null}
+          {tooHigh ? <p className="text-sm text-red-600">Dein Angebot liegt nicht unter dem Preis - kaufe den Artikel direkt.</p> : null}
+          {chance ? (
+            <p className="flex items-center gap-2 text-sm" style={{ color: BAND_STYLE[chance.band].color }}>
+              <Gauge size={14} /> Einschätzung: {BAND_STYLE[chance.band].label} (ca. {Math.round(chance.probability * 100)} %)
+            </p>
+          ) : null}
+
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value.slice(0, 500))}
+            placeholder="Kurze Nachricht an den Verkäufer (optional)"
+            className="mt-4 min-h-[88px] w-full rounded-xl border border-[var(--color-border)] p-3 text-sm outline-none focus:border-[var(--color-primary)]"
+          />
+
+          {error ? <p className="mt-3 text-sm text-red-600" role="alert">{error}</p> : null}
+          {success ? <p className="mt-3 text-sm text-green-700" role="status">{success}</p> : null}
+
+          <ul className="mb-4 mt-4 space-y-1 text-xs leading-relaxed text-[var(--color-text-secondary)]">
+            <li className="flex items-center gap-2"><Clock size={12} /> Antwort des Verkäufers innerhalb von {offerPolicy.answerHours} Stunden, sonst läuft das Angebot ab.</li>
+            <li>Angenommen? Dann ist der Artikel {offerPolicy.paymentHours} Stunden für dich zum vereinbarten Preis reserviert.</li>
+            <li>Höchstens {offerPolicy.maxRounds - 1} Gegenangebote pro Verhandlung. <Link href="/hilfe/preisvorschlaege" className="underline">Regeln</Link></li>
+          </ul>
+
+          <div className="mb-6 flex items-start gap-2 rounded-lg bg-[var(--color-bg-secondary)] p-3 text-[var(--color-text-secondary)]">
+            <Info size={16} className="mt-0.5 shrink-0" />
+            <span className="text-[11px] leading-tight">
+              <strong>Verbindliches Angebot:</strong> Mit dem Senden eines Preisvorschlags erklärst du dich bereit, den Artikel zu diesem Preis zu kaufen. Nimmt der Verkäufer an, kommt ein rechtsverbindlicher Kaufvertrag zustande.
+            </span>
+          </div>
+
+          <button
+            disabled={isSubmitDisabled}
+            onClick={handleSubmit}
+            className="flex w-full items-center justify-center gap-2 rounded-xl py-4 font-bold text-white transition-all disabled:cursor-not-allowed disabled:opacity-50"
+            style={{ background: isSubmitDisabled ? '#9ca3af' : 'var(--color-orange)' }}
+          >
+            {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : null}
+            <span>{validNumber && parsedPrice > 0 ? `${eur(parsedPrice)} bieten` : 'Bitte Preis eingeben'}</span>
+          </button>
+        </div>
       </div>
-    </AnimatePresence>
+    </div>
   );
 }

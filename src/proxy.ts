@@ -13,6 +13,9 @@ const EXACT_PROTECTED_ROUTES = [
   '/favorites',
   '/notifications',
   '/offers',
+  '/eco-impact',
+  '/bestellungen',
+  '/geldbeutel',
 ];
 
 const PREFIX_PROTECTED_ROUTES = ['/checkout', '/purchases', '/sales', '/offers'];
@@ -29,7 +32,13 @@ const PROTECTED_API_ROUTES = [
   '/api/checkout',
   '/api/pusher',
   '/api/uploadthing',
-  '/api/ai',
+  '/api/cart',
+  '/api/saved-searches',
+  '/api/wallet',
+  // /api/ai/chat is open to guests (own IP rate limit inside); the seller tools need a session
+  '/api/ai/generate-description',
+  '/api/ai/price-suggestion',
+  '/api/ai/suggest-category',
 ];
 
 const AUTH_ROUTES = ['/login', '/register'];
@@ -145,7 +154,7 @@ export async function proxy(request: NextRequest) {
   if (isAdminRoute(pathname)) {
     if (!isAuthenticated) {
       const loginUrl = new URL('/login', request.url);
-      loginUrl.searchParams.set('callbackUrl', pathname);
+      loginUrl.searchParams.set('callbackUrl', pathname + request.nextUrl.search);
       return addSecurityHeaders(NextResponse.redirect(loginUrl));
     }
     if (!isAdmin) {
@@ -155,7 +164,7 @@ export async function proxy(request: NextRequest) {
 
   if (isProtectedRoute(pathname) && !isAuthenticated) {
     const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('callbackUrl', pathname);
+    loginUrl.searchParams.set('callbackUrl', pathname + request.nextUrl.search);
     return addSecurityHeaders(NextResponse.redirect(loginUrl));
   }
 

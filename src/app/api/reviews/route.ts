@@ -6,7 +6,7 @@ import { createReviewSchema } from '@/lib/validations';
 
 /**
  * POST /api/reviews — Create a review for a completed order
- * Rules: Only COMPLETED orders, 1 review per order, buyer reviews seller
+ * Rules: Only COMPLETED orders, one review per side, buyer <-> seller
  */
 export async function POST(request: NextRequest) {
   try {
@@ -20,37 +20,35 @@ export async function POST(request: NextRequest) {
 
     const { orderId, rating, comment } = parsed.data;
 
-    // Get order with existing review check
     const order = await prisma.order.findUnique({
       where: { id: orderId },
-      include: { review: true },
+      include: { reviews: { select: { authorId: true } } },
     });
 
     if (!order) {
       return ApiResponse.notFound('Bestellung nicht gefunden.');
     }
 
-    // Only buyer can review
-    if (order.buyerId !== session.user.id) {
-      return ApiResponse.forbidden('Nur der Käufer kann eine Bewertung abgeben.');
+    // Both sides rate each other (Vinted/eBay style): buyer -> seller, seller -> buyer.
+    const isBuyer = order.buyerId === session.user.id;
+    const isSeller = order.sellerId === session.user.id;
+    if (!isBuyer && !isSeller) {
+      return ApiResponse.forbidden('Nur Käufer oder Verkäufer dieser Bestellung können bewerten.');
     }
 
-    // Must be completed
     if (order.status !== 'COMPLETED') {
       return ApiResponse.error('Bewertung nur für abgeschlossene Bestellungen möglich.');
     }
 
-    // No duplicate reviews
-    if (order.review) {
+    if (order.reviews.some((r) => r.authorId === session.user.id)) {
       return ApiResponse.error('Du hast diese Bestellung bereits bewertet.');
     }
 
-    // Create review
     const review = await prisma.review.create({
       data: {
         orderId,
         authorId: session.user.id,
-        targetUserId: order.sellerId,
+        targetUserId: isBuyer ? order.sellerId : order.buyerId,
         rating,
         comment,
       },

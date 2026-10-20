@@ -1,8 +1,10 @@
-﻿import prisma from '@/lib/db';
+import prisma from '@/lib/db';
 import { NextRequest } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { ApiResponse } from '@/lib/api-response';
 import { updateProfileSchema } from '@/lib/validations';
+import { geocodePostalCode } from '@/lib/geocode';
+import { sanitizePrefs } from '@/config/notification-policy';
 
 /**
  * GET /api/users/me - Get current user's full profile and recent listings
@@ -21,6 +23,12 @@ export async function GET() {
           username: true,
           bio: true,
           location: true,
+          postalCode: true,
+          city: true,
+          lat: true,
+          lng: true,
+          notificationPrefs: true,
+          offerMinPercent: true,
           avatar: true,
           role: true,
           isVerified: true,
@@ -80,7 +88,7 @@ export async function PUT(request: NextRequest) {
 
     const parsed = updateProfileSchema.safeParse(body);
     if (!parsed.success) {
-      return ApiResponse.validationError('Ungültige Profildaten.');
+      return ApiResponse.validationError(parsed.error.issues[0]?.message || 'Ungültige Profildaten.');
     }
 
     if (parsed.data.username) {
@@ -92,15 +100,42 @@ export async function PUT(request: NextRequest) {
       }
     }
 
+    const { postalCode, city, notificationPrefs, ...rest } = parsed.data;
+    const data: Record<string, unknown> = { ...rest };
+
+    if (notificationPrefs !== undefined) data.notificationPrefs = sanitizePrefs(notificationPrefs);
+
+    if (postalCode !== undefined) {
+      if (postalCode === '') {
+        Object.assign(data, { postalCode: null, city: null, lat: null, lng: null });
+      } else {
+        const geo = await geocodePostalCode(postalCode);
+        const cityLabel = geo?.city
+          ? geo.district && geo.district !== geo.city ? `${geo.city}-${geo.district}` : geo.city
+          : city?.trim() || null;
+        Object.assign(data, { postalCode, city: cityLabel, lat: geo?.lat ?? null, lng: geo?.lng ?? null });
+        // keep the legacy free-text field in sync for older screens
+        if (cityLabel) data.location = `${postalCode} ${cityLabel}`;
+      }
+    } else if (city !== undefined) {
+      data.city = city.trim() || null;
+    }
+
     const updated = await prisma.user.update({
       where: { id: session.user.id },
-      data: parsed.data,
+      data,
       select: {
         id: true,
         name: true,
         username: true,
         bio: true,
         location: true,
+        postalCode: true,
+        city: true,
+        lat: true,
+        lng: true,
+        notificationPrefs: true,
+        offerMinPercent: true,
         avatar: true,
       },
     });

@@ -74,13 +74,22 @@ function renderEmailLayout(options: {
 }
 
 /**
- * Send an email via Resend.
- * Returns true if sent, false if failed or not configured.
+ * Send an email: Resend when RESEND_API_KEY is set, otherwise the site's own
+ * SMTP mailbox (src/lib/mailer.ts) when SMTP_* is set. Before, order mails only
+ * knew Resend, so with Resend unconfigured not a single order e-mail ever left
+ * the server while the password-reset mail (SMTP) worked.
+ * Returns true if sent, false if failed or nothing is configured.
  */
 export async function sendEmail(options: EmailOptions): Promise<boolean> {
+  if (!options.to) return false;
+
   if (!process.env.RESEND_API_KEY) {
-    console.warn('Email not sent - RESEND_API_KEY not configured');
-    return false;
+    const { isMailConfigured, sendMail } = await import('@/lib/mailer');
+    if (!isMailConfigured()) {
+      console.warn('Email not sent - neither RESEND_API_KEY nor SMTP is configured');
+      return false;
+    }
+    return sendMail({ to: options.to, subject: options.subject, html: options.html, text: htmlToText(options.html) });
   }
 
   try {
@@ -110,6 +119,55 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
     console.error('Email send failed:', error);
     return false;
   }
+}
+
+function htmlToText(html: string): string {
+  return html
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&euro;/g, '€')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+/** Escapes user-controlled text (titles, names, reasons) before it goes into an e-mail. */
+export function escapeHtml(value: unknown): string {
+  return String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
+}
+
+/**
+ * Generic notification mail used by the order/offer lifecycle. Every argument is
+ * plain text and escaped here, so a product title like "<script>" cannot inject
+ * markup into somebody's inbox.
+ */
+export function noticeEmail(params: {
+  to: string;
+  subject: string;
+  title: string;
+  intro: string;
+  lines?: string[];
+  ctaLabel?: string;
+  ctaPath?: string;
+  accent?: string;
+}): EmailOptions {
+  const body = (params.lines || []).map((l) => `<p style="margin: 0 0 10px;">${escapeHtml(l)}</p>`).join('') || '<p style="margin:0;">&nbsp;</p>';
+  return {
+    to: params.to,
+    subject: params.subject,
+    html: renderEmailLayout({
+      title: escapeHtml(params.title),
+      intro: escapeHtml(params.intro),
+      body,
+      ctaLabel: params.ctaLabel,
+      ctaUrl: params.ctaPath ? resolveUrl(params.ctaPath) : undefined,
+      accent: params.accent,
+    }),
+  };
 }
 
 export function magicLinkEmail(url: string): EmailOptions {

@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
       prisma.message.findMany({
         where: {
           receiverId: session.user.id,
-          type: 'SYSTEM_INFO',
+          type: { in: ['SYSTEM_INFO', 'PERSONA_RELAY'] },
         },
         include: {
           sender: { select: { id: true, name: true, avatar: true } },
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
       prisma.message.count({
         where: {
           receiverId: session.user.id,
-          type: 'SYSTEM_INFO',
+          type: { in: ['SYSTEM_INFO', 'PERSONA_RELAY'] },
           isRead: false,
         },
       }),
@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
         where: {
           receiverId: session.user.id,
           isRead: false,
-          type: { not: 'SYSTEM_INFO' },
+          type: { notIn: ['SYSTEM_INFO', 'PERSONA_RELAY'] },
         },
       }),
     ]);
@@ -81,7 +81,7 @@ export async function PUT(request: NextRequest) {
       const result = await prisma.message.updateMany({
         where: {
           receiverId: session.user.id,
-          type: 'SYSTEM_INFO',
+          type: { in: ['SYSTEM_INFO', 'PERSONA_RELAY'] },
           isRead: false,
         },
         data: { isRead: true },
@@ -96,7 +96,7 @@ export async function PUT(request: NextRequest) {
         where: {
           id: { in: body.ids },
           receiverId: session.user.id,
-          type: 'SYSTEM_INFO',
+          type: { in: ['SYSTEM_INFO', 'PERSONA_RELAY'] },
         },
         data: { isRead: true },
       });

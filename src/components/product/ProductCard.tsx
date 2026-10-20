@@ -31,6 +31,7 @@ type ProductCardProps = {
     ecoCO2Saved?: number;
     images?: CardImage[];
     seller?: CardSeller;
+    status?: string;
   };
   subtitle?: string;
   showSeller?: boolean;
@@ -57,6 +58,8 @@ export default function ProductCard({
   const productHref = href ?? `/product/${product.id}`;
   const inCart = isInCart(product.id);
   const favorited = isFavorited(product.id);
+  // favourites / profile pages can list items that were sold or are reserved meanwhile
+  const unavailable = product.status !== undefined && product.status !== 'ACTIVE';
 
   // The whole card used to navigate through an onClick on <article>, which left
   // it invisible to crawlers and unreachable by keyboard, and killed
@@ -125,6 +128,11 @@ export default function ProductCard({
               </span>
             </div>
           ) : null}
+          {unavailable ? (
+            <div className="inline-flex w-fit rounded-full bg-gray-900/85 px-2 py-1 text-[10px] font-bold uppercase text-white">
+              {product.status === 'SOLD' ? 'Verkauft' : 'Reserviert'}
+            </div>
+          ) : null}
           {discount ? (
             <div
               className="inline-flex w-fit rounded-full px-2 py-1 text-[10px] font-bold text-white shadow-sm"
@@ -189,8 +197,9 @@ export default function ProductCard({
         <button
           type="button"
           onClick={() => toggleCart(product.id)}
+          disabled={unavailable && !inCart}
           aria-pressed={inCart}
-          className="mt-2.5 inline-flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-lg text-xs font-bold transition-colors"
+          className="mt-2.5 inline-flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-lg text-xs font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50"
           style={
             inCart
               ? {
@@ -206,7 +215,7 @@ export default function ProductCard({
           }
         >
           {inCart ? <Check size={14} /> : <ShoppingCart size={14} />}
-          {inCart ? 'Im Warenkorb' : 'In den Warenkorb'}
+          {inCart ? 'Im Warenkorb' : unavailable ? 'Nicht verfügbar' : 'In den Warenkorb'}
         </button>
       </div>
     </article>

@@ -20,9 +20,18 @@ export const EVENTS = {
 
 export type OrderLifecycleEventType =
   | 'ORDER_PAID'
+  | 'ORDER_PICKUP_REQUESTED'
+  | 'ORDER_PICKUP_REMINDER'
+  | 'ORDER_PICKUP_COMPLETED'
+  | 'ORDER_SHIP_REMINDER'
   | 'ORDER_SHIPPED'
   | 'ORDER_COMPLETED'
-  | 'ORDER_DISPUTED';
+  | 'ORDER_AUTO_COMPLETED'
+  | 'ORDER_DISPUTED'
+  | 'ORDER_DISPUTE_RESOLVED'
+  | 'ORDER_CANCEL_REQUESTED'
+  | 'ORDER_CANCEL_DECLINED'
+  | 'ORDER_CANCELLED';
 
 export type OrderStatusEvent = {
   orderId: string;

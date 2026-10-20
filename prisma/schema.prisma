@@ -5,9 +5,9 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider      = "prisma-client-js"
-  output        = "../src/generated/prisma"
-  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+  provider        = "prisma-client-js"
+  output          = "../src/generated/prisma"
+  binaryTargets   = ["native", "linux-musl-openssl-3.0.x"]
   // omitApi lets lib/db.ts drop Product.reservedById from every query result by
   // default. The product endpoints fetch with `include`, which returns every
   // scalar on the model - so the moment a column is added to the schema it is
@@ -35,7 +35,23 @@ model User {
   bio                 String?              @db.Text
   location            String?
   avatar              String?
-  role                UserRole             @default(USER) // USER, BUSINESS, ADMIN
+
+  // Public location, Kleinanzeigen style: PLZ + city only, never a street.
+  // lat/lng are the PLZ centroid (geocoded server side) and are only ever
+  // shown blurred to ~1 km on the seller map.
+  postalCode String?
+  city       String?
+  lat        Float?
+  lng        Float?
+  lastSeenAt DateTime?
+
+  // Notification preferences: { [category]: { inApp: bool, email: bool } }.
+  // Missing keys fall back to the defaults in src/config/notification-policy.ts.
+  notificationPrefs Json?
+  // Seller rule: offers below this share of the list price are declined
+  // before they are created (no message is ever sent on the seller's behalf).
+  offerMinPercent   Int?
+  role              UserRole @default(USER) // USER, BUSINESS, ADMIN
 
   // Verifications & Trust (German Compliance & Vinted Style)
   isVerified    Boolean @default(false)
@@ -79,6 +95,32 @@ model User {
   accounts        Account[] // Nextauth
   sessions        Session[] // Nextauth
   bundleDiscount  BundleDiscount?
+  cartItems       CartItem[]
+  savedSearches   SavedSearch[]
+}
+
+model CartItem {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId])
+}
+
+model SavedSearch {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label          String
+  // catalogue query string as the user saw it, e.g. "q=levis&category=Herren&maxPrice=40"
+  query          String   @db.Text
+  lastNotifiedAt DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  @@index([userId])
 }
 
 model BundleDiscount {
@@ -154,6 +196,7 @@ model Product {
   offers    Offer[]
   orders    Order[]
   favorites Favorite[]
+  cartItems CartItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -228,6 +271,14 @@ model Offer {
   messages Message[] // Links chat to this specific offer negotiation
   orders   Order[] // Resolves to an order if accepted
 
+  // Negotiation bookkeeping (src/config/offer-policy.ts):
+  // createdById = who named this price (buyer or seller), round = 1 for the
+  // opening offer, +1 per counter. expiresAt = answer deadline while PENDING,
+  // payment deadline once ACCEPTED.
+  createdById String?
+  round       Int       @default(1)
+  expiresAt   DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -264,15 +315,37 @@ model Order {
   paymentIntentId  String? // Stripe payment ID
   shippingLabelUrl String?
   trackingCode     String?
-  shippingCarrier  String? // DHL, Hermes, DPD
+  shippingCarrier  String? // DHL, Hermes, DPD, GLS, PICKUP
   disputeReason    String?
+
+  // How the buyer pays: card | klarna | sepa_debit | paypal | pickup_cash
+  paymentMethod   String?
+  // Delivery address for shipped orders (name, street, postalCode, city, country)
+  shippingAddress Json?
+
+  // Timeline stamps - deadlines are computed from these, never from updatedAt
+  // (any later edit used to reset the dispute window).
+  paidAt              DateTime?
+  shippedAt           DateTime?
+  deliveredAt         DateTime?
+  completedAt         DateTime?
+  cancelledAt         DateTime?
+  cancelReason        String?
+  cancelledBy         String? // BUYER | SELLER | SYSTEM | ADMIN
+  // Buyer asked the seller to cancel (eBay style) - seller accepts or declines
+  cancelRequestedAt   DateTime?
+  cancelRequestReason String?
+  // Abholung: handover must happen before this, otherwise the order lapses
+  pickupDeadline      DateTime?
+  // Bitmask of reminders already sent (see src/lib/order-state.ts)
+  remindersSent       Int       @default(0)
 
   // Dispute resolution (Admin panel)
   disputeResolution     String? // "REFUNDED" | "COMPLETED" - the outcome an admin chose
   disputeResolutionNote String?   @db.Text
   disputeResolvedAt     DateTime?
 
-  review Review? // Feedback left post-delivery
+  reviews Review[] // buyer -> seller and seller -> buyer, one each
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -280,6 +353,7 @@ model Order {
 
 enum OrderStatus {
   PENDING_PAYMENT
+  PENDING_PICKUP // Abholung requested, item held until handover
   PAID // Escrow holding funds
   SHIPPED // Tracking active
   DELIVERED
@@ -311,6 +385,7 @@ enum MessageType {
   IMAGE
   OFFER_ACTION
   SYSTEM_INFO
+  PERSONA_RELAY // copy of a persona's notification for its manager - bell only, never a chat thread
 }
 
 // ══════════ RATINGS & REVIEWS (PHASE 3) ══════════
@@ -319,7 +394,7 @@ model Review {
   rating  Int // 1 to 5
   comment String? @db.Text
 
-  orderId      String @unique
+  orderId      String
   order        Order  @relation(fields: [orderId], references: [id])
   authorId     String
   author       User   @relation("Author", fields: [authorId], references: [id])
@@ -327,6 +402,8 @@ model Review {
   targetUser   User   @relation("Target", fields: [targetUserId], references: [id])
 
   createdAt DateTime @default(now())
+
+  @@unique([orderId, authorId])
 }
 
 // ══════════ NEXTAUTH SYSTEM MODELS ══════════
@@ -399,4 +476,21 @@ model PasswordResetToken {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+// Kontaktformular + DSA-Meldungen (Notice & Action). Stored first, so nothing is
+// lost while outgoing mail is not configured; mailed to the shop inbox when SMTP is set.
+model ContactRequest {
+  id        String   @id @default(cuid())
+  topic     String // allgemein | bestellung | konto | melden | presse
+  name      String
+  email     String
+  subject   String
+  message   String   @db.Text
+  url       String?  @db.Text // reported listing / profile (melden)
+  userId    String?
+  status    String   @default("OPEN") // OPEN | DONE
+  createdAt DateTime @default(now())
+
+  @@index([status, createdAt])
 }

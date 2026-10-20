@@ -183,7 +183,7 @@ export const authOptions: NextAuthOptions = {
             try {
                 const fresh = await prisma.user.findUnique({
                     where: { id: token.id as string },
-                    select: { role: true, username: true, isVerified: true, isSuspended: true },
+                    select: { role: true, username: true, isVerified: true, isSuspended: true, avatar: true },
                 });
 
                 if (fresh) {
@@ -191,6 +191,8 @@ export const authOptions: NextAuthOptions = {
                     token.username = fresh.username;
                     token.isVerified = fresh.isVerified;
                     token.isSuspended = fresh.isSuspended;
+                    // header avatar follows uploads within a minute
+                    token.picture = fresh.avatar || token.picture;
                 } else {
                     // Account deleted while the token was still valid. Treat it
                     // as suspended rather than trusting stale claims - the
@@ -199,6 +201,8 @@ export const authOptions: NextAuthOptions = {
                     token.role = 'USER';
                 }
                 token.claimsAt = Date.now();
+                // "zuletzt online" for the seller box - piggybacks on this once-a-minute refresh
+                prisma.user.update({ where: { id: token.id as string }, data: { lastSeenAt: new Date() } }).catch(() => {});
             } catch (error) {
                 // A database blip must not sign everyone out. Keep the existing
                 // claims and retry on the next request; claimsAt is left

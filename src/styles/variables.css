@@ -65,7 +65,7 @@
 
   /* ── Typography ── */
   --font-sans: 'Inter', 'Outfit', system-ui, -apple-system, sans-serif;
-  --font-display: 'Outfit', 'Inter', system-ui, sans-serif;
+  --font-display: var(--font-outfit, 'Outfit'), system-ui, sans-serif;
 
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;

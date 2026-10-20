@@ -23,6 +23,8 @@ import {
   Sun,
   Tag,
   User,
+  Wallet,
+  CircleHelp,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
@@ -296,13 +298,15 @@ export default function Header() {
       icon: tickerIcon(item.kind),
       label: item.label,
     })),
-    { key: 'protection', href: '/ueber-uns', icon: <ShieldCheck size={14} className="text-[#1b4332]" />, label: 'Käuferschutz bei jedem Kauf inklusive' },
+    { key: 'protection', href: '/hilfe/kaeuferschutz', icon: <ShieldCheck size={14} className="text-[#1b4332]" />, label: 'Käuferschutz bei jedem Online-Kauf' },
     ...(!session ? [{ key: 'register', href: '/register', icon: <Sparkles size={14} className="text-[#1b4332]" />, label: 'Neu hier? Jetzt kostenlos registrieren' }] : []),
   ];
 
   const quickLinks = [
     { href: '/favorites', label: 'Favoriten', icon: <Heart size={16} /> },
     { href: '/offers', label: 'Angebote', icon: <Tag size={16} /> },
+    { href: '/bestellungen', label: 'Bestellungen', icon: <Package size={16} /> },
+    { href: '/geldbeutel', label: 'Geldbeutel', icon: <Wallet size={16} /> },
     { href: '/inbox', label: 'Inbox', icon: <MessageCircle size={16} /> },
     { href: '/notifications', label: 'Hinweise', icon: <Bell size={16} /> },
     { href: '/profile', label: 'Profil', icon: <User size={16} /> },
@@ -444,7 +448,7 @@ export default function Header() {
             </AnimatePresence>
           </div>
 
-          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+          <div className="flex shrink-0 items-center gap-1 sm:gap-3">
             {/* Dark mode toggle — logodan buraya taşındı, header kompaktlaştı */}
             <motion.button
               whileHover={{ scale: 1.08 }}
@@ -466,10 +470,14 @@ export default function Header() {
                    green" action, and white on --color-orange measures 3.3:1,
                    under the 4.5:1 AA floor for text this size. Green with white
                    is 6.4:1. */
-                className="btn-mars-earth hidden items-center text-white sm:flex h-11"
+                /* .btn-mars-earth sets display:inline-flex outside Tailwind's layers, so
+                   `hidden` never applied and the full button pushed the menu off-screen
+                   on phones. Phones get the round "+" only. */
+                className="btn-mars-earth h-11 items-center text-white max-sm:!w-11 max-sm:!px-0"
                 style={{ background: 'var(--color-primary)', padding: '0 1.2rem', gap: '0.4rem' }}
+                aria-label="Artikel verkaufen"
               >
-                <Plus size={18} /> <span>Verkaufen</span>
+                <Plus size={18} /> <span className="max-sm:hidden">Verkaufen</span>
               </motion.button>
             </Link>
 
@@ -506,7 +514,7 @@ export default function Header() {
                   if (open) void openNotifications();
                 }}
               >
-                <DropdownMenuTrigger className="icon-mars-earth relative inline-flex items-center justify-center p-3 min-w-[44px] min-h-[44px]" aria-label="Benachrichtigungen">
+                <DropdownMenuTrigger className="icon-mars-earth relative inline-flex items-center justify-center p-2 sm:p-3 min-w-[44px] min-h-[44px]" aria-label="Benachrichtigungen">
                   <Bell size={22} />
                   {activityCounts.unreadNotifications + activityCounts.unreadMessages > 0 ? (
                     <span className="absolute -right-1 -top-1 min-w-5 rounded-full bg-[var(--color-primary)] px-1.5 py-0.5 text-center text-[11px] font-bold leading-none text-white border-2 border-[var(--color-bg-card)]">
@@ -564,32 +572,38 @@ export default function Header() {
                 open={isAccountMenuOpen}
                 onOpenChange={(open) => setOpenHeaderMenu(open ? 'account' : null)}
               >
-                <DropdownMenuTrigger className="icon-mars-earth inline-flex items-center justify-center p-3 min-w-[44px] min-h-[44px]" aria-label="Konto-Menü">
-                  <User size={22} />
+                <DropdownMenuTrigger className="icon-mars-earth relative inline-flex items-center justify-center p-2 min-w-[44px] min-h-[44px]" aria-label="Konto-Menü">
+                  {session.user?.image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={session.user.image} alt="" className="h-8 w-8 rounded-full object-cover" referrerPolicy="no-referrer" />
+                  ) : (
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold text-white" style={{ background: 'var(--color-primary-light)' }}>
+                      {(session.user?.name || session.user?.email || 'U').charAt(0).toUpperCase()}
+                    </span>
+                  )}
                 </DropdownMenuTrigger>
 
-                <DropdownMenuContent align="end" sideOffset={12} className="w-56">
+                {/* Order follows Vinted: profile first, everything about money and orders together. */}
+                <DropdownMenuContent align="end" sideOffset={12} className="w-60">
                   <DropdownMenuGroup>
                     <DropdownMenuItem render={<Link href="/profile" />} className="gap-3 px-2.5 py-2">
                       <User size={18} /> Mein Profil
                     </DropdownMenuItem>
-                    <DropdownMenuItem render={<Link href="/favorites" />} className="gap-3 px-2.5 py-2">
-                      <Heart size={18} /> Favoriten
+                    <DropdownMenuItem render={<Link href="/bestellungen" />} className="gap-3 px-2.5 py-2">
+                      <Package size={18} /> Meine Bestellungen
+                    </DropdownMenuItem>
+                    <DropdownMenuItem render={<Link href="/offers" />} className="gap-3 px-2.5 py-2">
+                      <Tag size={18} /> Angebote
                     </DropdownMenuItem>
                     <DropdownMenuItem render={<Link href="/inbox" />} className="gap-3 px-2.5 py-2">
                       <MessageCircle size={18} /> Nachrichten
+                      {activityCounts.unreadMessages > 0 ? <span className="ml-auto rounded-full bg-[var(--color-orange)] px-1.5 text-[11px] font-bold text-white">{activityCounts.unreadMessages}</span> : null}
                     </DropdownMenuItem>
-                  </DropdownMenuGroup>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuGroup>
-                    <DropdownMenuItem render={<Link href="/offers" />} className="gap-3 px-2.5 py-2">
-                      <Tag size={18} /> Angebotem
+                    <DropdownMenuItem render={<Link href="/favorites" />} className="gap-3 px-2.5 py-2">
+                      <Heart size={18} /> Favoriten
                     </DropdownMenuItem>
-                    <DropdownMenuItem render={<Link href="/purchases" />} className="gap-3 px-2.5 py-2">
-                      <Package size={18} /> Meine Einkäufe
-                    </DropdownMenuItem>
-                    <DropdownMenuItem render={<Link href="/sales" />} className="gap-3 px-2.5 py-2">
-                      <ShoppingBag size={18} /> Meine Verkäufe
+                    <DropdownMenuItem render={<Link href="/geldbeutel" />} className="gap-3 px-2.5 py-2">
+                      <Wallet size={18} /> Geldbeutel
                     </DropdownMenuItem>
                   </DropdownMenuGroup>
                   <DropdownMenuSeparator />
@@ -597,6 +611,14 @@ export default function Header() {
                     <DropdownMenuItem render={<Link href="/settings" />} className="gap-3 px-2.5 py-2">
                       <Settings size={18} /> Einstellungen
                     </DropdownMenuItem>
+                    <DropdownMenuItem render={<Link href="/hilfe" />} className="gap-3 px-2.5 py-2">
+                      <CircleHelp size={18} /> Hilfe-Center
+                    </DropdownMenuItem>
+                    {session.user?.role === 'ADMIN' ? (
+                      <DropdownMenuItem render={<Link href="/admin" />} className="gap-3 px-2.5 py-2">
+                        <ShieldCheck size={18} /> Admin
+                      </DropdownMenuItem>
+                    ) : null}
                   </DropdownMenuGroup>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
@@ -616,18 +638,20 @@ export default function Header() {
               />
             ) : (
               <div className="flex items-center">
+                {/* icon-only on phones: with the text label the menu button was pushed off-screen at 375 px */}
                 <Link
                   href="/login"
-                  className="inline-flex h-11 items-center justify-center rounded-full px-5 text-sm font-semibold transition-colors bg-[var(--color-bg-secondary)] hover:bg-[var(--color-border)] text-[var(--color-text)]"
+                  aria-label="Anmelden"
+                  className="inline-flex h-11 min-w-11 items-center justify-center rounded-full px-3 text-sm font-semibold transition-colors bg-[var(--color-bg-secondary)] hover:bg-[var(--color-border)] text-[var(--color-text)] sm:px-5"
                 >
-                  <User size={18} className="mr-2" />
-                  Anmelden
+                  <User size={18} className="sm:mr-2" />
+                  <span className="hidden sm:inline">Anmelden</span>
                 </Link>
               </div>
             )}
 
             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-              <SheetTrigger className="icon-mars-earth p-2.5 md:hidden" aria-label="Menu">
+              <SheetTrigger className="icon-mars-earth p-2.5 md:!hidden" aria-label="Menu">
                 <Menu size={22} />
               </SheetTrigger>
               <SheetContent side="right" className="w-[85vw] max-w-sm gap-0 p-0">
@@ -693,6 +717,11 @@ export default function Header() {
                   <li>
                     <Link href="/ueber-uns" className="flex items-center gap-3 rounded-xl p-3 text-sm font-medium transition-colors hover:bg-[var(--color-orange)] hover:text-[#1A4D2E]" style={{ color: 'var(--color-text)' }} onClick={() => setIsMobileMenuOpen(false)}>
                       <span aria-hidden>✨</span> Warum wir?
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/hilfe" className="flex items-center gap-3 rounded-xl p-3 text-sm font-medium transition-colors hover:bg-[var(--color-orange)] hover:text-[#1A4D2E]" style={{ color: 'var(--color-text)' }} onClick={() => setIsMobileMenuOpen(false)}>
+                      <CircleHelp size={16} style={{ color: 'var(--color-primary)' }} /> Hilfe-Center
                     </Link>
                   </li>
                   {session?.user?.role === 'ADMIN' ? (

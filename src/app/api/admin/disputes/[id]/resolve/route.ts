@@ -1,8 +1,8 @@
-﻿import { NextRequest } from 'next/server';
-import prisma from '@/lib/db';
+import { NextRequest } from 'next/server';
+import { z } from 'zod/v4';
 import { requireAdmin } from '@/lib/auth';
 import { ApiResponse } from '@/lib/api-response';
-import { z } from 'zod/v4';
+import { resolveDispute, OrderTransitionError } from '@/lib/order-state';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -13,40 +13,28 @@ const resolveSchema = z.object({
 
 /**
  * POST /api/admin/disputes/[id]/resolve - Admin closes a Käuferschutz case.
- * REFUNDED: dispute upheld, order marked refunded (real refund still has to be
- * executed via Stripe/manual transfer once live payments are active).
- * COMPLETED: dispute rejected, order proceeds as a normal completed sale.
+ * REFUNDED: dispute upheld - refund via Stripe when the order was paid online,
+ *           item goes back on sale, both sides are notified.
+ * COMPLETED: dispute rejected - order completes, item SOLD, both sides notified.
+ * Before, this only wrote a label: no money moved, nobody was told and the item
+ * stayed RESERVED forever.
  */
 export async function POST(request: NextRequest, { params }: Params) {
   try {
-    await requireAdmin();
+    const admin = await requireAdmin();
     const { id } = await params;
 
-    const body = await request.json();
-    const parsed = resolveSchema.safeParse(body);
+    const parsed = resolveSchema.safeParse(await request.json().catch(() => null));
     if (!parsed.success) {
       return ApiResponse.validationError(parsed.error.issues[0]?.message || 'Ungültige Eingabe.');
     }
 
-    const order = await prisma.order.findUnique({ where: { id } });
-    if (!order) return ApiResponse.notFound('Bestellung nicht gefunden.');
-    if (order.status !== 'DISPUTED') {
-      return ApiResponse.error('Diese Bestellung hat aktuell keinen offenen Käuferschutz-Fall.', 409);
-    }
-
-    const updated = await prisma.order.update({
-      where: { id },
-      data: {
-        status: parsed.data.outcome,
-        disputeResolution: parsed.data.outcome,
-        disputeResolutionNote: parsed.data.note,
-        disputeResolvedAt: new Date(),
-      },
-    });
-
+    const updated = await resolveDispute(id, admin.user.id, parsed.data.outcome, parsed.data.note);
     return ApiResponse.success(updated);
   } catch (error: any) {
     if (error.name === 'AuthError') return ApiResponse.forbidden(error.message);
+    if (error instanceof OrderTransitionError) return ApiResponse.error(error.message, error.status);
+    console.error('POST /api/admin/disputes/[id]/resolve error:', error);
     return ApiResponse.serverError();
   }
 }

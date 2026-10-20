@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { FormEvent, useEffect, useEffectEvent, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -21,13 +21,15 @@ import {
 } from '@/lib/utils/condition-map';
 import { getPusherClient } from '@/lib/pusher-client';
 import OrderTimeline from '@/components/order/OrderTimeline';
+import OrderActions, { type ActionOrder } from '@/components/order/OrderActions';
+import { carrierLabel, SHIPPING_CARRIERS as CARRIERS } from '@/config/shipping-policy';
 import { CHANNELS, EVENTS, type OrderStatusEvent } from '@/lib/realtime';
 
 type Viewer = {
   id: string;
 };
 
-type OrderDetail = {
+type OrderDetail = ActionOrder & {
   id: string;
   totalAmount: number;
   itemPrice: number;
@@ -63,7 +65,8 @@ type OrderDetail = {
   };
 };
 
-const SHIPPING_CARRIERS = ['DHL', 'Hermes', 'DPD', 'GLS', 'Andere'];
+// same list the server accepts (src/config/shipping-policy.ts) - 'Andere' used to be offered and then rejected
+const SHIPPING_CARRIERS = CARRIERS.map((c) => c.id);
 
 export default function SaleDetailPage() {
   const params = useParams<{ id: string }>();
@@ -116,7 +119,7 @@ export default function SaleDetailPage() {
         if (!cancelled) {
           setViewer({ id: viewerResult.data.id });
           setOrder(orderResult.data);
-          setShippingCarrier(orderResult.data.shippingCarrier || 'DHL');
+          setShippingCarrier(orderResult.data.shippingCarrier && orderResult.data.shippingCarrier !== 'PICKUP' ? orderResult.data.shippingCarrier.toUpperCase() : 'DHL');
           setTrackingCode(orderResult.data.trackingCode || '');
         }
       } catch (loadError: any) {
@@ -139,8 +142,16 @@ export default function SaleDetailPage() {
   const isSellerView = !!viewer && !!order && viewer.id === order.seller.id;
 
   const canManageShipment = useMemo(() => {
-    return isSellerView && (order?.status === 'PAID' || order?.status === 'SHIPPED');
+    return isSellerView && order?.shippingCarrier !== 'PICKUP' && (order?.status === 'PAID' || order?.status === 'SHIPPED');
   }, [isSellerView, order]);
+
+  // plain function for child components (useEffectEvent handlers may only run inside effects)
+  const reloadOrder = async () => {
+    if (!orderId) return;
+    const response = await fetch(`/api/orders/${orderId}`);
+    const result = await response.json().catch(() => null);
+    if (response.ok && result?.success) setOrder(result.data);
+  };
 
   const refreshOrder = useEffectEvent(async () => {
     if (!orderId) return;
@@ -154,7 +165,7 @@ export default function SaleDetailPage() {
     const result = await response.json();
     if (response.ok && result.success) {
       setOrder(result.data);
-      setShippingCarrier(result.data.shippingCarrier || 'DHL');
+      setShippingCarrier(result.data.shippingCarrier && result.data.shippingCarrier !== 'PICKUP' ? result.data.shippingCarrier.toUpperCase() : 'DHL');
       setTrackingCode(result.data.trackingCode || '');
     }
   });
@@ -334,6 +345,7 @@ export default function SaleDetailPage() {
               </h2>
               <OrderTimeline
                 status={order.status}
+                pickup={order.shippingCarrier === 'PICKUP'}
                 createdAt={order.createdAt}
                 activeDetail={
                   order.trackingCode ? (
@@ -352,6 +364,8 @@ export default function SaleDetailPage() {
                 </div>
               ) : null}
             </div>
+
+            {isSellerView ? <OrderActions order={order} role="seller" partnerId={order.buyer.id} onChanged={reloadOrder} /> : null}
 
             <div className="rounded-3xl border bg-white p-6 shadow-sm" style={{ borderColor: 'var(--color-border)' }}>
               <h2 className="mb-4 text-lg font-bold" style={{ color: 'var(--color-text)' }}>
@@ -372,7 +386,7 @@ export default function SaleDetailPage() {
                   <Truck size={18} style={{ color: 'var(--color-primary)', marginTop: 2 }} />
                   <div>
                     <p className="font-semibold" style={{ color: 'var(--color-text)' }}>Aktuelle Versanddaten</p>
-                    <p>{order.shippingCarrier || 'Noch kein Versanddienst hinterlegt'}</p>
+                    <p>{order.shippingCarrier ? carrierLabel(order.shippingCarrier) : 'Noch kein Versanddienst hinterlegt'}</p>
                     {order.trackingCode ? <p className="mt-1">Tracking: {order.trackingCode}</p> : <p className="mt-1">Noch kein Tracking hinterlegt</p>}
                   </div>
                 </div>
@@ -406,7 +420,7 @@ export default function SaleDetailPage() {
                       style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text)' }}
                     >
                       {SHIPPING_CARRIERS.map((carrier) => (
-                        <option key={carrier} value={carrier}>{carrier}</option>
+                        <option key={carrier} value={carrier}>{carrierLabel(carrier)}</option>
                       ))}
                     </select>
                   </label>
@@ -443,6 +457,8 @@ export default function SaleDetailPage() {
                   {order.status === 'COMPLETED' && 'Diese Bestellung ist abgeschlossen. Alle relevanten Versanddaten bleiben hier dokumentiert.'}
                   {order.status === 'DISPUTED' && 'Für diese Bestellung ist ein Streitfall offen. Prüfe die Details und dokumentiere alle Versandinformationen.'}
                   {order.status === 'PENDING_PAYMENT' && 'Die Zahlung ist noch nicht bestätigt. Versandaktionen werden erst nach erfolgreicher Zahlung freigeschaltet.'}
+                  {order.status === 'PENDING_PICKUP' && 'Abholung vereinbart - kein Versand nötig. Bestätige nach der Übergabe „Übergeben & bezahlt“.'}
+                  {(order.status === 'CANCELLED' || order.status === 'REFUNDED') && 'Diese Bestellung wurde storniert.'}
                 </p>
               </div>
             )}

@@ -16,6 +16,44 @@ const STORAGE_KEY = 'cssberlin_cart';
  */
 let cart: string[] = [];
 let hydrated = false;
+// Signed in: every change is mirrored to /api/cart, so the cart follows the
+// account across devices. Logged out it stays a pure browser cart.
+let serverSync = false;
+
+function mirror(action: 'add' | 'remove', productId: string) {
+  if (!serverSync) return;
+  void fetch('/api/cart', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action, productId }),
+  }).catch(() => undefined);
+}
+
+/**
+ * Called once after login (see components/cart/CartSync): merges the browser
+ * cart into the account and adopts the server's list as the truth.
+ */
+export async function syncCartWithServer(): Promise<void> {
+  hydrate();
+  try {
+    const res = await fetch('/api/cart', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'merge', productIds: cart.slice(0, 50) }),
+    });
+    const json = await res.json().catch(() => null);
+    if (res.ok && json?.success && Array.isArray(json.data?.productIds)) {
+      serverSync = true;
+      setCart(json.data.productIds);
+    }
+  } catch {
+    // offline or API down: keep the local cart, try again next login
+  }
+}
+
+export function stopCartServerSync() {
+  serverSync = false;
+}
 const listeners = new Set<() => void>();
 
 // useSyncExternalStore compares snapshots by reference, so this must stay the
@@ -98,11 +136,9 @@ export function useCart() {
   }, []);
 
   const toggleCart = useCallback((productId: string) => {
-    setCart(
-      cart.includes(productId)
-        ? cart.filter((id) => id !== productId)
-        : [...cart, productId],
-    );
+    const removing = cart.includes(productId);
+    setCart(removing ? cart.filter((id) => id !== productId) : [...cart, productId]);
+    mirror(removing ? 'remove' : 'add', productId);
   }, []);
 
   const isInCart = useCallback(

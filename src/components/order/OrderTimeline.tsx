@@ -49,10 +49,12 @@ type OrderTimelineProps = {
   createdAt?: string | Date;
   /** Rendered under the current step, e.g. a tracking code. */
   activeDetail?: React.ReactNode;
+  /** Abholung: three steps (request, handover, done) instead of the shipping rail. */
+  pickup?: boolean;
 };
 
-export default function OrderTimeline({ status, createdAt, activeDetail }: OrderTimelineProps) {
-  const steps = getOrderTimeline(status);
+export default function OrderTimeline({ status, createdAt, activeDetail, pickup = false }: OrderTimelineProps) {
+  const steps = getOrderTimeline(status, pickup);
   const terminal = TERMINAL_NOTICES[status];
   const lastReachedIndex = steps.reduce(
     (acc, step, i) => (step.completed || step.active ? i : acc),
