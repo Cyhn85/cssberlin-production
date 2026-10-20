@@ -2,7 +2,7 @@ import NextAuth, { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import GoogleProvider from 'next-auth/providers/google';
 import EmailProvider from 'next-auth/providers/email';
-import { PrismaAdapter } from '@auth/prisma-adapter';
+import { CssBerlinAdapter } from '@/lib/auth/adapter';
 import prisma from '@/lib/db';
 import bcrypt from 'bcryptjs';
 import { sendEmail, magicLinkEmail } from '@/lib/email';
@@ -24,9 +24,11 @@ import { rateLimit } from '@/lib/rate-limit';
 const CLAIMS_MAX_AGE_MS = 60 * 1000;
 
 const googleEnabled = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+// Magic-link login only when mail can actually be delivered (Resend). Without it the button sent nothing.
+const emailLoginEnabled = Boolean(process.env.RESEND_API_KEY);
 
 export const authOptions: NextAuthOptions = {
-    adapter: PrismaAdapter(prisma) as any,
+    adapter: CssBerlinAdapter(prisma as any),
     session: {
         strategy: 'jwt',
         // Default updateAge is 24h: the cookie is only re-issued once a day, so
@@ -37,6 +39,8 @@ export const authOptions: NextAuthOptions = {
     pages: {
         signIn: '/login',
         verifyRequest: '/verify-request',
+        // every auth failure lands on the login page with ?error=CODE (shown as a readable message there)
+        error: '/login',
     },
     providers: [
         ...(googleEnabled
@@ -44,12 +48,26 @@ export const authOptions: NextAuthOptions = {
                   GoogleProvider({
                       clientId: process.env.GOOGLE_CLIENT_ID as string,
                       clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+                      // A user who registered with e-mail + password and later clicks "Mit Google fortfahren"
+                      // used to get OAuthAccountNotLinked. Linking by e-mail is safe here ONLY because Google
+                      // proves ownership of the address; the signIn callback rejects unverified Google e-mails.
+                      allowDangerousEmailAccountLinking: true,
                   }),
               ]
             : []),
-        EmailProvider({
+        ...(emailLoginEnabled ? [EmailProvider({
             from: process.env.EMAIL_FROM || 'cssberlin.de <noreply@cssberlin.de>',
             maxAge: 24 * 60 * 60,
+            // GHSA-7rqj-j65f-68wh (Auth.js homoglyph "@" bypass): next-auth v4 ships an @auth/core that validates the
+            // address BEFORE Unicode normalisation. Normalise first and accept only plain ASCII addresses with exactly
+            // one "@", so a look-alike address can never be mapped onto someone else's account.
+            normalizeIdentifier(identifier: string): string {
+                const email = identifier.normalize('NFKC').trim().toLowerCase();
+                if (!/^[\x21-\x7e]+$/.test(email) || email.split('@').length !== 2 || !/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/.test(email)) {
+                    throw new Error('Ungültige E-Mail-Adresse.');
+                }
+                return email;
+            },
             // Bypasses nodemailer entirely - reuses the same Resend-backed
             // sendEmail() and branded template every other transactional
             // email on the site already goes through.
@@ -59,7 +77,7 @@ export const authOptions: NextAuthOptions = {
                     to: email,
                 });
             },
-        }),
+        })] : []),
         CredentialsProvider({
             name: 'Credentials',
             credentials: {
@@ -87,8 +105,8 @@ export const authOptions: NextAuthOptions = {
                     throw new Error('Zu viele Anmeldeversuche. Bitte warte eine Minute.');
                 }
 
-                const user = await prisma.user.findUnique({
-                    where: { email: credentials.email },
+                const user = await prisma.user.findFirst({
+                    where: { email: { equals: credentials.email.trim(), mode: 'insensitive' } },
                 });
 
                 if (!user || !user.passwordHash) {
@@ -122,13 +140,17 @@ export const authOptions: NextAuthOptions = {
         }),
     ],
     callbacks: {
-        async signIn({ user }) {
+        async signIn({ user, account, profile }) {
+            // Google: only verified addresses may sign in (this is what makes e-mail account linking safe)
+            if (account?.provider === 'google' && (profile as any)?.email_verified !== true) {
+                return '/login?error=GoogleEmailNotVerified';
+            }
             if (!user?.email) return true;
-            const existing = await prisma.user.findUnique({
-                where: { email: user.email },
+            const existing = await prisma.user.findFirst({
+                where: { email: { equals: user.email, mode: 'insensitive' } },
                 select: { isSuspended: true },
             });
-            if (existing?.isSuspended) return false;
+            if (existing?.isSuspended) return '/login?suspended=1';
             return true;
         },
         async session({ token, session }) {
@@ -148,6 +170,7 @@ export const authOptions: NextAuthOptions = {
                 token.username = (user as any).username || null;
                 token.isVerified = (user as any).isVerified || false;
                 token.isSuspended = (user as any).isSuspended || false;
+                token.picture = (user as any).image || (user as any).avatar || token.picture;
                 token.claimsAt = Date.now();
                 return token;
             }

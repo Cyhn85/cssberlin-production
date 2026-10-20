@@ -1,10 +1,32 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { signIn, useSession } from 'next-auth/react';
+import { getProviders, signIn, useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Eye, EyeOff, Loader2, Mail } from 'lucide-react';
+
+// NextAuth error codes (?error=...) -> readable German. Before 2026-10-20 the page ignored ?error entirely, so a failed
+// Google sign-in silently dropped the user back onto an empty form.
+const AUTH_ERRORS: Record<string, string> = {
+    OAuthAccountNotLinked: 'Diese E-Mail ist bereits mit einem anderen Anmeldeweg verknüpft. Melde dich mit E-Mail und Passwort an und verbinde Google danach in den Einstellungen.',
+    GoogleEmailNotVerified: 'Deine Google-E-Mail-Adresse ist nicht bestätigt. Bitte bestätige sie bei Google oder nutze E-Mail und Passwort.',
+    OAuthSignin: 'Die Anmeldung bei Google konnte nicht gestartet werden. Bitte versuche es erneut.',
+    OAuthCallback: 'Google hat die Anmeldung abgebrochen oder abgelehnt. Bitte versuche es erneut.',
+    OAuthCreateAccount: 'Dein Konto konnte nicht angelegt werden. Bitte versuche es erneut oder kontaktiere den Support.',
+    Callback: 'Bei der Anmeldung ist ein Fehler aufgetreten. Bitte versuche es erneut.',
+    AccessDenied: 'Zugriff verweigert. Dieses Konto ist gesperrt oder nicht berechtigt.',
+    Verification: 'Der Login-Link ist abgelaufen oder wurde bereits benutzt. Fordere einen neuen an.',
+    EmailSignin: 'Der Login-Link konnte nicht gesendet werden. Bitte nutze E-Mail und Passwort.',
+    CredentialsSignin: 'E-Mail oder Passwort ist falsch.',
+    SessionRequired: 'Bitte melde dich an, um fortzufahren.',
+    Default: 'Die Anmeldung ist fehlgeschlagen. Bitte versuche es erneut.',
+};
+
+function safeCallback(raw: string | null): string {
+    // only same-site paths: prevents open redirects ("//evil.com", "https://...")
+    return raw && raw.startsWith('/') && !raw.startsWith('//') ? raw : '/';
+}
 import AuthBrandHeader from '@/components/auth/AuthBrandHeader';
 
 export default function LoginPage() {
@@ -33,13 +55,26 @@ export default function LoginPage() {
     const [loading, setLoading] = useState(false);
     const [mode, setMode] = useState<'password' | 'magic'>('password');
     const [magicLinkSending, setMagicLinkSending] = useState(false);
+    const [googleLoading, setGoogleLoading] = useState(false);
+    const [providers, setProviders] = useState<Record<string, unknown> | null>(null);
+    const callbackUrl = safeCallback(searchParams.get('callbackUrl'));
+    const urlError = searchParams.get('error');
+
+    useEffect(() => {
+        getProviders().then((p) => setProviders(p ?? {})).catch(() => setProviders({}));
+    }, []);
+    useEffect(() => {
+        if (urlError) setError(AUTH_ERRORS[urlError] || AUTH_ERRORS.Default);
+    }, [urlError]);
+    const googleAvailable = !providers || 'google' in providers;   // optimistic until loaded
+    const magicAvailable = !!providers && 'email' in providers;
 
     const handleMagicLink = async (e: React.FormEvent) => {
         e.preventDefault();
         setMagicLinkSending(true);
         setError('');
         try {
-            await signIn('email', { email, callbackUrl: '/' });
+            await signIn('email', { email, callbackUrl });
         } finally {
             setMagicLinkSending(false);
         }
@@ -58,9 +93,9 @@ export default function LoginPage() {
             });
 
             if (res?.error) {
-                setError(res.error);
+                setError(AUTH_ERRORS[res.error] || res.error);
             } else {
-                router.push('/');
+                router.push(callbackUrl);
                 router.refresh(); // Update session state globally
             }
         } catch (err: any) {
@@ -164,9 +199,11 @@ export default function LoginPage() {
                             </div>
                         )}
 
+                        {googleAvailable && (<>
                         <button
                             type="button"
-                            onClick={() => signIn('google', { callbackUrl: '/' })}
+                            disabled={googleLoading}
+                            onClick={() => { setGoogleLoading(true); setError(''); signIn('google', { callbackUrl }); }}
                             className="w-full h-12 rounded-xl border border-[var(--color-primary)] text-[var(--color-primary)] font-semibold flex items-center justify-center gap-3 transition-all hover:bg-black/5 focus:ring-2 focus:ring-ring focus:outline-none"
                         >
                             <svg width="20" height="20" viewBox="0 0 24 24">
@@ -175,6 +212,7 @@ export default function LoginPage() {
                                 <path fill="#FBBC05" d="M5.27 14.27a7.2 7.2 0 010-4.54V6.64H1.27a12 12 0 000 10.72l4-3.09z" />
                                 <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.44-3.44C17.95 1.19 15.23 0 12 0 7.31 0 3.25 2.7 1.27 6.64l4 3.09C6.22 6.86 8.87 4.75 12 4.75z" />
                             </svg>
+                            {googleLoading ? <Loader2 size={20} className="animate-spin" /> : null}
                             Mit Google fortfahren
                         </button>
 
@@ -183,6 +221,7 @@ export default function LoginPage() {
                             <span className="text-xs font-semibold text-muted-foreground tracking-wider">ODER</span>
                             <div className="h-px flex-1 bg-border" />
                         </div>
+                        </>)}
 
                         {mode === 'password' ? (
                             <form onSubmit={handleSubmit} className="space-y-5">
@@ -230,13 +269,13 @@ export default function LoginPage() {
                                     {loading ? <Loader2 size={20} className="animate-spin" /> : 'Einloggen'}
                                 </button>
 
-                                <button
+                                {magicAvailable && <button
                                     type="button"
                                     onClick={() => { setMode('magic'); setError(''); }}
                                     className="flex w-full items-center justify-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors mt-4"
                                 >
                                     <Mail size={16} /> Stattdessen per Magic Link einloggen
-                                </button>
+                                </button>}
                             </form>
                         ) : (
                             <form onSubmit={handleMagicLink} className="space-y-5">
