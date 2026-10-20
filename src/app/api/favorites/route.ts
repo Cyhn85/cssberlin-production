@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import prisma from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
 import { ApiResponse } from '@/lib/api-response';
+import { notifyItemFavorited } from '@/lib/product-alerts';
 
 /**
  * GET /api/favorites — Get user's favorited products
@@ -76,6 +77,7 @@ export async function POST(request: NextRequest) {
         where: { id: productId },
         data: { likes: { increment: 1 } },
       });
+      if (product.sellerId !== session.user.id) void notifyItemFavorited(productId, product.sellerId, product.title, product.likes + 1);
       return ApiResponse.success({ favorited: true });
     }
   } catch (error: any) {

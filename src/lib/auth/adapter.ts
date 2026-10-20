@@ -1,6 +1,7 @@
 import { PrismaAdapter } from '@auth/prisma-adapter';
 import type { Adapter, AdapterAccount, AdapterUser } from 'next-auth/adapters';
 import type { PrismaClient, User } from '@/generated/prisma';
+import { sendWelcomeMail } from '@/lib/account-mails';
 
 /**
  * Adapter between NextAuth's standard user shape and our own `User` model.
@@ -44,6 +45,8 @@ export function CssBerlinAdapter(prisma: PrismaClient): Adapter {
         ...base,
         async createUser(data: AdapterUser) {
             const user = await prisma.user.create({ data: toDbData(data as any) as any });
+            // first Google sign-in = registration: same welcome mail as the e-mail sign-up
+            void sendWelcomeMail(user.email, user.name);
             return toAdapterUser(user) as AdapterUser;
         },
         async linkAccount(account: AdapterAccount) {

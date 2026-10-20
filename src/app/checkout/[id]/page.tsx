@@ -1,10 +1,10 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { ChevronLeft, CreditCard, Handshake, Info, Leaf, Loader2, Lock, MapPin, ShieldCheck, Tag, Truck } from 'lucide-react';
+import { ChevronLeft, CreditCard, Handshake, Info, Leaf, Loader2, Lock, MapPin, ShieldCheck, Truck } from 'lucide-react';
 import { formatPrice, getConditionLabel } from '@/lib/utils/condition-map';
 import { SHIPPING_CARRIERS, FREE_SHIPPING_THRESHOLD_EUR, amountToFreeShipping } from '@/config/shipping-policy';
 import { quoteCheckout } from '@/lib/payments/pricing';
@@ -250,7 +250,7 @@ export default function CheckoutPage() {
         {error ? <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">{error}</div> : null}
         {offer ? (
           <div className="mb-6 flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm text-emerald-800" style={{ borderColor: 'rgba(16,185,129,.28)', background: 'rgba(16,185,129,.10)' }}>
-            <Tag size={18} className="mt-0.5" />
+            <Handshake size={18} className="mt-0.5" />
             <div>
               <p className="font-semibold">Du kaufst zum vereinbarten Preis von {formatPrice(offer.offeredPrice)}.</p>
               {offer.expiresAt ? <p className="mt-1">Reserviert für dich bis {new Date(offer.expiresAt).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })}.</p> : null}

@@ -152,10 +152,20 @@ export function noticeEmail(params: {
   intro: string;
   lines?: string[];
   ctaLabel?: string;
+  /** site path, e.g. /sales/123 */
   ctaPath?: string;
+  /** absolute URL (password reset links) - wins over ctaPath */
+  ctaUrl?: string;
   accent?: string;
 }): EmailOptions {
   const body = (params.lines || []).map((l) => `<p style="margin: 0 0 10px;">${escapeHtml(l)}</p>`).join('') || '<p style="margin:0;">&nbsp;</p>';
+  // Every mail names its sender and where to switch optional mails off
+  // (transactional ones stay on - they belong to the contract).
+  const footer =
+    `Du erhältst diese E-Mail zu deinem Konto bei cssberlin.de. ` +
+    `<a href="${resolveUrl('/settings?tab=notifications')}" style="color:#6b7280;">Benachrichtigungen verwalten</a> · ` +
+    `<a href="${resolveUrl('/hilfe')}" style="color:#6b7280;">Hilfe</a> · ` +
+    `<a href="${resolveUrl('/impressum')}" style="color:#6b7280;">Impressum</a><br/>CSS Berlin · Am Omnibushof 12 · 13593 Berlin`;
   return {
     to: params.to,
     subject: params.subject,
@@ -163,9 +173,10 @@ export function noticeEmail(params: {
       title: escapeHtml(params.title),
       intro: escapeHtml(params.intro),
       body,
-      ctaLabel: params.ctaLabel,
-      ctaUrl: params.ctaPath ? resolveUrl(params.ctaPath) : undefined,
+      ctaLabel: params.ctaLabel ? escapeHtml(params.ctaLabel) : undefined,
+      ctaUrl: params.ctaUrl || (params.ctaPath ? resolveUrl(params.ctaPath) : undefined),
       accent: params.accent,
+      footer,
     }),
   };
 }

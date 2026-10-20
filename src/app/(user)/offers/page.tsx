@@ -17,6 +17,7 @@ import {
   Tag,
   XCircle,
   Info,
+  Handshake,
 } from 'lucide-react';
 import {
   formatPrice,
@@ -351,7 +352,7 @@ export default function OffersPage() {
             {
               label: 'Deine Entscheidungen',
               value: summary.waitingForBuyer,
-              icon: <Tag size={18} />,
+              icon: <Handshake size={18} />,
             },
             {
               label: 'Neue eingehende Angebote',

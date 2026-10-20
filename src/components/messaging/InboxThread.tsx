@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -10,6 +10,7 @@ import {
   MessageCircle,
   ShieldCheck,
   ShoppingBag,
+  Handshake,
 } from 'lucide-react';
 import {
   formatPrice,
@@ -583,7 +584,12 @@ export default function InboxThread({ selfId, apiBase, title }: { selfId: string
                     message.offer.orders.length === 0 &&
                     message.offer.product.status === 'ACTIVE';
                   return (
-                    <div key={message.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
+                    <div key={message.id} className={`flex items-end gap-2 ${isOwn ? 'flex-row-reverse justify-start' : 'justify-start'}`}>
+                      {message.offer || message.type === 'OFFER_ACTION' ? (
+                        <span className="mb-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white shadow-sm" style={{ background: 'var(--color-orange)' }} aria-label="Verhandlung" title="Verhandlung">
+                          <Handshake size={16} />
+                        </span>
+                      ) : null}
                       <div
                         className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm shadow-sm ${isOwn ? 'rounded-tr-sm bg-[var(--color-primary)] text-white' : 'rounded-tl-sm bg-white'}`}
                         style={!isOwn ? { border: '1px solid var(--color-border)', color: 'var(--color-text)' } : undefined}

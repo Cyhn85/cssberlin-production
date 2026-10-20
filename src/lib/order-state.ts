@@ -53,6 +53,7 @@ export const REMINDER = {
   REVIEW_BUYER: 8,
   REVIEW_SELLER: 16,
   CANCEL_REQUEST_LAPSED: 32,
+  CONFIRM_RECEIPT: 64,
 } as const;
 
 const OPEN_FOR_SALE_ORDER_STATUSES = ['PENDING_PICKUP', 'PAID', 'SHIPPED', 'DELIVERED', 'COMPLETED', 'DISPUTED'] as const;
@@ -335,7 +336,7 @@ export async function answerCancellation(orderId: string, sellerId: string, acce
  * make a double run harmless.
  */
 export async function runOrderTimers(now = new Date()) {
-  const stats = { shipReminders: 0, autoCancelled: 0, pickupLapsed: 0, pickupReminders: 0, autoCompleted: 0, reviewPrompts: 0, cancelRequestsLapsed: 0, errors: 0 };
+  const stats = { confirmReminders: 0, shipReminders: 0, autoCancelled: 0, pickupLapsed: 0, pickupReminders: 0, autoCompleted: 0, reviewPrompts: 0, cancelRequestsLapsed: 0, errors: 0 };
   const t = now.getTime();
 
   const paid = await prisma.order.findMany({ where: { status: 'PAID' }, include: ORDER_INCLUDE });
@@ -379,7 +380,7 @@ export async function runOrderTimers(now = new Date()) {
     } catch (e) { stats.errors++; console.error('order timer (pickup) failed', o.id, e); }
   }
 
-  const inTransit = await prisma.order.findMany({ where: { status: { in: ['SHIPPED', 'DELIVERED'] } }, select: { id: true, status: true, shippedAt: true, deliveredAt: true, updatedAt: true } });
+  const inTransit = await prisma.order.findMany({ where: { status: { in: ['SHIPPED', 'DELIVERED'] } }, select: { id: true, status: true, shippedAt: true, deliveredAt: true, updatedAt: true, remindersSent: true } });
   for (const o of inTransit) {
     try {
       const due = o.deliveredAt
@@ -388,6 +389,12 @@ export async function runOrderTimers(now = new Date()) {
       if (t >= due) {
         await completeOrder(o.id, { id: 'system', role: 'SYSTEM' });
         stats.autoCompleted++;
+      } else if (due - t <= 2 * ms.DAY && !(o.remindersSent & REMINDER.CONFIRM_RECEIPT)) {
+        // 2 days before auto-completion: last chance to confirm or report a problem
+        await prisma.order.update({ where: { id: o.id }, data: { remindersSent: { set: o.remindersSent | REMINDER.CONFIRM_RECEIPT } } });
+        const full = await prisma.order.findUniqueOrThrow({ where: { id: o.id }, include: ORDER_INCLUDE });
+        await emit('ORDER_CONFIRM_REMINDER', full, full.sellerId);
+        stats.confirmReminders++;
       }
     } catch (e) {
       if (!(e instanceof OrderTransitionError)) { stats.errors++; console.error('order timer (auto-complete) failed', o.id, e); }

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -16,7 +16,7 @@ import {
 const CATEGORY_LABELS: Record<Exclude<ConsentCategory, 'necessary'>, { title: string; description: string }> = {
     functional: {
         title: 'Funktional',
-        description: 'Ermöglicht Nachrichten, Angebote und Live-Updates in Echtzeit (z. B. Inbox und Pazarlik-Benachrichtigungen).',
+        description: 'Ermöglicht Nachrichten, Angebote und Live-Updates in Echtzeit (z. B. Inbox und Benachrichtigungen zu Preisvorschlägen).',
     },
     analytics: {
         title: 'Analyse',

@@ -44,6 +44,43 @@ export async function notifyPriceDrop(productId: string, oldPrice: number, newPr
   }
 }
 
+/**
+ * "Dein Artikel wurde gemerkt" (Vinted sends the same). At most one notice per
+ * item per 24 h - a popular item must not flood the seller's inbox.
+ */
+const favoriteNoticeInFlight = new Set<string>();
+
+export async function notifyItemFavorited(productId: string, sellerId: string, title: string, totalFavorites: number) {
+  // two hearts in the same second both saw "no notice yet" - one per product at a time
+  if (favoriteNoticeInFlight.has(productId)) return;
+  favoriteNoticeInFlight.add(productId);
+  try {
+    const prefix = `Dein Artikel „${title}“ wurde gemerkt`;
+    const recent = await prisma.message.count({
+      where: { receiverId: sellerId, type: 'SYSTEM_INFO', content: { startsWith: prefix }, createdAt: { gte: new Date(Date.now() - 24 * 3600 * 1000) } },
+    });
+    if (recent > 0) return;
+    await createSystemNotification({
+      senderId: sellerId,
+      receiverId: sellerId,
+      category: 'listingActivity',
+      content: `${prefix} - jetzt ${totalFavorites}× auf Merklisten. Ein kleiner Preisnachlass macht aus Interesse oft einen Verkauf.`,
+      email: {
+        subject: `Dein Artikel wurde gemerkt: ${title}`,
+        title: 'Jemand mag deinen Artikel',
+        intro: `„${title}“ steht jetzt ${totalFavorites}× auf Merklisten.`,
+        lines: ['Wer einen Artikel merkt, bekommt Bescheid, wenn du den Preis senkst.'],
+        ctaLabel: 'Artikel ansehen',
+        ctaPath: `/product/${productId}`,
+      },
+    });
+  } catch (error) {
+    console.error('notifyItemFavorited failed', error);
+  } finally {
+    favoriteNoticeInFlight.delete(productId);
+  }
+}
+
 /** "X folgt dir jetzt" for the followed user. */
 export async function notifyNewFollower(followerId: string, followedId: string) {
   try {

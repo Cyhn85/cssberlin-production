@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useDeferredValue, useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
@@ -25,6 +25,7 @@ import {
   User,
   Wallet,
   CircleHelp,
+  Handshake,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
@@ -304,7 +305,7 @@ export default function Header() {
 
   const quickLinks = [
     { href: '/favorites', label: 'Favoriten', icon: <Heart size={16} /> },
-    { href: '/offers', label: 'Angebote', icon: <Tag size={16} /> },
+    { href: '/offers', label: 'Angebote', icon: <Handshake size={16} /> },
     { href: '/bestellungen', label: 'Bestellungen', icon: <Package size={16} /> },
     { href: '/geldbeutel', label: 'Geldbeutel', icon: <Wallet size={16} /> },
     { href: '/inbox', label: 'Inbox', icon: <MessageCircle size={16} /> },
@@ -493,8 +494,8 @@ export default function Header() {
                   </span>
                 ) : null}
               </Link>
-              <Link href="/offers" className="icon-mars-earth inline-flex items-center justify-center p-3 min-w-[44px] min-h-[44px]" aria-label="Angebote">
-                <Tag size={22} />
+              <Link href="/offers" className="icon-mars-earth inline-flex items-center justify-center p-3 min-w-[44px] min-h-[44px]" aria-label="Angebote & Verhandlungen" title="Angebote & Verhandlungen">
+                <Handshake size={22} />
               </Link>
               <Link href="/cart" className="icon-mars-earth relative inline-flex items-center justify-center p-3 min-w-[44px] min-h-[44px]" aria-label="Warenkorb">
                 <ShoppingCart size={22} />
@@ -593,7 +594,7 @@ export default function Header() {
                       <Package size={18} /> Meine Bestellungen
                     </DropdownMenuItem>
                     <DropdownMenuItem render={<Link href="/offers" />} className="gap-3 px-2.5 py-2">
-                      <Tag size={18} /> Angebote
+                      <Handshake size={18} /> Angebote
                     </DropdownMenuItem>
                     <DropdownMenuItem render={<Link href="/inbox" />} className="gap-3 px-2.5 py-2">
                       <MessageCircle size={18} /> Nachrichten

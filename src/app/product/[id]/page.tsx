@@ -502,7 +502,12 @@ export default function ProductDetailPage() {
                   where our shipping terms actually live. */}
               <p className="mt-2 text-xs" style={{ color: 'var(--color-text-muted)' }}>
                 {priceDisclosure.isKleinunternehmer ? (
-                  priceDisclosure.kleinunternehmerNotice
+                  <>
+                    {priceDisclosure.kleinunternehmerNotice} zzgl.{' '}
+                    <Link href="/hilfe/versand" className="underline underline-offset-2">
+                      Versandkosten
+                    </Link>
+                  </>
                 ) : (
                   <>
                     {priceDisclosure.long}{' '}

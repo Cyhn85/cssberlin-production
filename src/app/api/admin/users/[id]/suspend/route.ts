@@ -1,8 +1,9 @@
-﻿import { NextRequest } from 'next/server';
+import { NextRequest } from 'next/server';
 import prisma from '@/lib/db';
 import { requireAdmin } from '@/lib/auth';
 import { ApiResponse } from '@/lib/api-response';
 import { z } from 'zod/v4';
+import { sendAccountStatusMail } from '@/lib/account-mails';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -42,10 +43,14 @@ export async function POST(request: NextRequest, { params }: Params) {
         suspendedReason: parsed.data.suspend ? parsed.data.reason : null,
         suspendedAt: parsed.data.suspend ? new Date() : null,
       },
-      select: { id: true, isSuspended: true, suspendedReason: true, suspendedAt: true },
+      select: { id: true, isSuspended: true, suspendedReason: true, suspendedAt: true, email: true, name: true },
     });
 
-    return ApiResponse.success(updated);
+    // DSA Art. 17: the user is told that and why the account was restricted
+    void sendAccountStatusMail(updated.email, updated.name, updated.isSuspended, updated.suspendedReason);
+
+    const { email: _e, name: _n, ...result } = updated;
+    return ApiResponse.success(result);
   } catch (error: any) {
     if (error.name === 'AuthError') return ApiResponse.forbidden(error.message);
     return ApiResponse.serverError();

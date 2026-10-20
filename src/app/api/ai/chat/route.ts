@@ -27,7 +27,10 @@ import { orderStatusToLabel } from '@/lib/utils/condition-map';
  */
 
 const MAX_CHARS = 1000;
-const GROQ_MODEL = process.env.GROQ_CHAT_MODEL || 'qwen/qwen3.8-27b';
+// Measured from the server 2026-10-20 (streaming, first byte): qwen3.8-27b 0.18-0.28 s,
+// gpt-oss-120b 0.34-0.43 s, Gemini flash 5-30 s or 503. Fastest first.
+const GROQ_MODELS = (process.env.GROQ_CHAT_MODELS || 'qwen/qwen3.8-27b,openai/gpt-oss-120b')
+  .split(',').map((m) => m.trim()).filter(Boolean);
 // Tried in order. Measured 2026-10-20: Gemini answers in 5-30 s and returns 503
 // under load, so one model alone left visitors with the fallback text too often.
 const GEMINI_MODELS = (process.env.GEMINI_CHAT_MODELS || 'gemini-flash-lite-latest,gemini-flash-latest')
@@ -35,9 +38,9 @@ const GEMINI_MODELS = (process.env.GEMINI_CHAT_MODELS || 'gemini-flash-lite-late
 /** Only the wait for the first byte is limited - a streaming answer must not be cut off. */
 const FIRST_BYTE_TIMEOUT_MS = 25000;
 
-async function fetchWithFirstByteTimeout(url: string, init: RequestInit): Promise<Response> {
+async function fetchWithFirstByteTimeout(url: string, init: RequestInit, timeoutMs = FIRST_BYTE_TIMEOUT_MS): Promise<Response> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), FIRST_BYTE_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     return await fetch(url, { ...init, signal: controller.signal });
   } finally {
@@ -168,10 +171,12 @@ export async function POST(request: NextRequest) {
 
     // Groq first when configured: it answers in about a second; Gemini is the fallback.
     if (process.env.GROQ_API_KEY) {
-      try {
-        return await streamGroq(messages, prompt);
-      } catch (error) {
-        console.warn('CSS Assist: Groq failed', error);
+      for (const model of GROQ_MODELS) {
+        try {
+          return await streamGroq(messages, prompt, model);
+        } catch (error) {
+          console.warn(`CSS Assist: Groq ${model} failed`, error);
+        }
       }
     }
     if (process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
@@ -210,18 +215,18 @@ async function streamGemini(messages: ChatMessage[], system: string, model: stri
   return geminiSseAsOpenAiSse(response);
 }
 
-async function streamGroq(messages: ChatMessage[], system: string): Promise<Response> {
+async function streamGroq(messages: ChatMessage[], system: string, model: string): Promise<Response> {
   const response = await fetchWithFirstByteTimeout('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: GROQ_MODEL,
+      model,
       messages: [{ role: 'system', content: system }, ...messages],
       stream: true,
       max_tokens: 700,
       temperature: 0.4,
     }),
-  });
+  }, 8000); // Groq normally answers in < 1 s - fail over fast
   if (!response.ok || !response.body) throw new Error(`Groq ${response.status}`);
   return new Response(response.body, { headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' } });
 }

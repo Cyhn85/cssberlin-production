@@ -1,9 +1,9 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Heart, Loader2, Search, Tag } from 'lucide-react';
+import { Heart, Loader2, Search, Tag , Handshake } from 'lucide-react';
 import ProductCard from '@/components/product/ProductCard';
 
 const ACTIVE_OFFER_STATUSES = new Set(['PENDING', 'COUNTERED']);
@@ -97,7 +97,7 @@ export default function FavoritesPage() {
                     href="/offers"
                     className="btn-mars-earth absolute right-2 top-2 z-10 flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold text-white"
                   >
-                    <Tag size={12} /> <span>Pazarlık sürüyor</span>
+                    <Handshake size={12} /> <span>Verhandlung läuft</span>
                   </Link>
                 ) : null}
                 <ProductCard product={product} />

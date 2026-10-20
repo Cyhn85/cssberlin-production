@@ -1,4 +1,4 @@
-﻿import { NextRequest } from 'next/server';
+import { NextRequest } from 'next/server';
 import prisma from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
 import { ApiResponse } from '@/lib/api-response';
@@ -191,6 +191,13 @@ export async function PUT(request: NextRequest, { params }: Params) {
           content: actorRole === 'SELLER'
             ? `Dein Angebot für ${offer.product.title} wurde abgelehnt. Du kannst ein neues Angebot senden, solange der Artikel aktiv ist.`
             : `${offer.buyer.name || 'Ein Mitglied'} hat dein Gegenangebot für ${offer.product.title} abgelehnt.`,
+          email: {
+            subject: `${actorRole === 'SELLER' ? 'Angebot' : 'Gegenangebot'} abgelehnt: ${offer.product.title}`,
+            title: actorRole === 'SELLER' ? 'Dein Angebot wurde abgelehnt' : 'Gegenangebot abgelehnt',
+            lines: [`Artikel: ${offer.product.title}`, `Preis: ${eur(offer.offeredPrice)}`, ...(actorRole === 'SELLER' ? ['Du kannst ein neues Angebot senden, solange der Artikel verfügbar ist.'] : [])],
+            ctaLabel: actorRole === 'SELLER' ? 'Neues Angebot senden' : 'Angebote ansehen',
+            ctaPath: actorRole === 'SELLER' ? `/product/${offer.productId}` : '/offers',
+          },
         });
 
         return ApiResponse.success({ id, status: 'REJECTED', action: 'rejected', actorRole, originRole });

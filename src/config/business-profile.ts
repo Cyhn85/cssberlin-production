@@ -1,4 +1,4 @@
-﻿export const businessProfile = {
+export const businessProfile = {
   brandName: 'cssberlin.de',
   businessName: 'CSS Berlin',
   ownerName: 'Ceyhun Sabahattin Sorguc',
@@ -37,12 +37,13 @@ export const businessAddressLines = [
  * `vatId` rather than being typed into each page - one place to change if the
  * business ever moves onto the small-business scheme (§19 UStG).
  *
- * `isKleinunternehmer` is false because businessProfile.vatId is a real VAT ID
- * and businessControlRules.publishVatId is true: a §19 business does not show
- * VAT and would use the second sentence instead.
+ * `isKleinunternehmer` is TRUE (owner, 2026-10-20): the business currently has
+ * no turnover and stays under the §19 UStG limit, so no VAT is charged. A
+ * USt-IdNr. (vatId) can exist alongside §19 and stays in the Impressum.
+ * Flip back to false the day the turnover crosses the Kleinunternehmer limit.
  */
 export const priceDisclosure = {
-  isKleinunternehmer: false,
+  isKleinunternehmer: true,
   /** Short form, next to a price in a listing grid. */
   short: 'inkl. MwSt. zzgl. Versand',
   /** Long form for the product page, where the shipping link sits beside it. */
@@ -50,11 +51,13 @@ export const priceDisclosure = {
   /** Used instead of the above if the business ever switches to §19 UStG. */
   kleinunternehmerNotice:
     'Kein Ausweis der Umsatzsteuer gemäß § 19 UStG (Kleinunternehmerregelung).',
+  /** Compact §19 form for listing grids. */
+  kleinunternehmerShort: 'Gem. § 19 UStG ohne USt., zzgl. Versand',
 } as const;
 
 /** The sentence to render next to a price in a compact spot (cards, lists). */
 export const shortPriceNotice = priceDisclosure.isKleinunternehmer
-  ? priceDisclosure.kleinunternehmerNotice
+  ? priceDisclosure.kleinunternehmerShort
   : priceDisclosure.short;
 
 export const businessControlRules = {

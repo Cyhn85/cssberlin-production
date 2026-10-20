@@ -6,6 +6,7 @@ import { createMessageSchema } from '@/lib/validations';
 import { CHANNELS, EVENTS, triggerEvent } from '@/lib/pusher';
 import { relayToPersonaManagerIfNeeded } from '@/lib/notifications';
 import { recordAction } from '@/lib/abuse-monitor';
+import { mailFirstUnreadMessage } from '@/lib/message-mail';
 
 const messageOfferSelect = {
   id: true,
@@ -175,6 +176,8 @@ export async function POST(request: NextRequest) {
         message,
       }),
     ]);
+
+    void mailFirstUnreadMessage(session.user.id, receiverId, message.content, message.sender.name);
 
     // If this chat message went to a persona (pool) seller/buyer account,
     // mirror it to the real human who manages that persona in real time.

@@ -1,4 +1,4 @@
-﻿import { createSystemNotifications, type NotificationInput } from '@/lib/notifications';
+import { createSystemNotifications, type NotificationInput } from '@/lib/notifications';
 import { CHANNELS, EVENTS, triggerEvent } from '@/lib/pusher';
 import { type OrderLifecycleEventType, type OrderStatusEvent } from '@/lib/realtime';
 import { orderStatusToLabel } from '@/lib/utils/condition-map';
@@ -28,6 +28,7 @@ export type OrderCommunicationRecord = {
   seller: OrderParty;
   product: OrderProduct;
   paymentMethod?: string | null;
+  itemPrice?: number;
   cancelReason?: string | null;
   cancelledBy?: string | null;
   cancelRequestReason?: string | null;
@@ -70,6 +71,7 @@ function buildSummary(input: PublishOrderLifecycleEventInput) {
     case 'ORDER_PICKUP_REMINDER': return `${t}: Reservierung läuft bald ab.`;
     case 'ORDER_PICKUP_COMPLETED': return `${t}: Übergabe bestätigt, Kauf abgeschlossen.`;
     case 'ORDER_SHIP_REMINDER': return `${t}: Versand ausstehend.`;
+    case 'ORDER_CONFIRM_REMINDER': return `${t}: Bitte Empfang bestätigen.`;
     case 'ORDER_SHIPPED': return order.trackingCode ? `${t}: versendet (${order.trackingCode}).` : `${t}: versendet.`;
     case 'ORDER_COMPLETED':
     case 'ORDER_AUTO_COMPLETED': return `${t}: Bestellung abgeschlossen.`;
@@ -96,6 +98,9 @@ function buildNotifications(input: PublishOrderLifecycleEventInput): Notificatio
   const { buyerPath, sellerPath } = buildOrderPaths(order.id);
   const tracking = order.trackingCode ? ` Sendungsnummer: ${order.trackingCode}.` : '';
   const pickup = order.paymentMethod === 'pickup_cash' || order.shippingCarrier === 'PICKUP';
+  const creditLine = pickup
+    ? 'Der Käufer hat bei der Übergabe bar bezahlt.'
+    : `${eur(order.itemPrice ?? order.totalAmount)} wurden deinem Guthaben gutgeschrieben.`;
   const toBuyer = (content: string, email?: NotificationInput['email']): NotificationInput => ({ senderId: s.id, receiverId: b.id, content, email });
   const toSeller = (content: string, email?: NotificationInput['email']): NotificationInput => ({ senderId: b.id, receiverId: s.id, content, email });
 
@@ -174,24 +179,38 @@ function buildNotifications(input: PublishOrderLifecycleEventInput): Notificatio
           ctaPath: buyerPath,
         }),
       ];
+    case 'ORDER_CONFIRM_REMINDER':
+      return [
+        toBuyer(`Ist ${t} gut angekommen? Bestätige den Empfang oder melde ein Problem - in ${completionPolicy.autoCompleteAfterShippedDays - 5} Tagen wird die Bestellung automatisch abgeschlossen.`, {
+          subject: `Ist dein Artikel angekommen? ${t}`,
+          title: 'Alles gut angekommen?',
+          lines: [
+            `Artikel: ${t}`,
+            'Passt alles? Dann bestätige den Empfang - der Verkäufer bekommt sein Geld.',
+            'Stimmt etwas nicht? Melde das Problem jetzt, danach ist es nicht mehr möglich.',
+          ],
+          ctaLabel: 'Bestellung öffnen',
+          ctaPath: buyerPath,
+        }),
+      ];
     case 'ORDER_COMPLETED':
       return [
-        toSeller(`${buyerName} hat den Erhalt von ${t} bestätigt. Der Verkauf ist abgeschlossen.`, {
-          subject: `Abgeschlossen: ${t}`,
-          title: 'Verkauf abgeschlossen',
-          lines: [`Artikel: ${t}`],
-          ctaLabel: 'Verkauf ansehen',
-          ctaPath: sellerPath,
+        toSeller(`${buyerName} hat den Erhalt von ${t} bestätigt. ${creditLine}`, {
+          subject: pickup ? `Abgeschlossen: ${t}` : `Geld gutgeschrieben: ${t}`,
+          title: pickup ? 'Verkauf abgeschlossen' : 'Dein Geld ist da',
+          lines: [`Artikel: ${t}`, creditLine, 'Bewerte jetzt deinen Käufer - das hilft der Community.'],
+          ctaLabel: pickup ? 'Verkauf ansehen' : 'Zum Geldbeutel',
+          ctaPath: pickup ? sellerPath : '/geldbeutel',
         }),
       ];
     case 'ORDER_AUTO_COMPLETED':
       return [
-        toSeller(`${t}: Bestellung automatisch abgeschlossen (kein Problem gemeldet).`, {
-          subject: `Abgeschlossen: ${t}`,
-          title: 'Verkauf abgeschlossen',
-          lines: [`Artikel: ${t}`],
-          ctaLabel: 'Verkauf ansehen',
-          ctaPath: sellerPath,
+        toSeller(`${t}: Bestellung automatisch abgeschlossen (kein Problem gemeldet). ${creditLine}`, {
+          subject: pickup ? `Abgeschlossen: ${t}` : `Geld gutgeschrieben: ${t}`,
+          title: pickup ? 'Verkauf abgeschlossen' : 'Dein Geld ist da',
+          lines: [`Artikel: ${t}`, creditLine],
+          ctaLabel: pickup ? 'Verkauf ansehen' : 'Zum Geldbeutel',
+          ctaPath: pickup ? sellerPath : '/geldbeutel',
         }),
         toBuyer(`${t}: Bestellung automatisch abgeschlossen. Wie war dein Kauf? Bewerte ${sellerName}.`),
       ];

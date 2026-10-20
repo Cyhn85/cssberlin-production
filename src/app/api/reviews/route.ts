@@ -3,6 +3,7 @@ import prisma from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
 import { ApiResponse } from '@/lib/api-response';
 import { createReviewSchema } from '@/lib/validations';
+import { createSystemNotification } from '@/lib/notifications';
 
 /**
  * POST /api/reviews — Create a review for a completed order
@@ -56,6 +57,21 @@ export async function POST(request: NextRequest) {
         author: { select: { id: true, name: true, avatar: true } },
       },
     });
+
+    void createSystemNotification({
+      senderId: session.user.id,
+      receiverId: review.targetUserId,
+      category: 'listingActivity',
+      content: `${review.author.name || 'Ein Mitglied'} hat dich mit ${rating} von 5 Sternen bewertet.`,
+      email: {
+        subject: `Neue Bewertung: ${rating} von 5 Sternen`,
+        title: 'Du hast eine neue Bewertung',
+        intro: `${review.author.name || 'Ein Mitglied'} hat dich mit ${'★'.repeat(rating)}${'☆'.repeat(5 - rating)} bewertet.`,
+        lines: comment ? [`„${comment}“`] : [],
+        ctaLabel: 'Profil ansehen',
+        ctaPath: `/profile/${review.targetUserId}`,
+      },
+    }).catch(() => undefined);
 
     return ApiResponse.created(review);
   } catch (error: any) {

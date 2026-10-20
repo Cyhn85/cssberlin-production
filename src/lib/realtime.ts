@@ -1,4 +1,4 @@
-﻿export const CHANNELS = {
+export const CHANNELS = {
   user: (userId: string) => `private-user-${userId}`,
   conversation: (userId1: string, userId2: string) => {
     const sorted = [userId1, userId2].sort();
@@ -25,6 +25,7 @@ export type OrderLifecycleEventType =
   | 'ORDER_PICKUP_COMPLETED'
   | 'ORDER_SHIP_REMINDER'
   | 'ORDER_SHIPPED'
+  | 'ORDER_CONFIRM_REMINDER'
   | 'ORDER_COMPLETED'
   | 'ORDER_AUTO_COMPLETED'
   | 'ORDER_DISPUTED'

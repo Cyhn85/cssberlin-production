@@ -127,7 +127,7 @@ export async function runOfferTimers(now = new Date()) {
 
   const pending = await prisma.offer.findMany({
     where: { status: 'PENDING', expiresAt: { lt: now } },
-    select: { id: true, buyerId: true, sellerId: true, createdById: true, offeredPrice: true, product: { select: { title: true } } },
+    select: { id: true, buyerId: true, sellerId: true, createdById: true, offeredPrice: true, productId: true, product: { select: { title: true } } },
   });
   for (const o of pending) {
     try {
@@ -140,6 +140,13 @@ export async function runOfferTimers(now = new Date()) {
       await createSystemNotification({
         senderId: silent, receiverId: waiting, offerId: o.id, category: 'offers',
         content: `Dein Preisvorschlag über ${o.offeredPrice.toFixed(2)} € für ${o.product.title} ist abgelaufen (keine Antwort innerhalb von ${offerPolicy.answerHours} Stunden).`,
+        email: {
+          subject: `Angebot abgelaufen: ${o.product.title}`,
+          title: 'Dein Angebot ist abgelaufen',
+          lines: [`Artikel: ${o.product.title}`, `Preis: ${o.offeredPrice.toFixed(2)} €`, 'Der Artikel ist vielleicht noch verfügbar - du kannst ein neues Angebot senden.'],
+          ctaLabel: 'Zum Artikel',
+          ctaPath: `/product/${o.productId}`,
+        },
       });
     } catch (e) { stats.errors++; console.error('offer expiry failed', o.id, e); }
   }

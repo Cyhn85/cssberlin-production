@@ -1,7 +1,8 @@
-﻿import { NextResponse, NextRequest } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import bcrypt from 'bcryptjs';
 import prisma from '@/lib/db';
 import { rateLimit, getClientIP } from '@/lib/rate-limit';
+import { sendWelcomeMail } from '@/lib/account-mails';
 
 export async function POST(req: NextRequest) {
     try {
@@ -51,6 +52,9 @@ export async function POST(req: NextRequest) {
                 passwordHash: hashedPassword,
             },
         });
+
+        // fire-and-forget: a missing mail server must never block a registration
+        void sendWelcomeMail(newUser.email, newUser.name);
 
         return NextResponse.json(
             { message: 'User created', user: { id: newUser.id, email: newUser.email } },

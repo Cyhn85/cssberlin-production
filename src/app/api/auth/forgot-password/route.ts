@@ -1,9 +1,10 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import prisma from '@/lib/db';
 import { rateLimit, getClientIP } from '@/lib/rate-limit';
-import { isMailConfigured, sendMail } from '@/lib/mailer';
+import { isMailConfigured } from '@/lib/mailer';
 import { businessProfile } from '@/config/business-profile';
+import { sendPasswordResetMail } from '@/lib/account-mails';
 
 export const runtime = 'nodejs';
 
@@ -32,7 +33,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!isMailConfigured()) {
+    if (!isMailConfigured() && !process.env.RESEND_API_KEY) {
       return NextResponse.json(
         {
           success: false,
@@ -67,15 +68,8 @@ export async function POST(request: NextRequest) {
     });
 
     const link = `${businessProfile.websiteUrl}/passwort-zuruecksetzen?token=${token}`;
-    await sendMail({
-      to: email,
-      subject: 'Passwort zurücksetzen',
-      text:
-        `Du hast ein neues Passwort für dein Konto bei ${businessProfile.brandName} angefordert.\n\n` +
-        `${link}\n\n` +
-        `Der Link gilt ${TOKEN_TTL_MINUTES} Minuten. Warst du das nicht, kannst du diese ` +
-        `E-Mail einfach ignorieren - dein Passwort bleibt unverändert.`,
-    });
+    // branded HTML mail with button (plain-text part is generated automatically)
+    await sendPasswordResetMail(email, link, TOKEN_TTL_MINUTES);
 
     return genericAnswer;
   } catch (error) {

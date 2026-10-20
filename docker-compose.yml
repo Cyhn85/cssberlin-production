@@ -72,6 +72,15 @@ services:
       PUSHER_SECRET: ${PUSHER_SECRET:-}
       PUSHER_CLUSTER: ${PUSHER_CLUSTER:-eu}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
+      # Outgoing mail via the shop mailbox (IONOS). Without these lines the variables in
+      # .env.production never reached the container - password reset and every order
+      # mail silently failed.
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
       GOOGLE_GENERATIVE_AI_API_KEY: ${GOOGLE_GENERATIVE_AI_API_KEY:-}
       SENTRY_DSN: ${SENTRY_DSN:-}
       NODE_ENV: production

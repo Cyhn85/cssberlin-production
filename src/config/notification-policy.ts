@@ -8,6 +8,7 @@
 export type NotificationCategory =
   | 'orders'
   | 'offers'
+  | 'listingActivity'
   | 'messages'
   | 'favorites'
   | 'followers'
@@ -39,18 +40,25 @@ export const NOTIFICATION_CATEGORIES: Array<{
     defaults: { inApp: true, email: true },
   },
   {
+    id: 'listingActivity',
+    label: 'Aktivität bei deinen Artikeln',
+    description: 'Jemand hat deinen Artikel gemerkt, neue Bewertungen über dich',
+    locked: false,
+    defaults: { inApp: true, email: true },
+  },
+  {
     id: 'messages',
     label: 'Nachrichten',
-    description: 'Neue Chat-Nachrichten von Käufern und Verkäufern',
+    description: 'Neue Chat-Nachrichten (E-Mail nur für die erste ungelesene Nachricht)',
     locked: false,
-    defaults: { inApp: true, email: false },
+    defaults: { inApp: true, email: true },
   },
   {
     id: 'favorites',
     label: 'Favoriten',
     description: 'Preissenkung oder Verkauf eines gemerkten Artikels',
     locked: false,
-    defaults: { inApp: true, email: false },
+    defaults: { inApp: true, email: true },
   },
   {
     id: 'followers',

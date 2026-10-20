@@ -1,8 +1,9 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import prisma from '@/lib/db';
 import { rateLimit, getClientIP } from '@/lib/rate-limit';
+import { sendPasswordChangedMail } from '@/lib/account-mails';
 
 export const runtime = 'nodejs';
 
@@ -57,6 +58,9 @@ export async function POST(request: NextRequest) {
       prisma.user.update({ where: { id: record.userId }, data: { passwordHash } }),
       prisma.passwordResetToken.update({ where: { id: record.id }, data: { usedAt: new Date() } }),
     ]);
+
+    const owner = await prisma.user.findUnique({ where: { id: record.userId }, select: { email: true, name: true } });
+    if (owner?.email) void sendPasswordChangedMail(owner.email, owner.name);
 
     return NextResponse.json({ success: true, message: 'Passwort geändert. Du kannst dich jetzt anmelden.' });
   } catch (error) {
