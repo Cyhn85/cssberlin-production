@@ -22,13 +22,28 @@ import { orderStatusToLabel } from '@/lib/utils/condition-map';
  *  - Clients cannot inject system messages any more (only user/assistant roles,
  *    1000 chars each, last 10 turns).
  *  - Guests can use it (8/hour per IP); signed-in users 30/hour.
- *  - Model: Gemini (the configured key on the server); Groq qwen3.8 as fallback
- *    when a GROQ_API_KEY exists. The dead llama-3.1-70b model is gone.
+ *  - Models: Groq qwen3.8 when GROQ_API_KEY is set (fast), then Gemini models in
+ *    order (GEMINI_CHAT_MODELS). The dead llama-3.1-70b model is gone.
  */
 
 const MAX_CHARS = 1000;
 const GROQ_MODEL = process.env.GROQ_CHAT_MODEL || 'qwen/qwen3.8-27b';
-const GEMINI_MODEL = process.env.GEMINI_CHAT_MODEL || 'gemini-flash-latest';
+// Tried in order. Measured 2026-10-20: Gemini answers in 5-30 s and returns 503
+// under load, so one model alone left visitors with the fallback text too often.
+const GEMINI_MODELS = (process.env.GEMINI_CHAT_MODELS || 'gemini-flash-lite-latest,gemini-flash-latest')
+  .split(',').map((m) => m.trim()).filter(Boolean);
+/** Only the wait for the first byte is limited - a streaming answer must not be cut off. */
+const FIRST_BYTE_TIMEOUT_MS = 25000;
+
+async function fetchWithFirstByteTimeout(url: string, init: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FIRST_BYTE_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
@@ -151,13 +166,7 @@ export async function POST(request: NextRequest) {
 
     const prompt = systemPrompt(extra);
 
-    if (process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
-      try {
-        return await streamGemini(messages, prompt);
-      } catch (error) {
-        console.warn('CSS Assist: Gemini failed', error);
-      }
-    }
+    // Groq first when configured: it answers in about a second; Gemini is the fallback.
     if (process.env.GROQ_API_KEY) {
       try {
         return await streamGroq(messages, prompt);
@@ -165,7 +174,15 @@ export async function POST(request: NextRequest) {
         console.warn('CSS Assist: Groq failed', error);
       }
     }
-
+    if (process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+      for (const model of GEMINI_MODELS) {
+        try {
+          return await streamGemini(messages, prompt, model);
+        } catch (error) {
+          console.warn(`CSS Assist: Gemini ${model} failed`, error);
+        }
+      }
+    }
     return ApiResponse.success({
       role: 'assistant',
       content: 'CSS Assist ist gerade nicht erreichbar. Antworten auf die häufigsten Fragen findest du im [Hilfe-Center](/hilfe), persönlich erreichst du uns über das [Kontaktformular](/kontakt).',
@@ -176,9 +193,9 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function streamGemini(messages: ChatMessage[], system: string): Promise<Response> {
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:streamGenerateContent?alt=sse`,
+async function streamGemini(messages: ChatMessage[], system: string, model: string): Promise<Response> {
+  const response = await fetchWithFirstByteTimeout(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': process.env.GOOGLE_GENERATIVE_AI_API_KEY as string },
@@ -187,7 +204,6 @@ async function streamGemini(messages: ChatMessage[], system: string): Promise<Re
         contents: messages.map((m) => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })),
         generationConfig: { maxOutputTokens: 700, temperature: 0.4 },
       }),
-      signal: AbortSignal.timeout(20000),
     },
   );
   if (!response.ok || !response.body) throw new Error(`Gemini ${response.status}`);
@@ -195,7 +211,7 @@ async function streamGemini(messages: ChatMessage[], system: string): Promise<Re
 }
 
 async function streamGroq(messages: ChatMessage[], system: string): Promise<Response> {
-  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const response = await fetchWithFirstByteTimeout('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -205,7 +221,6 @@ async function streamGroq(messages: ChatMessage[], system: string): Promise<Resp
       max_tokens: 700,
       temperature: 0.4,
     }),
-    signal: AbortSignal.timeout(20000),
   });
   if (!response.ok || !response.body) throw new Error(`Groq ${response.status}`);
   return new Response(response.body, { headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' } });
